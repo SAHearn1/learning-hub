@@ -1,0 +1,36 @@
+:root {
+  /* ═══════════════════════════════════════════════════════════════════════
+     5Rs PHASE DESIGN TOKENS
+     Consistent visual language for RootWork Framework phases
+     ═══════════════════════════════════════════════════════════════════════ */
+
+  /* ROOT: Grounding, foundation, earth tones */
+  --phase-root-color: #8B4513;
+  --phase-root-bg: #FDF5E6;
+  --phase-root-border: #D2691E;
+  --phase-root-icon: url('/icons/5rs/root-icon.svg');
+
+  /* REGULATE: Calming, balance, cool tones */
+  --phase-regulate-color: #4682B4;
+  --phase-regulate-bg: #F0F8FF;
+  --phase-regulate-border: #5F9EA0;
+  --phase-regulate-icon: url('/icons/5rs/regulate-icon.svg');
+
+  /* REFLECT: Introspection, clarity, neutral tones */
+  --phase-reflect-color: #6B5B95;
+  --phase-reflect-bg: #F5F5F5;
+  --phase-reflect-border: #9370DB;
+  --phase-reflect-icon: url('/icons/5rs/reflect-icon.svg');
+
+  /* RESTORE: Growth, renewal, green tones */
+  --phase-restore-color: #228B22;
+  --phase-restore-bg: #F0FFF0;
+  --phase-restore-border: #32CD32;
+  --phase-restore-icon: url('/icons/5rs/restore-icon.svg');
+
+  /* RECONNECT: Connection, warmth, golden tones */
+  --phase-reconnect-color: #DAA520;
+  --phase-reconnect-bg: #FFFACD;
+  --phase-reconnect-border: #FFD700;
+  --phase-reconnect-icon: url('/icons/5rs/reconnect-icon.svg');
+}
