@@ -1,0 +1,78 @@
+export const pricingPlans = [
+  {
+    id: 'free',
+    name: 'Free',
+    description: 'Try RootWork with limited features',
+    price: 0,
+    interval: 'month' as const,
+    features: [
+      '5 tutoring sessions per month',
+      'Basic progress tracking',
+      '1 subject',
+    ],
+    limits: {
+      sessionsPerMonth: 5,
+      subjects: 1,
+      aiTokensPerMonth: 50000,
+    },
+  },
+  {
+    id: 'starter',
+    name: 'Starter',
+    description: 'For individual learners',
+    price: 19.99,
+    interval: 'month' as const,
+    features: [
+      'Unlimited tutoring sessions',
+      'All 3 subjects',
+      'Full progress dashboard',
+      'Parent visibility',
+    ],
+    limits: {
+      sessionsPerMonth: -1,
+      subjects: 3,
+      aiTokensPerMonth: 500000,
+    },
+  },
+  {
+    id: 'professional',
+    name: 'Professional',
+    description: 'For educators and small groups',
+    price: 49.99,
+    interval: 'month' as const,
+    features: [
+      'Everything in Starter',
+      'Educator dashboard',
+      'Up to 30 students',
+      'IEP accommodation tracking',
+      'Compliance reporting',
+    ],
+    limits: {
+      sessionsPerMonth: -1,
+      subjects: 3,
+      aiTokensPerMonth: 2000000,
+      maxStudents: 30,
+    },
+  },
+  {
+    id: 'enterprise',
+    name: 'Enterprise',
+    description: 'For schools and districts',
+    price: null,
+    interval: 'month' as const,
+    features: [
+      'Everything in Professional',
+      'Unlimited students',
+      'District-wide analytics',
+      'SSO integration',
+      'Dedicated support',
+      'Custom curriculum alignment',
+    ],
+    limits: {
+      sessionsPerMonth: -1,
+      subjects: 3,
+      aiTokensPerMonth: -1,
+      maxStudents: -1,
+    },
+  },
+] as const;

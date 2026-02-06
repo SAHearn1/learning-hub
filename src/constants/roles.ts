@@ -1,0 +1,10 @@
+export const ROLES = {
+  STUDENT: 'STUDENT',
+  EDUCATOR: 'EDUCATOR',
+  PARENT: 'PARENT',
+  SCHOOL_ADMIN: 'SCHOOL_ADMIN',
+  DISTRICT_ADMIN: 'DISTRICT_ADMIN',
+  PLATFORM_ADMIN: 'PLATFORM_ADMIN',
+} as const;
+
+export type Role = keyof typeof ROLES;

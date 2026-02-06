@@ -1,0 +1,16 @@
+export const featureFlags = {
+  enableVoiceInput: false,
+  enableCollaborativeSessions: false,
+  enableParentMessaging: false,
+  enableAdvancedAnalytics: true,
+  enableProblemPosing: true,
+  enableMultiplePathways: true,
+  enableErrorAnalysis: true,
+  enableReverseEngineering: true,
+  enableCalmCorner: true,
+  enableIepTracking: true,
+  enableStripePayments: true,
+  enableDarkMode: true,
+  enableHighContrast: true,
+  enableDyslexicFont: true,
+} as const;
