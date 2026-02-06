@@ -1,32 +1,42 @@
-"""Starter script that mirrors the requested Anthropic planning call."""
+"""Starter script for generating output from Anthropic based on a build specification."""
+
+from __future__ import annotations
 
 import os
 
 import anthropic
 
 
-client = anthropic.Anthropic(
-    # Defaults to os.environ.get("ANTHROPIC_API_KEY")
-    api_key=os.environ.get("ANTHROPIC_API_KEY"),
-)
+def main() -> None:
+    build_specification = os.environ.get(
+        "BUILD_SPECIFICATION",
+        "Replace BUILD_SPECIFICATION with your real prompt text.",
+    )
 
-# Replace placeholders like {{BUILD_SPECIFICATION}} with real values,
-# because the SDK does not support variables.
-message = client.messages.create(
-    model="claude-opus-4-6",
-    max_tokens=20_000,
-    temperature=1,
-    messages=[
-        {
-            "role": "user",
-            "content": [
-                {
-                    "type": "text",
-                    "text": os.environ.get("BUILD_SPECIFICATION", "{{BUILD_SPECIFICATION}}\n\n\n"),
-                }
-            ],
-        }
-    ],
-)
+    client = anthropic.Anthropic(
+        # Defaults to os.environ.get("ANTHROPIC_API_KEY") if omitted.
+        api_key=os.environ.get("ANTHROPIC_API_KEY"),
+    )
 
-print(message.content)
+    message = client.messages.create(
+        model="claude-opus-4-6",
+        max_tokens=20_000,
+        temperature=1,
+        messages=[
+            {
+                "role": "user",
+                "content": [
+                    {
+                        "type": "text",
+                        "text": build_specification,
+                    }
+                ],
+            }
+        ],
+    )
+
+    print(message.content)
+
+
+if __name__ == "__main__":
+    main()
