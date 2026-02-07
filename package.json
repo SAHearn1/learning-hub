@@ -40,6 +40,9 @@
     "zod": "^3.23.0",
     "zustand": "^4.5.0"
   },
+  "prisma": {
+    "seed": "tsx prisma/seed.ts"
+  },
   "devDependencies": {
     "@playwright/test": "^1.45.0",
     "@types/node": "^20.14.0",
