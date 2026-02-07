@@ -1,4 +1,6 @@
 import Link from 'next/link';
+import { RootworkIcon } from '@/components/brand/rootwork-icon';
+import { RootworkLogo } from '@/components/brand/rootwork-logo';
 import { siteConfig } from '@/config/site';
 import { studentNavItems } from '@/config/navigation';
 
@@ -11,9 +13,10 @@ const rolePortals = [
 export default function HomePage() {
   return (
     <main className="mx-auto flex min-h-screen w-full max-w-6xl flex-col px-8 py-14">
-      <section className="text-center">
+      <section className="rounded-3xl border border-primary-100 bg-gradient-to-br from-primary-50 via-white to-secondary-50 p-10 text-center shadow-sm">
+        <RootworkLogo className="mb-6 justify-center" />
         <h1 className="mb-4 text-4xl font-bold text-primary-800">{siteConfig.name}</h1>
-        <p className="mb-6 text-xl text-secondary-600">{siteConfig.tagline}</p>
+        <p className="mb-6 text-xl text-secondary-700">{siteConfig.tagline}</p>
         <p className="mx-auto mb-10 max-w-3xl text-lg text-neutral-600">{siteConfig.description}</p>
         <div className="flex gap-4 justify-center">
           <Link
@@ -38,9 +41,11 @@ export default function HomePage() {
             <Link
               key={item.href}
               href={item.href}
-              className="rounded-xl border border-neutral-200 bg-white p-4 text-neutral-800 shadow-sm hover:border-primary-300 hover:bg-primary-50"
+              className="group rounded-2xl border border-neutral-200 bg-white p-4 text-neutral-800 shadow-sm transition-all hover:-translate-y-0.5 hover:border-primary-300 hover:bg-primary-50"
             >
-              <p className="text-xs font-semibold uppercase tracking-wide text-neutral-500">{item.icon}</p>
+              <span className="mb-2 inline-flex rounded-lg bg-primary-100 p-2 text-primary-800 transition-colors group-hover:bg-primary-200">
+                <RootworkIcon href={item.href} label={item.label} />
+              </span>
               <p className="mt-1 font-semibold">{item.label}</p>
             </Link>
           ))}
@@ -54,8 +59,9 @@ export default function HomePage() {
             <Link
               key={portal.href}
               href={portal.href}
-              className="rounded-lg border border-neutral-300 px-4 py-2 text-sm font-medium text-neutral-800 hover:border-primary-400 hover:bg-primary-50"
+              className="inline-flex items-center gap-2 rounded-full border border-neutral-300 px-4 py-2 text-sm font-medium text-neutral-800 transition-colors hover:border-primary-400 hover:bg-primary-50"
             >
+              <RootworkIcon href={portal.href} label={portal.label} />
               {portal.label}
             </Link>
           ))}
