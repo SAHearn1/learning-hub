@@ -30,6 +30,33 @@ A comprehensive AI-powered learning platform with multi-tenancy support, trauma-
    - `ANTHROPIC_API_KEY`: Anthropic AI API key
    - Other required environment variables (see `.env.example`)
 
+
+### RAG + n8n Curriculum Ingest Setup
+
+Use the automation script below to set required API keys, create the Pinecone index, and set GitHub secrets for your curriculum content repository.
+
+```bash
+export OPENAI_API_KEY="<your-openai-key>"
+export PINECONE_API_KEY="<your-pinecone-key>"
+export N8N_WEBHOOK_URL="https://<your-n8n-host>/webhook/curriculum-ingest"
+export N8N_WEBHOOK_SECRET="<your-webhook-secret>"
+export CURRICULUM_REPO="<org-or-user>/<curriculum-repo>"
+
+./scripts/setup-rag-n8n.sh
+```
+
+What the script does:
+- Writes `OPENAI_API_KEY` and `PINECONE_API_KEY` into `.env.local`
+- Runs `npm run rag:create-index`
+- Prompts you to import `scripts/n8n-workflow.json` in n8n and attach GitHub credentials
+- Sets `N8N_WEBHOOK_URL` and `N8N_WEBHOOK_SECRET` with `gh secret set`
+
+If you only want to update env vars and GitHub secrets without creating the index:
+
+```bash
+SKIP_INDEX_CREATE=1 ./scripts/setup-rag-n8n.sh
+```
+
 ### Database Setup
 
 #### Apply Migrations to a Fresh Database
