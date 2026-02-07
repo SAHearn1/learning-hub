@@ -1,0 +1,91 @@
+import { NextRequest, NextResponse } from 'next/server';
+import { auth } from '@clerk/nextjs/server';
+import { db } from '@/lib/db';
+import { z } from 'zod';
+
+const updateSessionSchema = z.object({
+  currentPhase: z.enum(['ROOT', 'REGULATE', 'REFLECT', 'RESTORE', 'RECONNECT']).optional(),
+  engagementMode: z.enum(['FORWARD', 'REVERSE', 'ERROR_ANALYSIS', 'MULTIPLE_PATHWAYS', 'PROBLEM_POSING']).optional(),
+  regulationState: z.object({
+    level: z.number().min(0).max(100),
+    signals: z.array(z.string()),
+    interventionCount: z.number(),
+  }).optional(),
+  endSession: z.boolean().optional(),
+});
+
+export async function GET(
+  _req: NextRequest,
+  { params }: { params: Promise<{ sessionId: string }> },
+) {
+  const { sessionId } = await params;
+  const { userId: clerkId } = auth();
+  if (!clerkId) {
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  }
+
+  const session = await db.session.findUnique({
+    where: { id: sessionId },
+    include: {
+      messages: { orderBy: { createdAt: 'asc' } },
+      assessments: true,
+      student: { include: { user: true } },
+    },
+  });
+
+  if (!session) {
+    return NextResponse.json({ error: 'Session not found' }, { status: 404 });
+  }
+
+  const user = await db.user.findUnique({ where: { clerkUserId: clerkId } });
+  if (!user || (user.role === 'STUDENT' && session.student.userId !== user.id)) {
+    return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+  }
+
+  return NextResponse.json({ data: session });
+}
+
+export async function PATCH(
+  req: NextRequest,
+  { params }: { params: Promise<{ sessionId: string }> },
+) {
+  const { sessionId } = await params;
+  const { userId: clerkId } = auth();
+  if (!clerkId) {
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  }
+
+  let body;
+  try {
+    body = updateSessionSchema.parse(await req.json());
+  } catch (err) {
+    const message = err instanceof z.ZodError ? err.errors.map(e => e.message).join(', ') : 'Invalid request';
+    return NextResponse.json({ error: message }, { status: 400 });
+  }
+
+  const session = await db.session.findUnique({
+    where: { id: sessionId },
+    include: { student: true },
+  });
+  if (!session) {
+    return NextResponse.json({ error: 'Session not found' }, { status: 404 });
+  }
+
+  const user = await db.user.findUnique({ where: { clerkUserId: clerkId } });
+  if (!user || (user.role === 'STUDENT' && session.student.userId !== user.id)) {
+    return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+  }
+
+  const updateData: Record<string, unknown> = {};
+  if (body.currentPhase) updateData.currentPhase = body.currentPhase;
+  if (body.engagementMode) updateData.engagementMode = body.engagementMode;
+  if (body.regulationState) updateData.regulationState = body.regulationState;
+  if (body.endSession) updateData.endedAt = new Date();
+
+  const updated = await db.session.update({
+    where: { id: sessionId },
+    data: updateData,
+  });
+
+  return NextResponse.json({ data: updated });
+}
