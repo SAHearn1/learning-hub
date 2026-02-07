@@ -1,0 +1,71 @@
+name: Trigger Curriculum Ingestion
+
+on:
+  workflow_dispatch:
+    inputs:
+      source:
+        description: 'Ingestion source type'
+        required: false
+        default: 'SCHEDULED'
+        type: choice
+        options:
+          - SCHEDULED
+          - MANUAL
+          - API
+  schedule:
+    # Run daily at 2 AM UTC
+    - cron: '0 2 * * *'
+
+jobs:
+  trigger-ingestion:
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Trigger n8n Webhook
+        env:
+          N8N_WEBHOOK_URL: ${{ secrets.N8N_WEBHOOK_URL }}
+          N8N_WEBHOOK_SECRET: ${{ secrets.N8N_WEBHOOK_SECRET }}
+        run: |
+          SOURCE="${{ github.event.inputs.source || 'SCHEDULED' }}"
+          
+          RESPONSE=$(curl -s -w "\n%{http_code}" -X POST "$N8N_WEBHOOK_URL" \
+            -H "Content-Type: application/json" \
+            -H "Authorization: Bearer $N8N_WEBHOOK_SECRET" \
+            -d "{
+              \"source\": \"$SOURCE\",
+              \"repository\": \"${{ github.repository }}\",
+              \"ref\": \"${{ github.ref }}\",
+              \"sha\": \"${{ github.sha }}\",
+              \"actor\": \"${{ github.actor }}\",
+              \"workflow\": \"${{ github.workflow }}\",
+              \"timestamp\": \"$(date -u +%Y-%m-%dT%H:%M:%SZ)\",
+              \"metadata\": {
+                \"triggeredBy\": \"github-actions\",
+                \"runId\": \"${{ github.run_id }}\",
+                \"runNumber\": \"${{ github.run_number }}\"
+              }
+            }")
+          
+          HTTP_CODE=$(echo "$RESPONSE" | tail -n1)
+          BODY=$(echo "$RESPONSE" | sed \$d)
+          
+          echo "Response: $BODY"
+          echo "HTTP Status: $HTTP_CODE"
+          
+          if [ "$HTTP_CODE" -ge 200 ] && [ "$HTTP_CODE" -lt 300 ]; then
+            echo "✅ Ingestion triggered successfully"
+            exit 0
+          else
+            echo "❌ Failed to trigger ingestion (HTTP $HTTP_CODE)"
+            echo "Response body: $BODY"
+            exit 1
+          fi
+
+      - name: Notify on failure
+        if: failure()
+        run: |
+          echo "::error::Failed to trigger curriculum ingestion"
+          echo "Please check the n8n webhook URL and secret configuration"
