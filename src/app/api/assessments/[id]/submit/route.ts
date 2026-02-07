@@ -5,9 +5,10 @@ import { updateProgress } from '@/lib/assessments/progress-calculator';
 
 export async function POST(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  context: { params: Promise<{ id: string }> }
 ) {
   try {
+    const params = await context.params;
     const assessmentId = params.id;
     const body = await request.json();
     const { studentResponse } = body;

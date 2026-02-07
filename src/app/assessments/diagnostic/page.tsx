@@ -21,7 +21,7 @@ export default function DiagnosticPage() {
       <div className="mb-8">
         <h1 className="text-3xl font-bold mb-2">Diagnostic Assessment</h1>
         <p className="text-muted-foreground">
-          Let's find out what you already know and where we can help you grow! This assessment will
+          Let&apos;s find out what you already know and where we can help you grow! This assessment will
           help us understand your current level and create a personalized learning path.
         </p>
       </div>
@@ -34,11 +34,11 @@ export default function DiagnosticPage() {
         <CardContent className="space-y-3">
           <div className="flex items-start gap-2">
             <span className="text-primary mt-1">✓</span>
-            <p className="text-sm">Take your time - there's no time limit</p>
+            <p className="text-sm">Take your time - there&apos;s no time limit</p>
           </div>
           <div className="flex items-start gap-2">
             <span className="text-primary mt-1">✓</span>
-            <p className="text-sm">Show your thinking process, even if you're not sure</p>
+            <p className="text-sm">Show your thinking process, even if you&apos;re not sure</p>
           </div>
           <div className="flex items-start gap-2">
             <span className="text-primary mt-1">✓</span>

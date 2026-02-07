@@ -111,12 +111,12 @@ export function FormativeCheck({
         <CardHeader>
           <CardTitle>Quick Understanding Check</CardTitle>
           <CardDescription>
-            Let's check your understanding of {currentTopic}
+            Let&apos;s check your understanding of {currentTopic}
           </CardDescription>
         </CardHeader>
         <CardContent>
           <p className="text-sm text-muted-foreground">
-            Ready for a quick check to see how you're doing?
+            Ready for a quick check to see how you&apos;re doing?
           </p>
         </CardContent>
         <CardFooter>
@@ -187,9 +187,9 @@ export function FormativeCheck({
             feedback.isCorrect ? 'bg-green-50 border border-green-200' : 'bg-blue-50 border border-blue-200'
           }`}>
             <div className="flex items-center gap-2 mb-2">
-              <span className="text-xl">{feedback.isCorrect ? '✅' : '💡'}</span>
+              <span className="text-xl">{feedback.isCorrect ? '✓' : '?'}</span>
               <span className="font-semibold text-sm">
-                {feedback.isCorrect ? 'Excellent!' : "Let's explore this..."}
+                {feedback.isCorrect ? 'Excellent!' : "Let&apos;s explore this..."}
               </span>
             </div>
             <p className="text-sm whitespace-pre-wrap">{feedback.feedback}</p>

@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -46,11 +46,7 @@ export function AssessmentHistory({
   const [loading, setLoading] = useState(true);
   const [selectedType, setSelectedType] = useState<AssessmentType | 'ALL'>(filterType || 'ALL');
 
-  useEffect(() => {
-    loadHistory();
-  }, [studentId, sessionId, selectedType]);
-
-  const loadHistory = async () => {
+  const loadHistory = useCallback(async () => {
     try {
       setLoading(true);
       let url = '/api/assessments/diagnostic?'; // Base endpoint
@@ -74,7 +70,11 @@ export function AssessmentHistory({
     } finally {
       setLoading(false);
     }
-  };
+  }, [studentId, sessionId]);
+
+  useEffect(() => {
+    loadHistory();
+  }, [loadHistory, selectedType]);
 
   if (loading) {
     return (

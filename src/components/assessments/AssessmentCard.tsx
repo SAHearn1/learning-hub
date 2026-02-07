@@ -138,9 +138,9 @@ export function AssessmentCard({
             feedback.isCorrect ? 'bg-green-50 border border-green-200' : 'bg-yellow-50 border border-yellow-200'
           }`}>
             <div className="flex items-center gap-2 mb-2">
-              <span className="text-2xl">{feedback.isCorrect ? '✅' : '💭'}</span>
+              <span className="text-2xl">{feedback.isCorrect ? '✓' : '?'}</span>
               <span className="font-semibold">
-                {feedback.isCorrect ? 'Great work!' : "Let's think about this..."}
+                {feedback.isCorrect ? 'Great work!' : "Let&apos;s think about this..."}
               </span>
               <Badge variant="secondary">Score: {feedback.score}/100</Badge>
             </div>

@@ -6,13 +6,13 @@ import { ReasoningMoveTracker } from '@/components/assessments/ReasoningMoveTrac
 import Link from 'next/link';
 
 interface PageProps {
-  params: {
+  params: Promise<{
     studentId: string;
-  };
+  }>;
 }
 
-export default function StudentAssessmentsPage({ params }: PageProps) {
-  const { studentId } = params;
+export default async function StudentAssessmentsPage({ params }: PageProps) {
+  const { studentId } = await params;
 
   return (
     <div className="container mx-auto py-8 px-4 max-w-7xl">

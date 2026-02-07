@@ -1,7 +1,8 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
 import type { ReasoningMove } from '@prisma/client';
@@ -53,28 +54,28 @@ const PROFICIENCY_LABELS: Record<number, string> = {
 };
 
 const MOVE_DESCRIPTIONS: Record<string, string> = {
-  DECOMPOSE: '🧩 Break into parts',
-  IDENTIFY: '🔍 Recognize elements',
-  COMPARE: '⚖️ Find differences',
-  CLASSIFY: '📊 Group by category',
-  SEQUENCE: '📝 Order logically',
-  CAUSE_EFFECT: '🎯 Link causes',
-  QUESTION: '❓ Ask questions',
-  CHALLENGE: '🤔 Question assumptions',
-  VERIFY: '✓ Check accuracy',
-  JUSTIFY: '💬 Explain reasoning',
-  CRITIQUE: '📋 Evaluate arguments',
-  WEIGH: '⚡ Consider trade-offs',
-  HYPOTHESIZE: '🔮 Make predictions',
-  CONNECT: '🔗 Link knowledge',
-  GENERALIZE: '🌐 Extend patterns',
-  SPECIALIZE: '🎓 Apply specifically',
-  TRANSFORM: '🔄 Change forms',
-  CREATE: '✨ Generate ideas',
-  MONITOR: '📊 Track understanding',
-  ADJUST: '🔧 Modify approach',
-  REFLECT: '🪞 Think about thinking',
-  PLAN: '📋 Strategize approach',
+  DECOMPOSE: 'Break into parts',
+  IDENTIFY: 'Recognize elements',
+  COMPARE: 'Find differences',
+  CLASSIFY: 'Group by category',
+  SEQUENCE: 'Order logically',
+  CAUSE_EFFECT: 'Link causes',
+  QUESTION: 'Ask questions',
+  CHALLENGE: 'Question assumptions',
+  VERIFY: 'Check accuracy',
+  JUSTIFY: 'Explain reasoning',
+  CRITIQUE: 'Evaluate arguments',
+  WEIGH: 'Consider trade-offs',
+  HYPOTHESIZE: 'Make predictions',
+  CONNECT: 'Link knowledge',
+  GENERALIZE: 'Extend patterns',
+  SPECIALIZE: 'Apply specifically',
+  TRANSFORM: 'Change forms',
+  CREATE: 'Generate ideas',
+  MONITOR: 'Track understanding',
+  ADJUST: 'Modify approach',
+  REFLECT: 'Think about thinking',
+  PLAN: 'Strategize approach',
 };
 
 export function ReasoningMoveTracker({ studentId, showSuggestions = true }: ReasoningMoveTrackerProps) {
@@ -82,11 +83,7 @@ export function ReasoningMoveTracker({ studentId, showSuggestions = true }: Reas
   const [suggestions, setSuggestions] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
-    loadProfile();
-  }, [studentId]);
-
-  const loadProfile = async () => {
+  const loadProfile = useCallback(async () => {
     try {
       setLoading(true);
       const response = await fetch(
@@ -107,7 +104,11 @@ export function ReasoningMoveTracker({ studentId, showSuggestions = true }: Reas
     } finally {
       setLoading(false);
     }
-  };
+  }, [studentId, showSuggestions]);
+
+  useEffect(() => {
+    loadProfile();
+  }, [loadProfile]);
 
   if (loading) {
     return (
@@ -196,7 +197,7 @@ export function ReasoningMoveTracker({ studentId, showSuggestions = true }: Reas
                   key={index}
                   className="flex items-center gap-3 p-3 bg-blue-50 rounded-lg border border-blue-200"
                 >
-                  <span className="text-2xl">🌱</span>
+                  <span className="text-2xl">→</span>
                   <div className="flex-1">
                     <div className="font-semibold text-sm">
                       {MOVE_DESCRIPTIONS[suggestion.move] || suggestion.move}
