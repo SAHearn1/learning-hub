@@ -1,110 +1,38 @@
-import { NextRequest, NextResponse } from 'next/server';
-import { db } from '@/lib/db';
+import { NextResponse } from 'next/server';
+import { handleSubscriptionCanceled, syncTenantFromSubscription } from '@/lib/billing';
 import { stripe } from '@/lib/stripe';
-import Stripe from 'stripe';
 
-const tierMap: Record<string, 'FREE' | 'STARTER' | 'PROFESSIONAL' | 'ENTERPRISE'> = {
-  free: 'FREE',
-  starter: 'STARTER',
-  professional: 'PROFESSIONAL',
-  enterprise: 'ENTERPRISE',
-};
+export async function POST(request: Request) {
+  const signature = request.headers.get('stripe-signature');
+  const webhookSecret = process.env.STRIPE_WEBHOOK_SECRET;
 
-function resolveTier(subscription: Stripe.Subscription): 'FREE' | 'STARTER' | 'PROFESSIONAL' | 'ENTERPRISE' {
-  const productMeta = subscription.metadata?.tier;
-  if (productMeta && tierMap[productMeta]) return tierMap[productMeta];
-  return 'STARTER';
-}
-
-export async function POST(req: NextRequest) {
-  const body = await req.text();
-  const signature = req.headers.get('stripe-signature');
-
-  if (!signature || !process.env.STRIPE_WEBHOOK_SECRET) {
-    return NextResponse.json({ error: 'Missing signature or webhook secret' }, { status: 400 });
+  if (!signature || !webhookSecret) {
+    return NextResponse.json({ error: 'Webhook signature verification failed.' }, { status: 400 });
   }
 
-  let event: Stripe.Event;
+  const payload = await request.text();
+
   try {
-    event = stripe.webhooks.constructEvent(body, signature, process.env.STRIPE_WEBHOOK_SECRET);
+    const event = stripe.webhooks.constructEvent(payload, signature, webhookSecret);
+
+    if (event.type === 'checkout.session.completed') {
+      const session = event.data.object;
+      if (session.subscription && typeof session.subscription === 'string') {
+        const subscription = await stripe.subscriptions.retrieve(session.subscription);
+        await syncTenantFromSubscription(subscription);
+      }
+    }
+
+    if (event.type === 'customer.subscription.updated' || event.type === 'customer.subscription.created') {
+      await syncTenantFromSubscription(event.data.object);
+    }
+
+    if (event.type === 'customer.subscription.deleted') {
+      await handleSubscriptionCanceled(event.data.object);
+    }
+
+    return NextResponse.json({ received: true });
   } catch {
-    return NextResponse.json({ error: 'Invalid signature' }, { status: 400 });
+    return NextResponse.json({ error: 'Invalid webhook payload.' }, { status: 400 });
   }
-
-  switch (event.type) {
-    case 'checkout.session.completed': {
-      const session = event.data.object as Stripe.Checkout.Session;
-      const tenantId = session.metadata?.tenantId;
-      if (tenantId && session.subscription) {
-        const subscription = await stripe.subscriptions.retrieve(session.subscription as string);
-        await db.tenant.update({
-          where: { id: tenantId },
-          data: {
-            stripeSubscriptionId: subscription.id,
-            subscriptionTier: resolveTier(subscription),
-            subscriptionStatus: 'ACTIVE',
-          },
-        });
-      }
-      break;
-    }
-
-    case 'invoice.paid': {
-      const invoice = event.data.object as Stripe.Invoice;
-      if (invoice.subscription) {
-        const subscription = await stripe.subscriptions.retrieve(invoice.subscription as string);
-        const tenant = await db.tenant.findFirst({
-          where: { stripeSubscriptionId: subscription.id },
-        });
-        if (tenant) {
-          await db.tenant.update({
-            where: { id: tenant.id },
-            data: { subscriptionStatus: 'ACTIVE' },
-          });
-        }
-      }
-      break;
-    }
-
-    case 'customer.subscription.updated': {
-      const subscription = event.data.object as Stripe.Subscription;
-      const tenant = await db.tenant.findFirst({
-        where: { stripeSubscriptionId: subscription.id },
-      });
-      if (tenant) {
-        const status = subscription.status === 'active' ? 'ACTIVE'
-          : subscription.status === 'past_due' ? 'PAST_DUE'
-          : subscription.status === 'trialing' ? 'TRIALING'
-          : 'CANCELLED';
-        await db.tenant.update({
-          where: { id: tenant.id },
-          data: {
-            subscriptionTier: resolveTier(subscription),
-            subscriptionStatus: status,
-          },
-        });
-      }
-      break;
-    }
-
-    case 'customer.subscription.deleted': {
-      const subscription = event.data.object as Stripe.Subscription;
-      const tenant = await db.tenant.findFirst({
-        where: { stripeSubscriptionId: subscription.id },
-      });
-      if (tenant) {
-        await db.tenant.update({
-          where: { id: tenant.id },
-          data: {
-            subscriptionTier: 'FREE',
-            subscriptionStatus: 'CANCELLED',
-            stripeSubscriptionId: null,
-          },
-        });
-      }
-      break;
-    }
-  }
-
-  return NextResponse.json({ received: true });
 }

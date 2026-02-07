@@ -119,17 +119,17 @@ Stripe client is initialized but nothing else:
 
 ---
 
-## 4. Testing — Current State: NONE
+## 4. Testing — Current State: PARTIAL
 
 | Test Type | Framework Installed | Tests Written | Coverage |
 |-----------|-------------------|---------------|----------|
-| Unit tests | Vitest 2.0.0 | 0 | 0% |
-| E2E tests | Playwright 1.45.0 | 0 | 0% |
+| Unit tests | Vitest 2.0.0 | 18 files (constants, config, stores, billing, auth, API routes) | Not configured |
+| E2E tests | Playwright 1.45.0 | 1 smoke spec | Not configured |
 | Integration tests | — | 0 | 0% |
 
 **Required before production:**
-- Unit tests for all API routes, auth helpers, state stores
-- Integration tests for tutoring conversation flow
+- Expand unit tests to remaining API surface and error-handling edge cases
+- Integration tests for tutoring conversation flow and persistence behavior
 - E2E tests for student sign-up → session → progress flow
 - E2E tests for educator class management flow
 - Accessibility testing (critical for IEP-accommodated students)
