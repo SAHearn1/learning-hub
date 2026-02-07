@@ -45,11 +45,11 @@ export default function IngestPage() {
   const triggerIngestion = async () => {
     setTriggering(true);
     try {
-      const response = await fetch('/api/ingest', {
+      // Call server-side API to trigger ingestion securely
+      const response = await fetch('/api/admin/trigger-ingest', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${process.env.NEXT_PUBLIC_N8N_WEBHOOK_SECRET || ''}`,
         },
         body: JSON.stringify({
           source: 'MANUAL',

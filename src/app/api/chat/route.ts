@@ -104,10 +104,10 @@ export async function POST(req: NextRequest) {
         })
         .join('\n\n---\n\n');
       
-      console.log(`RAG: Retrieved ${matches.length} curriculum contexts in ${ragMetrics.durationMs}ms`);
+      console.log(`RAG: Retrieved ${matches.length} curriculum contexts in ${ragMetrics.durationMs}ms for session ${session.id}`);
     }
   } catch (error) {
-    console.error('RAG retrieval error:', error);
+    console.error(`RAG retrieval error for session ${session.id}:`, error);
     // Continue without RAG context if Pinecone fails
     curriculumContext = '';
   }

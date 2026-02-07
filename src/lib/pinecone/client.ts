@@ -65,6 +65,7 @@ export async function upsertToPinecone(
     const index = client.index(indexName);
 
     // Pinecone SDK v2 expects records array in an object
+    // TODO: Import proper types from @pinecone-database/pinecone instead of using 'as any'
     await index.upsert({
       records: vectors.map(v => ({
         id: v.id,
