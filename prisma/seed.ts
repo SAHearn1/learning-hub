@@ -3,12 +3,12 @@ import { PrismaClient } from '@prisma/client';
 const prisma = new PrismaClient();
 
 async function main() {
-  console.log('🌱 Starting database seed...');
+  console.log('Starting database seed...');
 
   // ═══════════════════════════════════════════════════════════════
   // 1. CREATE TENANT
   // ═══════════════════════════════════════════════════════════════
-  console.log('📦 Creating tenant...');
+  console.log('Creating tenant...');
   
   const tenant = await prisma.tenant.upsert({
     where: { slug: 'demo-district' },
@@ -34,7 +34,7 @@ async function main() {
   // ═══════════════════════════════════════════════════════════════
   // 2. CREATE SCHOOL
   // ═══════════════════════════════════════════════════════════════
-  console.log('🏫 Creating school...');
+  console.log('Creating school...');
   
   const school = await prisma.school.upsert({
     where: { id: 'demo-middle-school-1' },
@@ -57,7 +57,7 @@ async function main() {
   // ═══════════════════════════════════════════════════════════════
   // 3. CREATE USERS (Educator & Students)
   // ═══════════════════════════════════════════════════════════════
-  console.log('👥 Creating users...');
+  console.log('Creating users...');
 
   // Create Educator
   const educatorUser = await prisma.user.upsert({
@@ -180,7 +180,7 @@ async function main() {
   // ═══════════════════════════════════════════════════════════════
   // 4. CREATE CLASS
   // ═══════════════════════════════════════════════════════════════
-  console.log('📚 Creating class...');
+  console.log('Creating class...');
 
   const mathClass = await prisma.class.upsert({
     where: { id: 'class-7th-grade-math-001' },
@@ -202,7 +202,7 @@ async function main() {
   // ═══════════════════════════════════════════════════════════════
   // 5. CREATE CLASS ENROLLMENTS
   // ═══════════════════════════════════════════════════════════════
-  console.log('📝 Enrolling students in class...');
+  console.log('Enrolling students in class...');
 
   for (const { student } of students.filter((s) => s.user.firstName !== 'Taylor')) {
     await prisma.classEnrollment.upsert({
@@ -227,7 +227,7 @@ async function main() {
   // ═══════════════════════════════════════════════════════════════
   // 6. CREATE STANDARDS
   // ═══════════════════════════════════════════════════════════════
-  console.log('📖 Creating academic standards...');
+  console.log('Creating academic standards...');
 
   const standards = [
     {
@@ -286,7 +286,7 @@ async function main() {
   // ═══════════════════════════════════════════════════════════════
   // 7. CREATE TOPICS
   // ═══════════════════════════════════════════════════════════════
-  console.log('📚 Creating topics...');
+  console.log('Creating topics...');
 
   const topics = [
     {
@@ -350,7 +350,7 @@ async function main() {
   // ═══════════════════════════════════════════════════════════════
   // 8. CREATE LEARNING OBJECTIVES
   // ═══════════════════════════════════════════════════════════════
-  console.log('🎯 Creating learning objectives...');
+  console.log('Creating learning objectives...');
 
   const objectives = [
     {
@@ -504,7 +504,7 @@ async function main() {
   // ═══════════════════════════════════════════════════════════════
   // 10. INITIALIZE REASONING MOVE PROGRESS
   // ═══════════════════════════════════════════════════════════════
-  console.log('🧠 Initializing reasoning move tracking...');
+  console.log('Initializing reasoning move tracking...');
 
   const basicReasoningMoves = [
     'DECOMPOSE',
@@ -540,8 +540,8 @@ async function main() {
   // ═══════════════════════════════════════════════════════════════
   // SEED COMPLETE
   // ═══════════════════════════════════════════════════════════════
-  console.log('\n🎉 Database seed completed successfully!');
-  console.log('\n📊 Summary:');
+  console.log('\nDatabase seed completed successfully!');
+  console.log('\nSummary:');
   console.log(`   • 1 Tenant: ${tenant.name}`);
   console.log(`   • 1 School: ${school.name}`);
   console.log(`   • 1 Educator: ${educatorUser.firstName} ${educatorUser.lastName}`);
