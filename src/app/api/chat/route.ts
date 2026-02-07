@@ -3,6 +3,8 @@ import { auth } from '@clerk/nextjs/server';
 import { db } from '@/lib/db';
 import { anthropic, AI_MODELS } from '@/lib/ai/client';
 import { buildMasterSystemPrompt } from '@/lib/ai/prompts/master-system-prompt';
+import { generateEmbedding } from '@/lib/pinecone/embeddings';
+import { queryPinecone } from '@/lib/pinecone/client';
 import { z } from 'zod';
 
 const chatRequestSchema = z.object({
@@ -65,6 +67,51 @@ export async function POST(req: NextRequest) {
     .map(m => `${m.role}: ${m.content}`)
     .join('\n');
 
+  // RAG: Retrieve relevant curriculum context from Pinecone
+  let curriculumContext = '';
+  let ragMetrics = { retrieved: 0, durationMs: 0 };
+  
+  try {
+    const ragStartTime = Date.now();
+    
+    // Generate embedding for the user's query
+    const queryEmbedding = await generateEmbedding(body.message);
+    
+    // Query Pinecone for relevant curriculum content
+    const filter: Record<string, any> = {
+      subject: session.subject,
+    };
+    
+    // Add grade level filter if available
+    if (user.student.gradeLevel) {
+      filter.gradeLevel = user.student.gradeLevel;
+    }
+    
+    const matches = await queryPinecone(queryEmbedding, 5, filter);
+    ragMetrics.retrieved = matches.length;
+    ragMetrics.durationMs = Date.now() - ragStartTime;
+    
+    // Format retrieved context
+    if (matches.length > 0) {
+      curriculumContext = matches
+        .map((match, idx) => {
+          const metadata = match.metadata as Record<string, any> || {};
+          const content = metadata.content || metadata.text || 'No content available';
+          const source = metadata.source || metadata.title || 'Unknown source';
+          const score = match.score?.toFixed(3) || 'N/A';
+          
+          return `[Context ${idx + 1}] (Relevance: ${score})\nSource: ${source}\n${content}`;
+        })
+        .join('\n\n---\n\n');
+      
+      console.log(`RAG: Retrieved ${matches.length} curriculum contexts in ${ragMetrics.durationMs}ms for session ${session.id}`);
+    }
+  } catch (error) {
+    console.error(`RAG retrieval error for session ${session.id}:`, error);
+    // Continue without RAG context if Pinecone fails
+    curriculumContext = '';
+  }
+
   const systemPrompt = buildMasterSystemPrompt({
     currentPhase: session.currentPhase,
     gradeLevel: user.student.gradeLevel,
@@ -73,7 +120,7 @@ export async function POST(req: NextRequest) {
     accommodations: accommodationTypes,
     modalities: learningPrefs?.modalities ?? [],
     sessionHistory,
-    topicContext: '',
+    topicContext: curriculumContext,
     engagementMode: session.engagementMode,
   });
 

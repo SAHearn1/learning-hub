@@ -177,6 +177,20 @@ ${context.sessionHistory || 'New session -- begin with ROOT phase grounding chec
 ### Topic Context
 ${context.topicContext || 'No specific topic set. Begin with diagnostic assessment after grounding.'}
 
+### Using Curriculum Context
+When curriculum context is provided above:
+- Reference specific course materials, modules, or lessons when relevant to the student's question
+- Cite curriculum sources naturally: "According to the curriculum on [topic]..." or "In Module X, we learn that..."
+- Adapt explanations to match the pedagogical approach outlined in the curriculum
+- Use terminology and examples consistent with the curriculum materials
+- If the curriculum provides multiple learning pathways, guide students through the most appropriate one for their level
+- When curriculum context is insufficient or unclear, acknowledge this and use your general knowledge while maintaining pedagogical standards
+
+When no curriculum context is available:
+- Draw from general subject knowledge while maintaining RootWork Framework principles
+- Create examples and explanations aligned with grade-level standards
+- Encourage exploration and discovery within safe pedagogical boundaries
+
 ## ENGAGEMENT MODE INSTRUCTIONS
 
 ${getEngagementModeInstructions(context.engagementMode)}
