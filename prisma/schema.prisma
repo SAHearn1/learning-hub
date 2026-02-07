@@ -5,8 +5,9 @@ generator client {
 }
 
 datasource db {
-  provider = "postgresql"
-  url      = env("DATABASE_URL")
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
 }
 
 // ═══════════════════════════════════════════════════════════════
@@ -14,20 +15,20 @@ datasource db {
 // ═══════════════════════════════════════════════════════════════
 
 model Tenant {
-  id                    String   @id @default(cuid())
-  name                  String
-  slug                  String   @unique
-  domain                String?
-  subscriptionTier      SubscriptionTier @default(FREE)
-  subscriptionStatus    SubscriptionStatus @default(ACTIVE)
-  stripeCustomerId      String?
-  stripeSubscriptionId  String?
-  settings              Json     @default("{}")
-  schools               School[]
-  users                 User[]
-  aiUsageLedger         AIUsageLedger[]
-  createdAt             DateTime @default(now())
-  updatedAt             DateTime @updatedAt
+  id                   String             @id @default(cuid())
+  name                 String
+  slug                 String             @unique
+  domain               String?
+  subscriptionTier     SubscriptionTier   @default(FREE)
+  subscriptionStatus   SubscriptionStatus @default(ACTIVE)
+  stripeCustomerId     String?
+  stripeSubscriptionId String?
+  settings             Json               @default("{}")
+  schools              School[]
+  users                User[]
+  aiUsageLedger        AIUsageLedger[]
+  createdAt            DateTime           @default(now())
+  updatedAt            DateTime           @updatedAt
 }
 
 enum SubscriptionTier {
@@ -45,47 +46,50 @@ enum SubscriptionStatus {
 }
 
 model School {
-  id                    String   @id @default(cuid())
-  tenantId              String
-  tenant                Tenant   @relation(fields: [tenantId], references: [id])
-  name                  String
-  address               String?
-  gradeRange            Int[]
-  settings              Json     @default("{}")
-  classes               Class[]
-  users                 User[]
-  createdAt             DateTime @default(now())
-  updatedAt             DateTime @updatedAt
+  id         String   @id @default(cuid())
+  tenantId   String
+  tenant     Tenant   @relation(fields: [tenantId], references: [id])
+  name       String
+  address    String?
+  gradeRange Int[]
+  settings   Json     @default("{}")
+  classes    Class[]
+  users      User[]
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
   @@index([tenantId])
 }
 
 model Class {
-  id                    String   @id @default(cuid())
-  tenantId              String
-  schoolId              String
-  school                School   @relation(fields: [schoolId], references: [id])
-  name                  String
-  subject               Subject
-  gradeLevel            Int
-  academicYear          String
-  educatorId            String
-  educator              User     @relation("ClassEducator", fields: [educatorId], references: [id])
-  enrollments           ClassEnrollment[]
-  createdAt             DateTime @default(now())
-  updatedAt             DateTime @updatedAt
+  id           String            @id @default(cuid())
+  tenantId     String
+  schoolId     String
+  school       School            @relation(fields: [schoolId], references: [id])
+  name         String
+  subject      Subject
+  gradeLevel   Int
+  academicYear String
+  educatorId   String
+  educator     User              @relation("ClassEducator", fields: [educatorId], references: [id])
+  enrollments  ClassEnrollment[]
+  createdAt    DateTime          @default(now())
+  updatedAt    DateTime          @updatedAt
+
   @@index([tenantId])
   @@index([schoolId])
 }
 
 model ClassEnrollment {
-  id                    String   @id @default(cuid())
-  tenantId              String
-  classId               String
-  class                 Class    @relation(fields: [classId], references: [id])
-  studentId             String
-  student               Student  @relation(fields: [studentId], references: [id])
-  enrolledAt            DateTime @default(now())
-  status                EnrollmentStatus @default(ACTIVE)
+  id         String           @id @default(cuid())
+  tenantId   String
+  classId    String
+  class      Class            @relation(fields: [classId], references: [id])
+  studentId  String
+  student    Student          @relation(fields: [studentId], references: [id])
+  enrolledAt DateTime         @default(now())
+  status     EnrollmentStatus @default(ACTIVE)
+
   @@unique([classId, studentId])
   @@index([tenantId])
 }
@@ -101,26 +105,27 @@ enum EnrollmentStatus {
 // ═══════════════════════════════════════════════════════════════
 
 model User {
-  id                    String   @id @default(cuid())
-  tenantId              String
-  tenant                Tenant   @relation(fields: [tenantId], references: [id])
-  schoolId              String?
-  school                School?  @relation(fields: [schoolId], references: [id])
-  clerkUserId           String   @unique
-  email                 String
-  firstName             String
-  lastName              String
-  role                  UserRole
-  dateOfBirth           DateTime?
-  isMinor               Boolean  @default(false)
-  consentStatus         ConsentStatus?
-  consentRecordId       String?
-  student               Student?
-  educator              Educator?
-  parent                Parent?
-  teachingClasses       Class[]  @relation("ClassEducator")
-  createdAt             DateTime @default(now())
-  updatedAt             DateTime @updatedAt
+  id              String         @id @default(cuid())
+  tenantId        String
+  tenant          Tenant         @relation(fields: [tenantId], references: [id])
+  schoolId        String?
+  school          School?        @relation(fields: [schoolId], references: [id])
+  clerkUserId     String         @unique
+  email           String
+  firstName       String
+  lastName        String
+  role            UserRole
+  dateOfBirth     DateTime?
+  isMinor         Boolean        @default(false)
+  consentStatus   ConsentStatus?
+  consentRecordId String?
+  student         Student?
+  educator        Educator?
+  parent          Parent?
+  teachingClasses Class[]        @relation("ClassEducator")
+  createdAt       DateTime       @default(now())
+  updatedAt       DateTime       @updatedAt
+
   @@index([tenantId])
   @@index([clerkUserId])
 }
@@ -146,39 +151,39 @@ enum ConsentStatus {
 // ═══════════════════════════════════════════════════════════════
 
 model Student {
-  id                    String   @id @default(cuid())
-  userId                String   @unique
-  user                  User     @relation(fields: [userId], references: [id])
-  gradeLevel            Int
-  learningPreferences   Json
-  regulationProfile     Json
-  iepAccommodations     IepAccommodation[]
-  sessions              Session[]
-  progress              Progress[]
-  enrollments           ClassEnrollment[]
-  thinkingProgress      ReasoningMoveProgress[]
-  createdAt             DateTime @default(now())
-  updatedAt             DateTime @updatedAt
+  id                  String                  @id @default(cuid())
+  userId              String                  @unique
+  user                User                    @relation(fields: [userId], references: [id])
+  gradeLevel          Int
+  learningPreferences Json
+  regulationProfile   Json
+  iepAccommodations   IepAccommodation[]
+  sessions            Session[]
+  progress            Progress[]
+  enrollments         ClassEnrollment[]
+  thinkingProgress    ReasoningMoveProgress[]
+  createdAt           DateTime                @default(now())
+  updatedAt           DateTime                @updatedAt
 }
 
 model Educator {
-  id                    String   @id @default(cuid())
-  userId                String   @unique
-  user                  User     @relation(fields: [userId], references: [id])
-  certifications        String[]
-  specializations       String[]
-  createdAt             DateTime @default(now())
-  updatedAt             DateTime @updatedAt
+  id              String   @id @default(cuid())
+  userId          String   @unique
+  user            User     @relation(fields: [userId], references: [id])
+  certifications  String[]
+  specializations String[]
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
 }
 
 model Parent {
-  id                    String   @id @default(cuid())
-  userId                String   @unique
-  user                  User     @relation(fields: [userId], references: [id])
-  childrenIds           String[]
-  communicationPrefs    Json     @default("{}")
-  createdAt             DateTime @default(now())
-  updatedAt             DateTime @updatedAt
+  id                 String   @id @default(cuid())
+  userId             String   @unique
+  user               User     @relation(fields: [userId], references: [id])
+  childrenIds        String[]
+  communicationPrefs Json     @default("{}")
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
 }
 
 // ═══════════════════════════════════════════════════════════════
@@ -186,17 +191,18 @@ model Parent {
 // ═══════════════════════════════════════════════════════════════
 
 model IepAccommodation {
-  id                    String   @id @default(cuid())
-  studentId             String
-  student               Student  @relation(fields: [studentId], references: [id])
-  type                  AccommodationType
-  description           String
-  parameters            Json
-  active                Boolean  @default(true)
-  startDate             DateTime
-  endDate               DateTime?
-  createdAt             DateTime @default(now())
-  updatedAt             DateTime @updatedAt
+  id          String            @id @default(cuid())
+  studentId   String
+  student     Student           @relation(fields: [studentId], references: [id])
+  type        AccommodationType
+  description String
+  parameters  Json
+  active      Boolean           @default(true)
+  startDate   DateTime
+  endDate     DateTime?
+  createdAt   DateTime          @default(now())
+  updatedAt   DateTime          @updatedAt
+
   @@index([studentId])
 }
 
@@ -218,32 +224,33 @@ enum AccommodationType {
 // ═══════════════════════════════════════════════════════════════
 
 model Session {
-  id                    String   @id @default(cuid())
-  tenantId              String
-  studentId             String
-  student               Student  @relation(fields: [studentId], references: [id])
-  subject               Subject
-  currentPhase          FiveRPhase
-  regulationState       Json
-  engagementMode        EngagementMode @default(FORWARD)
-  messages              Message[]
-  assessments           Assessment[]
-  thinkingAssessments   ThinkingAssessment[]
-  startedAt             DateTime @default(now())
-  endedAt               DateTime?
-  metadata              Json
+  id                  String               @id @default(cuid())
+  tenantId            String
+  studentId           String
+  student             Student              @relation(fields: [studentId], references: [id])
+  subject             Subject
+  currentPhase        FiveRPhase
+  regulationState     Json
+  engagementMode      EngagementMode       @default(FORWARD)
+  messages            Message[]
+  assessments         Assessment[]
+  thinkingAssessments ThinkingAssessment[]
+  startedAt           DateTime             @default(now())
+  endedAt             DateTime?
+  metadata            Json
+
   @@index([tenantId])
   @@index([studentId])
 }
 
 model Message {
-  id                    String   @id @default(cuid())
-  sessionId             String
-  session               Session  @relation(fields: [sessionId], references: [id])
-  role                  MessageRole
-  content               String   @db.Text
-  metadata              Json?
-  createdAt             DateTime @default(now())
+  id        String      @id @default(cuid())
+  sessionId String
+  session   Session     @relation(fields: [sessionId], references: [id])
+  role      MessageRole
+  content   String      @db.Text
+  metadata  Json?
+  createdAt DateTime    @default(now())
 }
 
 enum MessageRole {
@@ -271,21 +278,21 @@ enum FiveRPhase {
 // ═══════════════════════════════════════════════════════════════
 
 model Assessment {
-  id                    String   @id @default(cuid())
-  sessionId             String
-  session               Session  @relation(fields: [sessionId], references: [id])
-  standardId            String?
-  standard              Standard? @relation(fields: [standardId], references: [id])
-  type                  AssessmentType
-  bloomsLevel           BloomsLevel
-  difficulty            Int
-  question              String   @db.Text
-  studentResponse       String?  @db.Text
-  isCorrect             Boolean?
-  score                 Float?
-  feedback              String?  @db.Text
-  metadata              Json?
-  createdAt             DateTime @default(now())
+  id              String         @id @default(cuid())
+  sessionId       String
+  session         Session        @relation(fields: [sessionId], references: [id])
+  standardId      String?
+  standard        Standard?      @relation(fields: [standardId], references: [id])
+  type            AssessmentType
+  bloomsLevel     BloomsLevel
+  difficulty      Int
+  question        String         @db.Text
+  studentResponse String?        @db.Text
+  isCorrect       Boolean?
+  score           Float?
+  feedback        String?        @db.Text
+  metadata        Json?
+  createdAt       DateTime       @default(now())
 }
 
 enum AssessmentType {
@@ -305,18 +312,19 @@ enum BloomsLevel {
 }
 
 model Progress {
-  id                    String   @id @default(cuid())
-  tenantId              String
-  studentId             String
-  student               Student  @relation(fields: [studentId], references: [id])
-  standardId            String
-  standard              Standard @relation(fields: [standardId], references: [id])
-  masteryLevel          Float
-  assessmentCount       Int      @default(0)
-  lastAssessedAt        DateTime?
-  metadata              Json?
-  createdAt             DateTime @default(now())
-  updatedAt             DateTime @updatedAt
+  id              String    @id @default(cuid())
+  tenantId        String
+  studentId       String
+  student         Student   @relation(fields: [studentId], references: [id])
+  standardId      String
+  standard        Standard  @relation(fields: [standardId], references: [id])
+  masteryLevel    Float
+  assessmentCount Int       @default(0)
+  lastAssessedAt  DateTime?
+  metadata        Json?
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+
   @@unique([studentId, standardId])
   @@index([tenantId])
 }
@@ -326,27 +334,27 @@ model Progress {
 // ═══════════════════════════════════════════════════════════════
 
 model ThinkingAssessment {
-  id                        String   @id @default(cuid())
-  sessionId                 String
-  session                   Session  @relation(fields: [sessionId], references: [id])
-  assessmentType            ThinkingAssessmentType
-  reasoningArticulation     Int?
-  assumptionAwareness       Int?
-  evidenceEvaluation        Int?
-  alternativePerspectives   Int?
-  conclusionJustification   Int?
-  metacognitiveAwareness    Int?
-  fluency                   Int?
-  flexibility               Int?
-  originality               Int?
-  elaboration               Int?
-  riskTaking                Int?
-  modeUsed                  EngagementMode
-  reasoningMovesUsed        String[]
-  traceProtocolEvidence     Json?
-  rawResponse               String   @db.Text
-  aiAnalysis                String?  @db.Text
-  createdAt                 DateTime @default(now())
+  id                      String                 @id @default(cuid())
+  sessionId               String
+  session                 Session                @relation(fields: [sessionId], references: [id])
+  assessmentType          ThinkingAssessmentType
+  reasoningArticulation   Int?
+  assumptionAwareness     Int?
+  evidenceEvaluation      Int?
+  alternativePerspectives Int?
+  conclusionJustification Int?
+  metacognitiveAwareness  Int?
+  fluency                 Int?
+  flexibility             Int?
+  originality             Int?
+  elaboration             Int?
+  riskTaking              Int?
+  modeUsed                EngagementMode
+  reasoningMovesUsed      String[]
+  traceProtocolEvidence   Json?
+  rawResponse             String                 @db.Text
+  aiAnalysis              String?                @db.Text
+  createdAt               DateTime               @default(now())
 }
 
 enum ThinkingAssessmentType {
@@ -366,16 +374,17 @@ enum EngagementMode {
 }
 
 model ReasoningMoveProgress {
-  id                    String   @id @default(cuid())
-  studentId             String
-  student               Student  @relation(fields: [studentId], references: [id])
-  move                  ReasoningMove
-  introducedAt          DateTime
-  usageCount            Int      @default(0)
-  promptedUsage         Int      @default(0)
-  spontaneousUsage      Int      @default(0)
-  proficiencyLevel      Int      @default(1)
-  updatedAt             DateTime @updatedAt
+  id               String        @id @default(cuid())
+  studentId        String
+  student          Student       @relation(fields: [studentId], references: [id])
+  move             ReasoningMove
+  introducedAt     DateTime
+  usageCount       Int           @default(0)
+  promptedUsage    Int           @default(0)
+  spontaneousUsage Int           @default(0)
+  proficiencyLevel Int           @default(1)
+  updatedAt        DateTime      @updatedAt
+
   @@unique([studentId, move])
 }
 
@@ -409,23 +418,23 @@ enum ReasoningMove {
 // ═══════════════════════════════════════════════════════════════
 
 model Standard {
-  id              String   @id @default(cuid())
-  code            String   @unique
-  framework       StandardFramework
-  subject         Subject
-  gradeLevel      Int[]
-  domain          String
-  cluster         String
-  description     String   @db.Text
-  fullText        String   @db.Text
-  prerequisites   Standard[] @relation("Prerequisites")
-  dependents      Standard[] @relation("Prerequisites")
-  topics          Topic[]
-  assessments     Assessment[]
-  progress        Progress[]
-  embedding       Bytes?
-  createdAt       DateTime @default(now())
-  updatedAt       DateTime @updatedAt
+  id            String            @id @default(cuid())
+  code          String            @unique
+  framework     StandardFramework
+  subject       Subject
+  gradeLevel    Int[]
+  domain        String
+  cluster       String
+  description   String            @db.Text
+  fullText      String            @db.Text
+  prerequisites Standard[]        @relation("Prerequisites")
+  dependents    Standard[]        @relation("Prerequisites")
+  topics        Topic[]
+  assessments   Assessment[]
+  progress      Progress[]
+  embedding     Bytes?
+  createdAt     DateTime          @default(now())
+  updatedAt     DateTime          @updatedAt
 }
 
 enum StandardFramework {
@@ -435,52 +444,52 @@ enum StandardFramework {
 }
 
 model Topic {
-  id                      String   @id @default(cuid())
+  id                      String              @id @default(cuid())
   name                    String
   subject                 Subject
   gradeLevel              Int[]
-  description             String   @db.Text
+  description             String              @db.Text
   standards               Standard[]
-  prerequisites           Topic[]  @relation("TopicPrerequisites")
-  dependents              Topic[]  @relation("TopicPrerequisites")
+  prerequisites           Topic[]             @relation("TopicPrerequisites")
+  dependents              Topic[]             @relation("TopicPrerequisites")
   learningObjectives      LearningObjective[]
   problems                Problem[]
-  conceptualUnderstanding String   @db.Text
+  conceptualUnderstanding String              @db.Text
   commonMisconceptions    String[]
   realWorldConnections    String[]
   estimatedDuration       Int
   embedding               Bytes?
-  createdAt               DateTime @default(now())
-  updatedAt               DateTime @updatedAt
+  createdAt               DateTime            @default(now())
+  updatedAt               DateTime            @updatedAt
 }
 
 model LearningObjective {
-  id              String   @id @default(cuid())
-  topicId         String
-  topic           Topic    @relation(fields: [topicId], references: [id])
-  description     String   @db.Text
-  bloomsLevel     BloomsLevel
-  measurable      Boolean  @default(true)
-  createdAt       DateTime @default(now())
+  id          String      @id @default(cuid())
+  topicId     String
+  topic       Topic       @relation(fields: [topicId], references: [id])
+  description String      @db.Text
+  bloomsLevel BloomsLevel
+  measurable  Boolean     @default(true)
+  createdAt   DateTime    @default(now())
 }
 
 model Problem {
-  id              String   @id @default(cuid())
-  topicId         String
-  topic           Topic    @relation(fields: [topicId], references: [id])
-  stem            String   @db.Text
-  scaffold        Json
-  solutionPaths   Json
-  commonErrors    Json
-  rubric          Json
-  gardenContext   String?  @db.Text
-  difficulty      Int
-  bloomsLevel     BloomsLevel
-  type            ProblemType
-  validated       Boolean  @default(false)
-  embedding       Bytes?
-  createdAt       DateTime @default(now())
-  updatedAt       DateTime @updatedAt
+  id            String      @id @default(cuid())
+  topicId       String
+  topic         Topic       @relation(fields: [topicId], references: [id])
+  stem          String      @db.Text
+  scaffold      Json
+  solutionPaths Json
+  commonErrors  Json
+  rubric        Json
+  gardenContext String?     @db.Text
+  difficulty    Int
+  bloomsLevel   BloomsLevel
+  type          ProblemType
+  validated     Boolean     @default(false)
+  embedding     Bytes?
+  createdAt     DateTime    @default(now())
+  updatedAt     DateTime    @updatedAt
 }
 
 enum ProblemType {
@@ -496,24 +505,25 @@ enum ProblemType {
 // ═══════════════════════════════════════════════════════════════
 
 model AIUsageLedger {
-  id                    String   @id @default(cuid())
-  tenantId              String
-  tenant                Tenant   @relation(fields: [tenantId], references: [id])
-  sessionId             String?
-  userId                String
-  requestType           AIRequestType
-  model                 String
-  promptVersion         String
-  inputTokens           Int
-  outputTokens          Int
-  totalTokens           Int
-  costUSD               Decimal  @db.Decimal(10, 6)
-  latencyMs             Int
-  success               Boolean
-  errorType             String?
-  feature               AIFeature
-  subject               Subject?
-  timestamp             DateTime @default(now())
+  id            String        @id @default(cuid())
+  tenantId      String
+  tenant        Tenant        @relation(fields: [tenantId], references: [id])
+  sessionId     String?
+  userId        String
+  requestType   AIRequestType
+  model         String
+  promptVersion String
+  inputTokens   Int
+  outputTokens  Int
+  totalTokens   Int
+  costUSD       Decimal       @db.Decimal(10, 6)
+  latencyMs     Int
+  success       Boolean
+  errorType     String?
+  feature       AIFeature
+  subject       Subject?
+  timestamp     DateTime      @default(now())
+
   @@index([tenantId])
   @@index([tenantId, timestamp])
   @@index([sessionId])
@@ -544,15 +554,16 @@ enum AIFeature {
 // ═══════════════════════════════════════════════════════════════
 
 model AuditLog {
-  id                    String   @id @default(cuid())
-  tenantId              String
-  userId                String
-  action                String
-  resource              String
-  resourceId            String?
-  metadata              Json?
-  ipAddress             String?
-  timestamp             DateTime @default(now())
+  id         String   @id @default(cuid())
+  tenantId   String
+  userId     String
+  action     String
+  resource   String
+  resourceId String?
+  metadata   Json?
+  ipAddress  String?
+  timestamp  DateTime @default(now())
+
   @@index([tenantId])
   @@index([tenantId, timestamp])
   @@index([userId])
