@@ -154,7 +154,7 @@ export function ThinkingAssessment({
 
             {targetReasoningMoves.length > 0 && (
               <div className="bg-purple-50 border border-purple-200 rounded-lg p-4">
-                <h4 className="font-semibold mb-2">🎯 Focus on these thinking moves:</h4>
+                <h4 className="font-semibold mb-2">Focus on these thinking moves:</h4>
                 <div className="flex flex-wrap gap-2">
                   {targetReasoningMoves.map((move) => (
                     <Badge key={move} variant="secondary">
@@ -232,7 +232,7 @@ export function ThinkingAssessment({
             {/* Reasoning Moves Used */}
             {evaluation.reasoningMovesUsed.length > 0 && (
               <div>
-                <h3 className="font-semibold mb-3">🎯 Reasoning Moves Detected</h3>
+                <h3 className="font-semibold mb-3">Reasoning Moves Detected</h3>
                 <div className="flex flex-wrap gap-2">
                   {evaluation.reasoningMovesUsed.map((move: string) => (
                     <Badge key={move} variant="default">
@@ -245,7 +245,7 @@ export function ThinkingAssessment({
 
             {/* AI Analysis */}
             <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-              <h4 className="font-semibold mb-2">💡 Detailed Analysis</h4>
+              <h4 className="font-semibold mb-2">Detailed Analysis</h4>
               <p className="text-sm whitespace-pre-wrap">{evaluation.aiAnalysis}</p>
             </div>
 
@@ -267,7 +267,7 @@ export function ThinkingAssessment({
             {/* Areas for Growth */}
             {evaluation.areasForGrowth.length > 0 && (
               <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
-                <h4 className="font-semibold mb-2">🌱 Areas for Growth</h4>
+                <h4 className="font-semibold mb-2">Areas for Growth</h4>
                 <ul className="space-y-1">
                   {evaluation.areasForGrowth.map((area: string, index: number) => (
                     <li key={index} className="text-sm flex items-start gap-2">
