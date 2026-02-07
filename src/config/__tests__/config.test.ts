@@ -161,6 +161,7 @@ describe('siteConfig', () => {
     expect(siteConfig.links).toHaveProperty('methodology');
     expect(siteConfig.links).toHaveProperty('privacy');
     expect(siteConfig.links).toHaveProperty('terms');
+    expect(siteConfig.links).toHaveProperty('dataRetention');
   });
 });
 
