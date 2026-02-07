@@ -30,7 +30,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Get topic standards if topicId provided
-    let standards = [];
+    let standards: any[] = [];
     if (topicId) {
       const topic = await db.topic.findUnique({
         where: { id: topicId },

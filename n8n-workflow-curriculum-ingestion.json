@@ -1,0 +1,180 @@
+{
+  "name": "Learning Hub Curriculum Ingestion",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "curriculum-ingest",
+        "authentication": "headerAuth",
+        "options": {}
+      },
+      "id": "webhook-node",
+      "name": "Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 1,
+      "position": [250, 300],
+      "webhookId": "curriculum-ingest"
+    },
+    {
+      "parameters": {
+        "owner": "SAHearn1",
+        "repository": "learning-hub",
+        "filePath": "docs/",
+        "options": {}
+      },
+      "id": "github-node",
+      "name": "GitHub - Fetch Curriculum Files",
+      "type": "n8n-nodes-base.github",
+      "typeVersion": 1,
+      "position": [450, 300],
+      "credentials": {
+        "githubApi": {
+          "id": "1",
+          "name": "GitHub API"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "extractMetadata",
+        "fields": {
+          "mappings": [
+            {
+              "from": "path",
+              "to": "filePath"
+            },
+            {
+              "from": "content",
+              "to": "fileContent"
+            }
+          ]
+        }
+      },
+      "id": "transform-node",
+      "name": "Transform Metadata",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 1,
+      "position": [650, 300]
+    },
+    {
+      "parameters": {
+        "apiKey": "={{ $env.PINECONE_API_KEY }}",
+        "environment": "={{ $env.PINECONE_ENVIRONMENT }}",
+        "index": "={{ $env.PINECONE_INDEX_NAME }}",
+        "operation": "upsert",
+        "vectors": "={{ $json.embeddings }}"
+      },
+      "id": "pinecone-node",
+      "name": "Pinecone - Store Embeddings",
+      "type": "n8n-nodes-base.pinecone",
+      "typeVersion": 1,
+      "position": [850, 300]
+    },
+    {
+      "parameters": {
+        "url": "={{ $env.NEXT_PUBLIC_APP_URL }}/api/ingest",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "method": "POST",
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "source",
+              "value": "WEBHOOK"
+            },
+            {
+              "name": "files",
+              "value": "={{ $json.files }}"
+            },
+            {
+              "name": "metadata",
+              "value": "={{ $json.metadata }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "webhook-callback",
+      "name": "Notify Learning Hub",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 3,
+      "position": [1050, 300],
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "2",
+          "name": "Learning Hub Webhook Auth"
+        }
+      }
+    }
+  ],
+  "connections": {
+    "Webhook": {
+      "main": [
+        [
+          {
+            "node": "GitHub - Fetch Curriculum Files",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "GitHub - Fetch Curriculum Files": {
+      "main": [
+        [
+          {
+            "node": "Transform Metadata",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Transform Metadata": {
+      "main": [
+        [
+          {
+            "node": "Pinecone - Store Embeddings",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Pinecone - Store Embeddings": {
+      "main": [
+        [
+          {
+            "node": "Notify Learning Hub",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1",
+    "saveManualExecutions": true,
+    "saveExecutionProgress": true,
+    "saveDataErrorExecution": "all",
+    "saveDataSuccessExecution": "all",
+    "executionTimeout": 3600,
+    "timezone": "America/New_York"
+  },
+  "staticData": null,
+  "tags": [
+    {
+      "name": "curriculum",
+      "id": "1"
+    },
+    {
+      "name": "learning-hub",
+      "id": "2"
+    }
+  ],
+  "triggerCount": 0,
+  "updatedAt": "2026-02-07T22:00:00.000Z",
+  "versionId": "1"
+}

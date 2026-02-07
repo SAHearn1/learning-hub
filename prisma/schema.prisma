@@ -597,3 +597,39 @@ model AuditLog {
   @@index([tenantId, timestamp])
   @@index([userId])
 }
+
+// ═══════════════════════════════════════════════════════════════
+// CURRICULUM INGESTION TRACKING
+// ═══════════════════════════════════════════════════════════════
+
+model IngestLog {
+  id               String       @id @default(cuid())
+  timestamp        DateTime     @default(now())
+  status           IngestStatus
+  source           IngestSource
+  payload          Json?
+  errorMessage     String?      @db.Text
+  processedFiles   Int          @default(0)
+  durationMs       Int?
+  metadata         Json?
+  createdAt        DateTime     @default(now())
+  updatedAt        DateTime     @updatedAt
+
+  @@index([timestamp])
+  @@index([status])
+  @@index([source])
+}
+
+enum IngestStatus {
+  PENDING
+  SUCCESS
+  FAILURE
+  PROCESSING
+}
+
+enum IngestSource {
+  WEBHOOK
+  MANUAL
+  SCHEDULED
+  API
+}

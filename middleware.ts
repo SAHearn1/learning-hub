@@ -1,4 +1,5 @@
 import { clerkMiddleware, createRouteMatcher } from "@clerk/nextjs/server";
+import { NextResponse, type NextRequest } from "next/server";
 
 const isPublicRoute = createRouteMatcher([
   "/",
@@ -11,7 +12,83 @@ const isPublicRoute = createRouteMatcher([
   "/api/webhooks(.*)",
 ]);
 
+const RATE_LIMIT_WINDOW_MS = 60_000;
+const RATE_LIMIT_MAX_REQUESTS = 120;
+const rateLimitStore = new Map<string, { count: number; resetAt: number }>();
+
+const isApiRoute = (pathname: string) => pathname.startsWith("/api/");
+const isWebhookRoute = (pathname: string) => pathname.startsWith("/api/webhooks/");
+const isMutatingMethod = (method: string) => ["POST", "PUT", "PATCH", "DELETE"].includes(method);
+
+const getClientIp = (request: NextRequest) => {
+  const forwardedFor = request.headers.get("x-forwarded-for");
+  if (forwardedFor) {
+    return forwardedFor.split(",")[0]?.trim() ?? "unknown";
+  }
+
+  return request.headers.get("x-real-ip") ?? "unknown";
+};
+
+const enforceRateLimit = (request: NextRequest) => {
+  const pathname = request.nextUrl.pathname;
+  if (!isApiRoute(pathname) || isWebhookRoute(pathname)) {
+    return null;
+  }
+
+  const now = Date.now();
+  const key = `${getClientIp(request)}:${pathname}`;
+  const current = rateLimitStore.get(key);
+
+  if (!current || now >= current.resetAt) {
+    rateLimitStore.set(key, { count: 1, resetAt: now + RATE_LIMIT_WINDOW_MS });
+    return null;
+  }
+
+  if (current.count >= RATE_LIMIT_MAX_REQUESTS) {
+    return NextResponse.json(
+      { error: "Too many requests", retryAfterMs: current.resetAt - now },
+      {
+        status: 429,
+        headers: {
+          "Retry-After": Math.ceil((current.resetAt - now) / 1000).toString(),
+        },
+      },
+    );
+  }
+
+  current.count += 1;
+  return null;
+};
+
+const enforceCsrfForApi = (request: NextRequest) => {
+  const pathname = request.nextUrl.pathname;
+  if (!isApiRoute(pathname) || isWebhookRoute(pathname) || !isMutatingMethod(request.method)) {
+    return null;
+  }
+
+  const origin = request.headers.get("origin");
+  if (!origin) {
+    return NextResponse.json({ error: "Missing origin header" }, { status: 403 });
+  }
+
+  if (origin !== request.nextUrl.origin) {
+    return NextResponse.json({ error: "Invalid origin" }, { status: 403 });
+  }
+
+  return null;
+};
+
 export default clerkMiddleware((auth, req) => {
+  const rateLimitResponse = enforceRateLimit(req);
+  if (rateLimitResponse) {
+    return rateLimitResponse;
+  }
+
+  const csrfResponse = enforceCsrfForApi(req);
+  if (csrfResponse) {
+    return csrfResponse;
+  }
+
   if (!isPublicRoute(req)) {
     auth().protect();
   }

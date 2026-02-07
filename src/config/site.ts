@@ -11,5 +11,6 @@ export const siteConfig = {
     methodology: '/methodology',
     privacy: '/privacy',
     terms: '/terms',
+    dataRetention: '/data-retention',
   },
 } as const;

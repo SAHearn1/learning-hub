@@ -99,7 +99,7 @@ export default async function StudentAssessmentsPage({ params }: PageProps) {
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <Card className="hover:shadow-lg transition-shadow cursor-pointer">
               <CardHeader>
-                <CardTitle>🎯 Diagnostic Assessment</CardTitle>
+                <CardTitle>Diagnostic Assessment</CardTitle>
                 <CardDescription>
                   Find knowledge gaps and get personalized recommendations
                 </CardDescription>
@@ -113,7 +113,7 @@ export default async function StudentAssessmentsPage({ params }: PageProps) {
 
             <Card className="hover:shadow-lg transition-shadow cursor-pointer">
               <CardHeader>
-                <CardTitle>📝 Summative Assessment</CardTitle>
+                <CardTitle>Summative Assessment</CardTitle>
                 <CardDescription>
                   Test your mastery of a topic with comprehensive evaluation
                 </CardDescription>
@@ -127,7 +127,7 @@ export default async function StudentAssessmentsPage({ params }: PageProps) {
 
             <Card className="hover:shadow-lg transition-shadow cursor-pointer">
               <CardHeader>
-                <CardTitle>💭 Thinking Assessment</CardTitle>
+                <CardTitle>Thinking Assessment</CardTitle>
                 <CardDescription>
                   Evaluate your reasoning quality and creative thinking
                 </CardDescription>
@@ -141,7 +141,7 @@ export default async function StudentAssessmentsPage({ params }: PageProps) {
 
             <Card className="hover:shadow-lg transition-shadow cursor-pointer">
               <CardHeader>
-                <CardTitle>🎮 Practice Session</CardTitle>
+                <CardTitle>Practice Session</CardTitle>
                 <CardDescription>
                   Practice problems to strengthen your understanding
                 </CardDescription>
