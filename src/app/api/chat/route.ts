@@ -1,0 +1,175 @@
+import { NextRequest } from 'next/server';
+import { auth } from '@clerk/nextjs/server';
+import { db } from '@/lib/db';
+import { anthropic, AI_MODELS } from '@/lib/ai/client';
+import { buildMasterSystemPrompt } from '@/lib/ai/prompts/master-system-prompt';
+import { z } from 'zod';
+
+const chatRequestSchema = z.object({
+  sessionId: z.string().min(1),
+  message: z.string().min(1).max(5000),
+});
+
+export async function POST(req: NextRequest) {
+  const { userId: clerkId } = auth();
+  if (!clerkId) {
+    return new Response(JSON.stringify({ error: 'Unauthorized' }), { status: 401 });
+  }
+
+  let body;
+  try {
+    body = chatRequestSchema.parse(await req.json());
+  } catch (err) {
+    const message = err instanceof z.ZodError ? err.errors.map(e => e.message).join(', ') : 'Invalid request';
+    return new Response(JSON.stringify({ error: message }), { status: 400 });
+  }
+
+  const user = await db.user.findUnique({
+    where: { clerkUserId: clerkId },
+    include: { student: { include: { iepAccommodations: { where: { active: true } } } } },
+  });
+  if (!user?.student) {
+    return new Response(JSON.stringify({ error: 'Student profile not found' }), { status: 404 });
+  }
+
+  const session = await db.session.findUnique({
+    where: { id: body.sessionId },
+    include: { messages: { orderBy: { createdAt: 'asc' }, take: 50 } },
+  });
+  if (!session) {
+    return new Response(JSON.stringify({ error: 'Session not found' }), { status: 404 });
+  }
+  if (session.studentId !== user.student.id) {
+    return new Response(JSON.stringify({ error: 'Forbidden' }), { status: 403 });
+  }
+  if (session.endedAt) {
+    return new Response(JSON.stringify({ error: 'Session has ended' }), { status: 400 });
+  }
+
+  // Save user message
+  await db.message.create({
+    data: {
+      sessionId: session.id,
+      role: 'USER',
+      content: body.message,
+    },
+  });
+
+  // Build context for system prompt
+  const regulationState = session.regulationState as { level?: number } | null;
+  const learningPrefs = user.student.learningPreferences as { modalities?: string[] } | null;
+  const accommodationTypes = user.student.iepAccommodations.map(a => a.type);
+
+  const sessionHistory = session.messages
+    .slice(-20)
+    .map(m => `${m.role}: ${m.content}`)
+    .join('\n');
+
+  const systemPrompt = buildMasterSystemPrompt({
+    currentPhase: session.currentPhase,
+    gradeLevel: user.student.gradeLevel,
+    subject: session.subject,
+    regulationBaseline: regulationState?.level ?? 70,
+    accommodations: accommodationTypes,
+    modalities: learningPrefs?.modalities ?? [],
+    sessionHistory,
+    topicContext: '',
+    engagementMode: session.engagementMode,
+  });
+
+  // Build message history for API call
+  const apiMessages = session.messages.map(m => ({
+    role: (m.role === 'USER' ? 'user' : 'assistant') as 'user' | 'assistant',
+    content: m.content,
+  }));
+  apiMessages.push({ role: 'user', content: body.message });
+
+  // Filter consecutive same-role messages (Anthropic requires alternating)
+  const filteredMessages: { role: 'user' | 'assistant'; content: string }[] = [];
+  for (const msg of apiMessages) {
+    if (filteredMessages.length === 0 || filteredMessages[filteredMessages.length - 1].role !== msg.role) {
+      filteredMessages.push(msg);
+    } else {
+      filteredMessages[filteredMessages.length - 1].content += '\n' + msg.content;
+    }
+  }
+  // Ensure first message is from user
+  if (filteredMessages.length > 0 && filteredMessages[0].role !== 'user') {
+    filteredMessages.shift();
+  }
+
+  const startTime = Date.now();
+
+  // Stream response
+  const stream = await anthropic.messages.stream({
+    model: AI_MODELS.primary,
+    max_tokens: 1024,
+    system: systemPrompt,
+    messages: filteredMessages,
+  });
+
+  const encoder = new TextEncoder();
+  let fullText = '';
+
+  const readable = new ReadableStream({
+    async start(controller) {
+      try {
+        for await (const event of stream) {
+          if (event.type === 'content_block_delta' && event.delta.type === 'text_delta') {
+            fullText += event.delta.text;
+            controller.enqueue(encoder.encode(`data: ${JSON.stringify({ text: event.delta.text })}\n\n`));
+          }
+        }
+
+        // Save assistant message
+        await db.message.create({
+          data: {
+            sessionId: session.id,
+            role: 'ASSISTANT',
+            content: fullText,
+          },
+        });
+
+        // Track AI usage
+        const finalMessage = await stream.finalMessage();
+        const latencyMs = Date.now() - startTime;
+        const inputTokens = finalMessage.usage.input_tokens;
+        const outputTokens = finalMessage.usage.output_tokens;
+
+        await db.aIUsageLedger.create({
+          data: {
+            tenantId: user.tenantId,
+            sessionId: session.id,
+            userId: user.id,
+            requestType: 'TUTOR_CONVERSATION',
+            model: AI_MODELS.primary,
+            promptVersion: '1.0',
+            inputTokens,
+            outputTokens,
+            totalTokens: inputTokens + outputTokens,
+            costUSD: (inputTokens * 0.003 + outputTokens * 0.015) / 1000,
+            latencyMs,
+            success: true,
+            feature: 'CORE_TUTORING',
+            subject: session.subject,
+          },
+        });
+
+        controller.enqueue(encoder.encode(`data: ${JSON.stringify({ done: true })}\n\n`));
+        controller.close();
+      } catch (err) {
+        const errorMessage = err instanceof Error ? err.message : 'Stream error';
+        controller.enqueue(encoder.encode(`data: ${JSON.stringify({ error: errorMessage })}\n\n`));
+        controller.close();
+      }
+    },
+  });
+
+  return new Response(readable, {
+    headers: {
+      'Content-Type': 'text/event-stream',
+      'Cache-Control': 'no-cache',
+      Connection: 'keep-alive',
+    },
+  });
+}
