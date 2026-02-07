@@ -1,3 +1,5 @@
+'use client';
+
 import { DiagnosticAssessment } from '@/components/assessments/DiagnosticAssessment';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import type { Subject } from '@prisma/client';
