@@ -26,9 +26,9 @@ const MODE_DESCRIPTIONS: Record<EngagementMode, string> = {
 const MODE_ICONS: Record<EngagementMode, string> = {
   FORWARD: '→',
   REVERSE: '←',
-  ERROR_ANALYSIS: '🔍',
-  MULTIPLE_PATHWAYS: '🌳',
-  PROBLEM_POSING: '✨',
+  ERROR_ANALYSIS: 'X',
+  MULTIPLE_PATHWAYS: 'M',
+  PROBLEM_POSING: '+',
 };
 
 export function ThinkingAssessment({

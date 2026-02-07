@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Progress } from '@/components/ui/progress';
@@ -43,21 +43,7 @@ export function SummativeAssessment({
   const [reviewing, setReviewing] = useState(false);
   const [timeRemaining, setTimeRemaining] = useState<number | null>(null);
 
-  useEffect(() => {
-    generateAssessment();
-  }, []);
-
-  useEffect(() => {
-    if (timeRemaining === null || timeRemaining === 0 || showResults) return;
-
-    const timer = setInterval(() => {
-      setTimeRemaining((prev) => (prev ? prev - 1 : 0));
-    }, 1000);
-
-    return () => clearInterval(timer);
-  }, [timeRemaining, showResults]);
-
-  const generateAssessment = async () => {
+  const generateAssessment = useCallback(async () => {
     try {
       setLoading(true);
       const response = await fetch('/api/assessments/summative', {
@@ -86,7 +72,21 @@ export function SummativeAssessment({
     } finally {
       setLoading(false);
     }
-  };
+  }, [studentId, sessionId, topicId, topicName, learningObjectives]);
+
+  useEffect(() => {
+    generateAssessment();
+  }, [generateAssessment]);
+
+  useEffect(() => {
+    if (timeRemaining === null || timeRemaining === 0 || showResults) return;
+
+    const timer = setInterval(() => {
+      setTimeRemaining((prev) => (prev ? prev - 1 : 0));
+    }, 1000);
+
+    return () => clearInterval(timer);
+  }, [timeRemaining, showResults]);
 
   const handleSubmitResponse = async (assessmentId: string, response: string) => {
     try {

@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Progress } from '@/components/ui/progress';
@@ -38,11 +38,7 @@ export function DiagnosticAssessment({
   const [submitting, setSubmitting] = useState(false);
   const [showFeedback, setShowFeedback] = useState(false);
 
-  useEffect(() => {
-    generateAssessment();
-  }, []);
-
-  const generateAssessment = async () => {
+  const generateAssessment = useCallback(async () => {
     try {
       setLoading(true);
       const response = await fetch('/api/assessments/diagnostic', {
@@ -67,7 +63,11 @@ export function DiagnosticAssessment({
     } finally {
       setLoading(false);
     }
-  };
+  }, [studentId, sessionId, subject, gradeLevel]);
+
+  useEffect(() => {
+    generateAssessment();
+  }, [generateAssessment]);
 
   const handleSubmitResponse = async (assessmentId: string, response: string) => {
     try {
