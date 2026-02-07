@@ -3,6 +3,7 @@ import { auth } from '@clerk/nextjs/server';
 import { db } from '@/lib/db';
 import { anthropic, AI_MODELS } from '@/lib/ai/client';
 import { buildMasterSystemPrompt } from '@/lib/ai/prompts/master-system-prompt';
+import { searchCurriculum, formatCurriculumContext } from '@/lib/vector-search';
 import { z } from 'zod';
 
 const chatRequestSchema = z.object({
@@ -65,6 +66,13 @@ export async function POST(req: NextRequest) {
     .map(m => `${m.role}: ${m.content}`)
     .join('\n');
 
+  // Retrieve curriculum context via RAG
+  const curriculumResults = await searchCurriculum(body.message, {
+    subject: session.subject,
+    gradeLevel: user.student.gradeLevel,
+  });
+  const topicContext = formatCurriculumContext(curriculumResults);
+
   const systemPrompt = buildMasterSystemPrompt({
     currentPhase: session.currentPhase,
     gradeLevel: user.student.gradeLevel,
@@ -73,7 +81,7 @@ export async function POST(req: NextRequest) {
     accommodations: accommodationTypes,
     modalities: learningPrefs?.modalities ?? [],
     sessionHistory,
-    topicContext: '',
+    topicContext,
     engagementMode: session.engagementMode,
   });
 

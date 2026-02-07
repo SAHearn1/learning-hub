@@ -1,0 +1,162 @@
+{
+  "name": "Curriculum Content Ingest",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "curriculum-ingest",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "id": "webhook-trigger",
+      "name": "GitHub Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [260, 300],
+      "webhookId": "curriculum-ingest"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": { "caseSensitive": true },
+          "combinator": "and",
+          "conditions": [
+            {
+              "leftValue": "={{ $json.ref }}",
+              "rightValue": "refs/heads/main",
+              "operator": { "type": "string", "operation": "equals" }
+            }
+          ]
+        }
+      },
+      "id": "filter-main-branch",
+      "name": "Filter Main Branch",
+      "type": "n8n-nodes-base.filter",
+      "typeVersion": 2,
+      "position": [480, 300]
+    },
+    {
+      "parameters": {
+        "fieldToSplitOut": "commits",
+        "options": {}
+      },
+      "id": "split-commits",
+      "name": "Split Commits",
+      "type": "n8n-nodes-base.splitOut",
+      "typeVersion": 1,
+      "position": [700, 300]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Extract added and modified files from each commit\nconst commit = $input.item.json;\nconst files = [\n  ...(commit.added || []),\n  ...(commit.modified || [])\n];\n\n// Filter to curriculum content files only\nconst curriculumFiles = files.filter(f => {\n  const ext = f.split('.').pop()?.toLowerCase();\n  return ['md', 'json', 'txt'].includes(ext || '');\n});\n\nreturn curriculumFiles.map(filename => ({\n  json: {\n    filename,\n    repo: $('GitHub Webhook').item.json.repository.full_name,\n    ref: $('GitHub Webhook').item.json.ref,\n    commitSha: commit.id\n  }\n}));"
+      },
+      "id": "extract-files",
+      "name": "Extract Changed Files",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [920, 300]
+    },
+    {
+      "parameters": {
+        "owner": "={{ $json.repo.split('/')[0] }}",
+        "repository": "={{ $json.repo.split('/')[1] }}",
+        "filePath": "={{ $json.filename }}",
+        "additionalParameters": { "ref": "={{ $json.ref }}" }
+      },
+      "id": "fetch-file",
+      "name": "Fetch File from GitHub",
+      "type": "n8n-nodes-base.github",
+      "typeVersion": 1,
+      "position": [1140, 300],
+      "credentials": {
+        "githubApi": { "id": "GITHUB_CREDENTIAL_ID", "name": "GitHub" }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "// Determine document type and extract subject/grade from path\nconst filename = $json.filename || $json.path;\nconst ext = filename.split('.').pop()?.toLowerCase() || 'txt';\n\n// Infer subject from directory structure\n// Expected: curriculum/math/grade3/MGSE3.NF.1.md\nconst parts = filename.toLowerCase().split('/');\nlet subject = undefined;\nlet gradeLevel = [];\nlet standardCodes = [];\n\nif (parts.some(p => p.includes('math'))) subject = 'MATH';\nelse if (parts.some(p => p.includes('science'))) subject = 'SCIENCE';\nelse if (parts.some(p => p.includes('ela') || p.includes('language'))) subject = 'LANGUAGE_ARTS';\n\nconst gradeMatch = filename.match(/grade(\\d+)/i);\nif (gradeMatch) gradeLevel = [parseInt(gradeMatch[1])];\n\n// Extract standard codes from filename (e.g., MGSE3.NF.1.md)\nconst stdMatch = filename.match(/([A-Z]+\\d+\\.[A-Z]+\\.\\d+)/g);\nif (stdMatch) standardCodes = stdMatch;\n\n// Get file content (base64 decode if needed)\nlet content = $json.content || '';\nif ($json.encoding === 'base64') {\n  content = Buffer.from(content, 'base64').toString('utf-8');\n}\n\nreturn [{\n  json: {\n    filename: filename.split('/').pop(),\n    content,\n    documentType: ext,\n    subject,\n    gradeLevel,\n    standardCodes,\n    metadata: {\n      sourcePath: filename,\n      commitSha: $('Extract Changed Files').item.json.commitSha,\n      repo: $('Extract Changed Files').item.json.repo\n    }\n  }\n}];"
+      },
+      "id": "prepare-payload",
+      "name": "Prepare Ingest Payload",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1360, 300]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $env.ROOTWORK_APP_URL || 'https://your-app.vercel.app' }}/api/ingest",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "Content-Type", "value": "application/json" },
+            { "name": "x-webhook-secret", "value": "={{ $env.N8N_WEBHOOK_SECRET }}" }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify($json) }}",
+        "options": { "timeout": 30000 }
+      },
+      "id": "post-to-ingest",
+      "name": "POST to /api/ingest",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [1580, 300]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ JSON.stringify({ processed: $items().length }) }}"
+      },
+      "id": "respond-webhook",
+      "name": "Respond to Webhook",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [1800, 300]
+    }
+  ],
+  "connections": {
+    "GitHub Webhook": {
+      "main": [
+        [{ "node": "Filter Main Branch", "type": "main", "index": 0 }]
+      ]
+    },
+    "Filter Main Branch": {
+      "main": [
+        [{ "node": "Split Commits", "type": "main", "index": 0 }]
+      ]
+    },
+    "Split Commits": {
+      "main": [
+        [{ "node": "Extract Changed Files", "type": "main", "index": 0 }]
+      ]
+    },
+    "Extract Changed Files": {
+      "main": [
+        [{ "node": "Fetch File from GitHub", "type": "main", "index": 0 }]
+      ]
+    },
+    "Fetch File from GitHub": {
+      "main": [
+        [{ "node": "Prepare Ingest Payload", "type": "main", "index": 0 }]
+      ]
+    },
+    "Prepare Ingest Payload": {
+      "main": [
+        [{ "node": "POST to /api/ingest", "type": "main", "index": 0 }]
+      ]
+    },
+    "POST to /api/ingest": {
+      "main": [
+        [{ "node": "Respond to Webhook", "type": "main", "index": 0 }]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "meta": {
+    "templateCredsSetupCompleted": false
+  }
+}
