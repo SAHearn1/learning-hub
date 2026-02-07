@@ -4,13 +4,14 @@ import type { BloomsLevel } from '@prisma/client';
 export interface ProgressUpdate {
   studentId: string;
   standardId: string;
+  tenantId: string;
   assessmentScore: number;
   bloomsLevel: BloomsLevel;
   difficulty: number;
 }
 
 export async function updateProgress(update: ProgressUpdate): Promise<void> {
-  const { studentId, standardId, assessmentScore, bloomsLevel, difficulty } = update;
+  const { studentId, standardId, tenantId, assessmentScore, bloomsLevel, difficulty } = update;
 
   // Get current progress
   const currentProgress = await db.progress.findUnique({
@@ -47,7 +48,7 @@ export async function updateProgress(update: ProgressUpdate): Promise<void> {
       lastAssessedAt: new Date(),
     },
     create: {
-      tenantId: '', // This should be set from context
+      tenantId,
       studentId,
       standardId,
       masteryLevel: newMasteryLevel,
