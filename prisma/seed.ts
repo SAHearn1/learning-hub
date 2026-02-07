@@ -1,533 +1,563 @@
-import {
-  BloomsLevel,
-  ConsentStatus,
-  EnrollmentStatus,
-  Prisma,
-  PrismaClient,
-  ProblemType,
-  ReasoningMove,
-  StandardFramework,
-  Subject,
-  SubscriptionStatus,
-  SubscriptionTier,
-  UserRole,
-} from '@prisma/client';
+import { PrismaClient } from '@prisma/client';
 
 const prisma = new PrismaClient();
 
-const TENANT_SLUG = 'rootwork-demo';
-const SCHOOL_NAME = 'RootWork Academy';
-const ACADEMIC_YEAR = '2025-2026';
-
-const educatorSeed = {
-  clerkUserId: 'clerk_educator_demo_001',
-  email: 'educator@rootwork.demo',
-  firstName: 'Avery',
-  lastName: 'Morgan',
-};
-
-const studentSeeds = [
-  {
-    clerkUserId: 'clerk_student_demo_001',
-    email: 'student1@rootwork.demo',
-    firstName: 'Jordan',
-    lastName: 'Lee',
-    gradeLevel: 7,
-    learningPreferences: {
-      preferredModality: ['visual', 'hands-on'],
-      pacing: 'guided',
-      collaborationStyle: 'pair',
-    },
-    regulationProfile: {
-      baselineState: 'focused',
-      triggers: ['multi-step anxiety'],
-      supports: ['chunking', 'breathing prompts'],
-    },
-  },
-  {
-    clerkUserId: 'clerk_student_demo_002',
-    email: 'student2@rootwork.demo',
-    firstName: 'Sam',
-    lastName: 'Patel',
-    gradeLevel: 8,
-    learningPreferences: {
-      preferredModality: ['verbal', 'interactive'],
-      pacing: 'self-paced',
-      collaborationStyle: 'small-group',
-    },
-    regulationProfile: {
-      baselineState: 'curious',
-      triggers: ['time pressure'],
-      supports: ['extended think time', 'reflective check-ins'],
-    },
-  },
-] as const;
-
-const curriculumStandards = [
-  {
-    code: 'CCSS.MATH.7.RP.A.2',
-    framework: StandardFramework.COMMON_CORE,
-    subject: Subject.MATH,
-    gradeLevel: [7],
-    domain: 'Ratios and Proportional Relationships',
-    cluster: 'Analyze proportional relationships',
-    description: 'Recognize and represent proportional relationships between quantities.',
-    fullText:
-      'Recognize and represent proportional relationships between quantities using tables, graphs, equations, and verbal descriptions.',
-  },
-  {
-    code: 'NGSS.MS-PS1-2',
-    framework: StandardFramework.NGSS,
-    subject: Subject.SCIENCE,
-    gradeLevel: [6, 7, 8],
-    domain: 'Matter and Its Interactions',
-    cluster: 'Chemical Reactions',
-    description: 'Analyze and interpret data on properties of substances before and after interactions.',
-    fullText:
-      'Analyze and interpret data on the properties of substances before and after the substances interact to determine if a chemical reaction has occurred.',
-  },
-  {
-    code: 'GA.ELA.7.RI.2',
-    framework: StandardFramework.GEORGIA,
-    subject: Subject.LANGUAGE_ARTS,
-    gradeLevel: [7],
-    domain: 'Reading Informational Text',
-    cluster: 'Key Ideas and Details',
-    description: 'Determine central ideas and summarize informational text objectively.',
-    fullText:
-      'Determine two or more central ideas in a text and analyze their development over the course of the text; provide an objective summary of the text.',
-  },
-] as const;
-
-type TopicSeed = {
-  name: string;
-  subject: Subject;
-  gradeLevel: number[];
-  description: string;
-  conceptualUnderstanding: string;
-  commonMisconceptions: string[];
-  realWorldConnections: string[];
-  estimatedDuration: number;
-  standardCodes: string[];
-  learningObjectives: Array<{ description: string; bloomsLevel: BloomsLevel }>;
-  problems: Array<{
-    stem: string;
-    scaffold: Prisma.InputJsonValue;
-    solutionPaths: Prisma.InputJsonValue;
-    commonErrors: Prisma.InputJsonValue;
-    rubric: Prisma.InputJsonValue;
-    difficulty: number;
-    bloomsLevel: BloomsLevel;
-    type: ProblemType;
-  }>;
-};
-
-const topicSeeds: TopicSeed[] = [
-  {
-    name: 'Unit Rates in Everyday Contexts',
-    subject: Subject.MATH,
-    gradeLevel: [7],
-    description: 'Students develop fluency with unit rates and proportional relationships in real-world settings.',
-    conceptualUnderstanding:
-      'A proportional relationship has a constant of proportionality that can be interpreted as a unit rate.',
-    commonMisconceptions: [
-      'Believing any linear relationship is proportional.',
-      'Confusing additive patterns with multiplicative relationships.',
-    ],
-    realWorldConnections: ['Shopping discounts', 'Speed comparisons', 'Recipe scaling'],
-    estimatedDuration: 90,
-    standardCodes: ['CCSS.MATH.7.RP.A.2'],
-    learningObjectives: [
-      {
-        description: 'Represent proportional relationships in tables and coordinate graphs.',
-        bloomsLevel: BloomsLevel.APPLY,
-      },
-      {
-        description: 'Justify whether a relationship is proportional using multiple representations.',
-        bloomsLevel: BloomsLevel.EVALUATE,
-      },
-    ],
-    problems: [
-      {
-        stem: 'A bike travels 42 miles in 3 hours. What is the unit rate and how far will it travel in 5.5 hours?',
-        scaffold: {
-          hints: ['Find miles per 1 hour first.', 'Use multiplication to scale to 5.5 hours.'],
-        },
-        solutionPaths: {
-          methodA: '42 ÷ 3 = 14 miles/hour; 14 × 5.5 = 77 miles',
-          methodB: 'Set up ratio table from 3 to 1 then to 5.5',
-        },
-        commonErrors: {
-          errors: ['Dividing 3 by 42', 'Adding instead of multiplying to scale'],
-        },
-        rubric: {
-          points: [
-            { criteria: 'Correct unit rate', score: 2 },
-            { criteria: 'Correct distance at 5.5 hours', score: 2 },
-            { criteria: 'Reasoning explained', score: 1 },
-          ],
-        },
-        difficulty: 2,
-        bloomsLevel: BloomsLevel.APPLY,
-        type: ProblemType.PRACTICE,
-      },
-    ],
-  },
-  {
-    name: 'Evidence of Chemical Reactions',
-    subject: Subject.SCIENCE,
-    gradeLevel: [7, 8],
-    description: 'Students interpret evidence to determine if chemical changes occurred.',
-    conceptualUnderstanding:
-      'Chemical reactions form new substances with properties different from the reactants.',
-    commonMisconceptions: [
-      'Any color change means a chemical reaction.',
-      'Dissolving is always chemical change.',
-    ],
-    realWorldConnections: ['Cooking', 'Rusting metals', 'Baking soda and vinegar labs'],
-    estimatedDuration: 75,
-    standardCodes: ['NGSS.MS-PS1-2'],
-    learningObjectives: [
-      {
-        description: 'Analyze data tables to identify likely chemical changes.',
-        bloomsLevel: BloomsLevel.ANALYZE,
-      },
-    ],
-    problems: [
-      {
-        stem: 'A student mixes two clear liquids and observes bubbles and temperature drop. Explain whether a chemical reaction likely occurred using evidence.',
-        scaffold: {
-          prompts: ['Identify observations', 'Connect each observation to possible particle-level changes'],
-        },
-        solutionPaths: {
-          evidenceClaimReasoning: 'Gas formation and temperature change suggest new substances and energy transfer.',
-        },
-        commonErrors: {
-          errors: ['Claiming certainty without evidence', 'Ignoring energy change'],
-        },
-        rubric: {
-          criteria: ['Uses at least two observations', 'Links evidence to claim', 'Uses scientific vocabulary'],
-        },
-        difficulty: 3,
-        bloomsLevel: BloomsLevel.ANALYZE,
-        type: ProblemType.REAL_WORLD,
-      },
-    ],
-  },
-];
-
-async function upsertTopic(topicSeed: TopicSeed, standardIds: string[]) {
-  const existingTopic = await prisma.topic.findFirst({
-    where: {
-      name: topicSeed.name,
-      subject: topicSeed.subject,
-    },
-  });
-
-  const topic = existingTopic
-    ? await prisma.topic.update({
-        where: { id: existingTopic.id },
-        data: {
-          gradeLevel: topicSeed.gradeLevel,
-          description: topicSeed.description,
-          conceptualUnderstanding: topicSeed.conceptualUnderstanding,
-          commonMisconceptions: topicSeed.commonMisconceptions,
-          realWorldConnections: topicSeed.realWorldConnections,
-          estimatedDuration: topicSeed.estimatedDuration,
-          standards: {
-            set: standardIds.map((id) => ({ id })),
-          },
-        },
-      })
-    : await prisma.topic.create({
-        data: {
-          name: topicSeed.name,
-          subject: topicSeed.subject,
-          gradeLevel: topicSeed.gradeLevel,
-          description: topicSeed.description,
-          conceptualUnderstanding: topicSeed.conceptualUnderstanding,
-          commonMisconceptions: topicSeed.commonMisconceptions,
-          realWorldConnections: topicSeed.realWorldConnections,
-          estimatedDuration: topicSeed.estimatedDuration,
-          standards: {
-            connect: standardIds.map((id) => ({ id })),
-          },
-        },
-      });
-
-  await prisma.learningObjective.deleteMany({ where: { topicId: topic.id } });
-  await prisma.problem.deleteMany({ where: { topicId: topic.id } });
-
-  await prisma.learningObjective.createMany({
-    data: topicSeed.learningObjectives.map((objective) => ({
-      topicId: topic.id,
-      description: objective.description,
-      bloomsLevel: objective.bloomsLevel,
-    })),
-  });
-
-  await prisma.problem.createMany({
-    data: topicSeed.problems.map((problem) => ({
-      topicId: topic.id,
-      stem: problem.stem,
-      scaffold: problem.scaffold,
-      solutionPaths: problem.solutionPaths,
-      commonErrors: problem.commonErrors,
-      rubric: problem.rubric,
-      difficulty: problem.difficulty,
-      bloomsLevel: problem.bloomsLevel,
-      type: problem.type,
-      validated: true,
-    })),
-  });
-}
-
 async function main() {
+  console.log('🌱 Starting database seed...');
+
+  // ═══════════════════════════════════════════════════════════════
+  // 1. CREATE TENANT
+  // ═══════════════════════════════════════════════════════════════
+  console.log('📦 Creating tenant...');
+  
   const tenant = await prisma.tenant.upsert({
-    where: { slug: TENANT_SLUG },
-    update: {
-      name: 'RootWork Demo District',
-      domain: 'demo.rootwork.local',
-      subscriptionTier: SubscriptionTier.FREE,
-      subscriptionStatus: SubscriptionStatus.ACTIVE,
-      settings: {
-        region: 'US',
-        timezone: 'America/New_York',
-      },
-    },
+    where: { slug: 'demo-district' },
+    update: {},
     create: {
-      name: 'RootWork Demo District',
-      slug: TENANT_SLUG,
-      domain: 'demo.rootwork.local',
-      subscriptionTier: SubscriptionTier.FREE,
-      subscriptionStatus: SubscriptionStatus.ACTIVE,
-      settings: {
-        region: 'US',
-        timezone: 'America/New_York',
-      },
+      name: 'Demo School District',
+      slug: 'demo-district',
+      domain: 'demo.rootwork.edu',
+      subscriptionTier: 'PROFESSIONAL',
+      subscriptionStatus: 'ACTIVE',
+      settings: JSON.stringify({
+        features: {
+          aiTutoring: true,
+          reverseEngineering: true,
+          errorAnalysis: true,
+        },
+      }),
     },
   });
 
+  console.log(`✅ Tenant created: ${tenant.name}`);
+
+  // ═══════════════════════════════════════════════════════════════
+  // 2. CREATE SCHOOL
+  // ═══════════════════════════════════════════════════════════════
+  console.log('🏫 Creating school...');
+  
   const school = await prisma.school.upsert({
-    where: {
-      id: (await prisma.school.findFirst({ where: { tenantId: tenant.id, name: SCHOOL_NAME } }))?.id ?? 'missing',
-    },
-    update: {
-      name: SCHOOL_NAME,
-      gradeRange: [6, 7, 8],
-      settings: {
-        bellSchedule: 'middle-school-standard',
-      },
-    },
+    where: { id: 'demo-middle-school-1' },
+    update: {},
     create: {
+      id: 'demo-middle-school-1',
       tenantId: tenant.id,
-      name: SCHOOL_NAME,
+      name: 'Roosevelt Middle School',
+      address: '123 Learning Lane, Education City, EC 12345',
       gradeRange: [6, 7, 8],
-      settings: {
-        bellSchedule: 'middle-school-standard',
-      },
+      settings: JSON.stringify({
+        academicYear: '2025-2026',
+        timezone: 'America/New_York',
+      }),
     },
   });
 
+  console.log(`✅ School created: ${school.name}`);
+
+  // ═══════════════════════════════════════════════════════════════
+  // 3. CREATE USERS (Educator & Students)
+  // ═══════════════════════════════════════════════════════════════
+  console.log('👥 Creating users...');
+
+  // Create Educator
   const educatorUser = await prisma.user.upsert({
-    where: { clerkUserId: educatorSeed.clerkUserId },
-    update: {
-      tenantId: tenant.id,
-      schoolId: school.id,
-      email: educatorSeed.email,
-      firstName: educatorSeed.firstName,
-      lastName: educatorSeed.lastName,
-      role: UserRole.EDUCATOR,
-      isMinor: false,
-      consentStatus: null,
-    },
+    where: { clerkUserId: 'clerk_educator_demo_001' },
+    update: {},
     create: {
+      clerkUserId: 'clerk_educator_demo_001',
       tenantId: tenant.id,
       schoolId: school.id,
-      clerkUserId: educatorSeed.clerkUserId,
-      email: educatorSeed.email,
-      firstName: educatorSeed.firstName,
-      lastName: educatorSeed.lastName,
-      role: UserRole.EDUCATOR,
+      email: 'ms.johnson@demo.rootwork.edu',
+      firstName: 'Sarah',
+      lastName: 'Johnson',
+      role: 'EDUCATOR',
+      dateOfBirth: new Date('1985-04-15'),
       isMinor: false,
     },
   });
 
-  await prisma.educator.upsert({
+  const educator = await prisma.educator.upsert({
     where: { userId: educatorUser.id },
-    update: {
-      certifications: ['GaTAPP', 'Middle Grades Mathematics'],
-      specializations: ['Project-based learning', 'SEL integration'],
-    },
+    update: {},
     create: {
       userId: educatorUser.id,
-      certifications: ['GaTAPP', 'Middle Grades Mathematics'],
-      specializations: ['Project-based learning', 'SEL integration'],
+      certifications: ['Mathematics Education', 'Special Education'],
+      specializations: ['Middle School Math', 'Differentiated Instruction'],
     },
   });
 
-  const seededStudents = [] as Array<{ id: string; studentId: string; gradeLevel: number }>;
+  console.log(`✅ Educator created: ${educatorUser.firstName} ${educatorUser.lastName}`);
 
-  for (const studentSeed of studentSeeds) {
-    const user = await prisma.user.upsert({
-      where: { clerkUserId: studentSeed.clerkUserId },
-      update: {
-        tenantId: tenant.id,
-        schoolId: school.id,
-        email: studentSeed.email,
-        firstName: studentSeed.firstName,
-        lastName: studentSeed.lastName,
-        role: UserRole.STUDENT,
-        isMinor: true,
-        consentStatus: ConsentStatus.GRANTED,
+  // Create Students
+  const studentData = [
+    {
+      clerkUserId: 'clerk_student_demo_001',
+      email: 'alex.martinez@demo.rootwork.edu',
+      firstName: 'Alex',
+      lastName: 'Martinez',
+      gradeLevel: 7,
+      learningPreferences: {
+        visualLearner: true,
+        preferredPacing: 'moderate',
+        interestAreas: ['space', 'technology', 'art'],
       },
+      regulationProfile: {
+        baselineEngagement: 'high',
+        stressIndicators: ['rushing', 'minimal responses'],
+        preferredBreakActivities: ['stretching', 'deep breathing'],
+      },
+    },
+    {
+      clerkUserId: 'clerk_student_demo_002',
+      email: 'jordan.lee@demo.rootwork.edu',
+      firstName: 'Jordan',
+      lastName: 'Lee',
+      gradeLevel: 7,
+      learningPreferences: {
+        kinestheticLearner: true,
+        preferredPacing: 'fast',
+        interestAreas: ['sports', 'music', 'nature'],
+      },
+      regulationProfile: {
+        baselineEngagement: 'moderate',
+        stressIndicators: ['asking to stop', 'off-topic'],
+        preferredBreakActivities: ['movement break', 'joke time'],
+      },
+    },
+    {
+      clerkUserId: 'clerk_student_demo_003',
+      email: 'taylor.smith@demo.rootwork.edu',
+      firstName: 'Taylor',
+      lastName: 'Smith',
+      gradeLevel: 6,
+      learningPreferences: {
+        auditoryLearner: true,
+        preferredPacing: 'slow',
+        interestAreas: ['reading', 'animals', 'cooking'],
+      },
+      regulationProfile: {
+        baselineEngagement: 'moderate',
+        stressIndicators: ['long pauses', 'self-doubt statements'],
+        preferredBreakActivities: ['positive affirmations', 'progressive muscle relaxation'],
+      },
+    },
+  ];
+
+  const students = [];
+  for (const data of studentData) {
+    const user = await prisma.user.upsert({
+      where: { clerkUserId: data.clerkUserId },
+      update: {},
       create: {
+        clerkUserId: data.clerkUserId,
         tenantId: tenant.id,
         schoolId: school.id,
-        clerkUserId: studentSeed.clerkUserId,
-        email: studentSeed.email,
-        firstName: studentSeed.firstName,
-        lastName: studentSeed.lastName,
-        role: UserRole.STUDENT,
+        email: data.email,
+        firstName: data.firstName,
+        lastName: data.lastName,
+        role: 'STUDENT',
+        dateOfBirth: new Date('2012-06-15'),
         isMinor: true,
-        consentStatus: ConsentStatus.GRANTED,
+        consentStatus: 'GRANTED',
       },
     });
 
     const student = await prisma.student.upsert({
       where: { userId: user.id },
-      update: {
-        gradeLevel: studentSeed.gradeLevel,
-        learningPreferences: studentSeed.learningPreferences,
-        regulationProfile: studentSeed.regulationProfile,
-      },
+      update: {},
       create: {
         userId: user.id,
-        gradeLevel: studentSeed.gradeLevel,
-        learningPreferences: studentSeed.learningPreferences,
-        regulationProfile: studentSeed.regulationProfile,
+        gradeLevel: data.gradeLevel,
+        learningPreferences: data.learningPreferences,
+        regulationProfile: data.regulationProfile,
       },
     });
 
-    seededStudents.push({ id: user.id, studentId: student.id, gradeLevel: student.gradeLevel });
+    students.push({ user, student });
+    console.log(`✅ Student created: ${user.firstName} ${user.lastName}`);
   }
 
+  // ═══════════════════════════════════════════════════════════════
+  // 4. CREATE CLASS
+  // ═══════════════════════════════════════════════════════════════
+  console.log('📚 Creating class...');
+
   const mathClass = await prisma.class.upsert({
-    where: {
-      id:
-        (await prisma.class.findFirst({
-          where: {
-            tenantId: tenant.id,
-            schoolId: school.id,
-            name: 'Foundations of Proportional Reasoning',
-            academicYear: ACADEMIC_YEAR,
-          },
-        }))?.id ?? 'missing',
-    },
-    update: {
-      subject: Subject.MATH,
-      gradeLevel: 7,
-      educatorId: educatorUser.id,
-    },
+    where: { id: 'class-7th-grade-math-001' },
+    update: {},
     create: {
+      id: 'class-7th-grade-math-001',
       tenantId: tenant.id,
       schoolId: school.id,
-      name: 'Foundations of Proportional Reasoning',
-      subject: Subject.MATH,
+      name: '7th Grade Mathematics - Period 3',
+      subject: 'MATH',
       gradeLevel: 7,
-      academicYear: ACADEMIC_YEAR,
+      academicYear: '2025-2026',
       educatorId: educatorUser.id,
     },
   });
 
-  for (const seededStudent of seededStudents) {
+  console.log(`✅ Class created: ${mathClass.name}`);
+
+  // ═══════════════════════════════════════════════════════════════
+  // 5. CREATE CLASS ENROLLMENTS
+  // ═══════════════════════════════════════════════════════════════
+  console.log('📝 Enrolling students in class...');
+
+  for (const { student } of students.filter((s) => s.user.firstName !== 'Taylor')) {
     await prisma.classEnrollment.upsert({
       where: {
         classId_studentId: {
           classId: mathClass.id,
-          studentId: seededStudent.studentId,
+          studentId: student.id,
         },
       },
-      update: {
-        tenantId: tenant.id,
-        status: EnrollmentStatus.ACTIVE,
-      },
+      update: {},
       create: {
         tenantId: tenant.id,
         classId: mathClass.id,
-        studentId: seededStudent.studentId,
-        status: EnrollmentStatus.ACTIVE,
+        studentId: student.id,
+        status: 'ACTIVE',
       },
     });
   }
 
-  const standardIdByCode = new Map<string, string>();
+  console.log(`✅ Students enrolled`);
 
-  for (const standardSeed of curriculumStandards) {
-    const standard = await prisma.standard.upsert({
-      where: { code: standardSeed.code },
-      update: {
-        framework: standardSeed.framework,
-        subject: standardSeed.subject,
-        gradeLevel: standardSeed.gradeLevel,
-        domain: standardSeed.domain,
-        cluster: standardSeed.cluster,
-        description: standardSeed.description,
-        fullText: standardSeed.fullText,
-      },
-      create: standardSeed,
-    });
+  // ═══════════════════════════════════════════════════════════════
+  // 6. CREATE STANDARDS
+  // ═══════════════════════════════════════════════════════════════
+  console.log('📖 Creating academic standards...');
 
-    standardIdByCode.set(standard.code, standard.id);
-  }
-
-  for (const topicSeed of topicSeeds) {
-    const standardIds = topicSeed.standardCodes
-      .map((code) => standardIdByCode.get(code))
-      .filter((id): id is string => Boolean(id));
-
-    await upsertTopic(topicSeed, standardIds);
-  }
-
-  const starterReasoningMoves: ReasoningMove[] = [
-    ReasoningMove.DECOMPOSE,
-    ReasoningMove.IDENTIFY,
-    ReasoningMove.QUESTION,
-    ReasoningMove.VERIFY,
-    ReasoningMove.REFLECT,
+  const standards = [
+    {
+      code: 'MGSE7.NS.1',
+      framework: 'GEORGIA',
+      subject: 'MATH',
+      gradeLevel: [7],
+      domain: 'The Number System',
+      cluster: 'Apply and extend previous understandings of operations with fractions',
+      description: 'Apply and extend previous understandings of addition and subtraction to add and subtract rational numbers',
+      fullText: 'Apply and extend previous understandings of addition and subtraction to add and subtract rational numbers; represent addition and subtraction on a horizontal or vertical number line diagram.',
+    },
+    {
+      code: 'MGSE7.NS.2',
+      framework: 'GEORGIA',
+      subject: 'MATH',
+      gradeLevel: [7],
+      domain: 'The Number System',
+      cluster: 'Apply and extend previous understandings of operations with fractions',
+      description: 'Apply and extend previous understandings of multiplication and division with fractions',
+      fullText: 'Apply and extend previous understandings of multiplication and division and of fractions to multiply and divide rational numbers.',
+    },
+    {
+      code: 'MGSE7.EE.1',
+      framework: 'GEORGIA',
+      subject: 'MATH',
+      gradeLevel: [7],
+      domain: 'Expressions and Equations',
+      cluster: 'Use properties of operations to generate equivalent expressions',
+      description: 'Apply properties of operations as strategies to add, subtract, factor, and expand linear expressions with rational coefficients',
+      fullText: 'Apply properties of operations as strategies to add, subtract, factor, and expand linear expressions with rational coefficients.',
+    },
+    {
+      code: 'MGSE7.EE.4',
+      framework: 'GEORGIA',
+      subject: 'MATH',
+      gradeLevel: [7],
+      domain: 'Expressions and Equations',
+      cluster: 'Solve real-life and mathematical problems using numerical and algebraic expressions and equations',
+      description: 'Use variables to represent quantities in a real-world or mathematical problem',
+      fullText: 'Use variables to represent quantities in a real-world or mathematical problem, and construct simple equations and inequalities to solve problems by reasoning about the quantities.',
+    },
   ];
 
-  for (const seededStudent of seededStudents) {
-    for (const move of starterReasoningMoves) {
+  const createdStandards = [];
+  for (const stdData of standards) {
+    const standard = await prisma.standard.upsert({
+      where: { code: stdData.code },
+      update: {},
+      create: stdData,
+    });
+    createdStandards.push(standard);
+    console.log(`✅ Standard created: ${standard.code}`);
+  }
+
+  // ═══════════════════════════════════════════════════════════════
+  // 7. CREATE TOPICS
+  // ═══════════════════════════════════════════════════════════════
+  console.log('📚 Creating topics...');
+
+  const topics = [
+    {
+      id: 'topic-rational-numbers-001',
+      name: 'Adding and Subtracting Rational Numbers',
+      subject: 'MATH',
+      gradeLevel: [7],
+      description: 'Understanding how to add and subtract positive and negative fractions, decimals, and integers',
+      conceptualUnderstanding: 'Rational numbers extend the number system to include negatives. Operations with rational numbers follow consistent rules based on understanding magnitude and direction.',
+      commonMisconceptions: [
+        'Students think two negatives always make a positive',
+        'Confusion about when to add vs subtract when signs differ',
+        'Difficulty visualizing operations on a number line',
+      ],
+      realWorldConnections: [
+        'Temperature changes (above/below zero)',
+        'Bank account deposits and withdrawals',
+        'Elevation changes (above/below sea level)',
+      ],
+      estimatedDuration: 45,
+    },
+    {
+      id: 'topic-linear-expressions-001',
+      name: 'Simplifying Linear Expressions',
+      subject: 'MATH',
+      gradeLevel: [7],
+      description: 'Combining like terms and using properties of operations to simplify algebraic expressions',
+      conceptualUnderstanding: 'Algebraic expressions represent patterns and relationships. Simplifying expressions makes them easier to work with while preserving their meaning.',
+      commonMisconceptions: [
+        'Thinking 2x + 3y = 5xy',
+        'Not recognizing like terms',
+        'Confusion with negative coefficients',
+      ],
+      realWorldConnections: [
+        'Calculating total costs with variables',
+        'Representing patterns in tables',
+        'Formulas in science and engineering',
+      ],
+      estimatedDuration: 40,
+    },
+  ];
+
+  const createdTopics = [];
+  for (const topicData of topics) {
+    const topic = await prisma.topic.upsert({
+      where: { id: topicData.id },
+      update: {},
+      create: {
+        ...topicData,
+        standards: {
+          connect: createdStandards
+            .filter((s) => topicData.name.includes('Rational') ? s.code.includes('NS') : s.code.includes('EE'))
+            .map((s) => ({ id: s.id })),
+        },
+      },
+    });
+    createdTopics.push(topic);
+    console.log(`✅ Topic created: ${topic.name}`);
+  }
+
+  // ═══════════════════════════════════════════════════════════════
+  // 8. CREATE LEARNING OBJECTIVES
+  // ═══════════════════════════════════════════════════════════════
+  console.log('🎯 Creating learning objectives...');
+
+  const objectives = [
+    {
+      topicId: 'topic-rational-numbers-001',
+      description: 'Students will add two rational numbers using a number line',
+      bloomsLevel: 'APPLY',
+    },
+    {
+      topicId: 'topic-rational-numbers-001',
+      description: 'Students will explain why subtraction is the same as adding the opposite',
+      bloomsLevel: 'UNDERSTAND',
+    },
+    {
+      topicId: 'topic-linear-expressions-001',
+      description: 'Students will combine like terms in a linear expression',
+      bloomsLevel: 'APPLY',
+    },
+    {
+      topicId: 'topic-linear-expressions-001',
+      description: 'Students will apply the distributive property to expand expressions',
+      bloomsLevel: 'APPLY',
+    },
+  ];
+
+  for (const objData of objectives) {
+    await prisma.learningObjective.create({
+      data: objData,
+    });
+  }
+
+  console.log(`✅ ${objectives.length} learning objectives created`);
+
+  // ═══════════════════════════════════════════════════════════════
+  // 9. CREATE PROBLEMS
+  // ═══════════════════════════════════════════════════════════════
+  console.log('❓ Creating practice problems...');
+
+  const problems = [
+    {
+      topicId: 'topic-rational-numbers-001',
+      stem: 'Calculate: -3.5 + 2.8',
+      scaffold: {
+        hints: [
+          'Think about which number has a greater absolute value',
+          'The sign of the answer will match the number with greater absolute value',
+          'Try using a number line to visualize',
+        ],
+        steps: [
+          'Identify the absolute values: |-3.5| = 3.5 and |2.8| = 2.8',
+          'Since 3.5 > 2.8, the answer will be negative',
+          'Subtract: 3.5 - 2.8 = 0.7',
+          'Apply the negative sign: -0.7',
+        ],
+      },
+      solutionPaths: [
+        {
+          method: 'number-line',
+          steps: ['Start at -3.5', 'Move right 2.8 units', 'Land at -0.7'],
+        },
+        {
+          method: 'absolute-value',
+          steps: ['Find |-3.5| = 3.5', 'Find |2.8| = 2.8', 'Subtract: 3.5 - 2.8 = 0.7', 'Answer: -0.7'],
+        },
+      ],
+      commonErrors: {
+        'adding-absolute-values': {
+          incorrectAnswer: '-6.3',
+          explanation: 'Added absolute values instead of recognizing opposite signs',
+          remediation: 'When signs are different, subtract the smaller from the larger',
+        },
+        'wrong-sign': {
+          incorrectAnswer: '0.7',
+          explanation: 'Correct magnitude but wrong sign',
+          remediation: 'The sign matches the number with greater absolute value',
+        },
+      },
+      rubric: {
+        correctAnswer: '-0.7',
+        partialCredit: [
+          { condition: 'correct-process-minor-arithmetic', points: 0.8 },
+          { condition: 'correct-absolute-value-wrong-sign', points: 0.5 },
+        ],
+      },
+      gardenContext: 'A gardener planted flowers at 3.5 feet below ground level in the morning, then the soil level rose 2.8 feet after rain. What is the new depth?',
+      difficulty: 3,
+      bloomsLevel: 'APPLY',
+      type: 'PRACTICE',
+      validated: true,
+    },
+    {
+      topicId: 'topic-linear-expressions-001',
+      stem: 'Simplify: 4x + 7 - 2x + 3',
+      scaffold: {
+        hints: [
+          'Look for like terms (terms with the same variable)',
+          'Combine the x terms separately from the constant terms',
+          'Remember to keep track of positive and negative signs',
+        ],
+        steps: [
+          'Identify like terms: 4x and -2x are like terms; 7 and 3 are like terms',
+          'Combine x terms: 4x - 2x = 2x',
+          'Combine constants: 7 + 3 = 10',
+          'Write simplified expression: 2x + 10',
+        ],
+      },
+      solutionPaths: [
+        {
+          method: 'grouping',
+          steps: ['Group: (4x - 2x) + (7 + 3)', 'Simplify: 2x + 10'],
+        },
+        {
+          method: 'sequential',
+          steps: ['4x + 7 - 2x + 3', 'Combine 4x and -2x: 2x + 7 + 3', 'Combine 7 and 3: 2x + 10'],
+        },
+      ],
+      commonErrors: {
+        'combining-unlike-terms': {
+          incorrectAnswer: '12x',
+          explanation: 'Tried to combine variables with constants',
+          remediation: 'Only combine terms with the same variable and exponent',
+        },
+        'sign-error': {
+          incorrectAnswer: '6x + 10',
+          explanation: 'Added instead of subtracting 2x',
+          remediation: 'Pay attention to the operation before each term',
+        },
+      },
+      rubric: {
+        correctAnswer: '2x + 10',
+        partialCredit: [
+          { condition: 'correct-x-terms-only', points: 0.5 },
+          { condition: 'correct-constants-only', points: 0.3 },
+        ],
+      },
+      gardenContext: 'You have 4 rows of x flowers each, plus 7 individual flowers. You give away 2 rows of x flowers each, but receive 3 more individual flowers. How many flowers do you have?',
+      difficulty: 2,
+      bloomsLevel: 'APPLY',
+      type: 'PRACTICE',
+      validated: true,
+    },
+  ];
+
+  for (const probData of problems) {
+    await prisma.problem.create({
+      data: probData,
+    });
+  }
+
+  console.log(`✅ ${problems.length} problems created`);
+
+  // ═══════════════════════════════════════════════════════════════
+  // 10. INITIALIZE REASONING MOVE PROGRESS
+  // ═══════════════════════════════════════════════════════════════
+  console.log('🧠 Initializing reasoning move tracking...');
+
+  const basicReasoningMoves = [
+    'DECOMPOSE',
+    'IDENTIFY',
+    'COMPARE',
+    'QUESTION',
+    'VERIFY',
+    'JUSTIFY',
+  ];
+
+  for (const { student } of students) {
+    for (const move of basicReasoningMoves) {
       await prisma.reasoningMoveProgress.upsert({
         where: {
           studentId_move: {
-            studentId: seededStudent.studentId,
-            move,
+            studentId: student.id,
+            move: move as any,
           },
         },
-        update: {
-          proficiencyLevel: 1,
-        },
+        update: {},
         create: {
-          studentId: seededStudent.studentId,
-          move,
+          studentId: student.id,
+          move: move as any,
           introducedAt: new Date(),
-          usageCount: 0,
-          promptedUsage: 0,
-          spontaneousUsage: 0,
           proficiencyLevel: 1,
         },
       });
     }
   }
 
-  console.log('✅ Seeded tenant, school, users, classes, enrollments, curriculum, and reasoning progress.');
+  console.log(`✅ Reasoning moves initialized for all students`);
+
+  // ═══════════════════════════════════════════════════════════════
+  // SEED COMPLETE
+  // ═══════════════════════════════════════════════════════════════
+  console.log('\n🎉 Database seed completed successfully!');
+  console.log('\n📊 Summary:');
+  console.log(`   • 1 Tenant: ${tenant.name}`);
+  console.log(`   • 1 School: ${school.name}`);
+  console.log(`   • 1 Educator: ${educatorUser.firstName} ${educatorUser.lastName}`);
+  console.log(`   • ${students.length} Students`);
+  console.log(`   • 1 Class: ${mathClass.name}`);
+  console.log(`   • ${createdStandards.length} Academic Standards`);
+  console.log(`   • ${createdTopics.length} Topics`);
+  console.log(`   • ${objectives.length} Learning Objectives`);
+  console.log(`   • ${problems.length} Practice Problems`);
+  console.log(`   • ${basicReasoningMoves.length} Reasoning Moves per student`);
+  console.log('\n✨ Students are ready to begin learning!\n');
 }
 
 main()
-  .catch((error) => {
-    console.error('❌ Seed failed', error);
+  .catch((e) => {
+    console.error('❌ Seed failed:', e);
     process.exit(1);
   })
   .finally(async () => {
