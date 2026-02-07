@@ -141,6 +141,20 @@ async function extractCurriculum() {
 }
 
 /**
+ * Helper function to format directory name for title
+ * Converts '06-instructional-strategies' to 'Instructional Strategies'
+ */
+function formatDirectoryTitle(dirName) {
+  // Remove number prefix (e.g., '06-' or '13-')
+  const withoutNumber = dirName.replace(/^\d+-/, '');
+  // Replace hyphens with spaces and capitalize each word
+  return withoutNumber
+    .split('-')
+    .map(word => word.charAt(0).toUpperCase() + word.slice(1))
+    .join(' ');
+}
+
+/**
  * Create placeholder files for directories that might be empty
  */
 async function createPlaceholders() {
@@ -160,7 +174,8 @@ async function createPlaceholders() {
     // Only create if directory is empty
     const files = await fs.readdir(dirPath);
     if (files.length === 0) {
-      const placeholderContent = `# ${dir.split('-').slice(1).join(' ').toUpperCase()}\n\nThis section is under development.\n`;
+      const title = formatDirectoryTitle(dir);
+      const placeholderContent = `# ${title}\n\nThis section is under development.\n`;
       await fs.writeFile(readmePath, placeholderContent);
       console.log(`  ✓ Created placeholder: ${dir}/README.md`);
     }
