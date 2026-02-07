@@ -73,8 +73,13 @@ export async function POST(req: NextRequest) {
     // Process the ingestion
     const processedFiles = payload.files?.length || 0;
     
-    // Here you would process the files, update embeddings, etc.
-    // For now, we'll just log the ingestion
+    // TODO: Implement actual file processing logic:
+    // 1. Parse and extract content from curriculum files in payload.files
+    // 2. Generate embeddings for each file's content using generateEmbedding()
+    // 3. Upsert embeddings to Pinecone with metadata (file path, course, module, etc.)
+    // 4. Update database records (Standards, Topics, etc.) if needed
+    // 5. Track processed file count and any errors
+    // For now, we just log the ingestion attempt
     
     // Update log with success
     await db.ingestLog.update({
