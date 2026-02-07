@@ -71,13 +71,32 @@ export async function POST(
 
     // Update progress if standard is associated
     if (assessment.standardId && assessment.session) {
-      await updateProgress({
-        studentId: assessment.session.studentId,
-        standardId: assessment.standardId,
-        assessmentScore: feedback.score,
-        bloomsLevel: assessment.bloomsLevel,
-        difficulty: assessment.difficulty,
+      // Get tenant ID from session student
+      const sessionWithTenant = await db.session.findUnique({
+        where: { id: assessment.sessionId },
+        include: {
+          student: {
+            include: {
+              user: {
+                select: {
+                  tenantId: true,
+                },
+              },
+            },
+          },
+        },
       });
+
+      if (sessionWithTenant) {
+        await updateProgress({
+          studentId: assessment.session.studentId,
+          standardId: assessment.standardId,
+          tenantId: sessionWithTenant.student.user.tenantId,
+          assessmentScore: feedback.score,
+          bloomsLevel: assessment.bloomsLevel,
+          difficulty: assessment.difficulty,
+        });
+      }
     }
 
     return NextResponse.json({
