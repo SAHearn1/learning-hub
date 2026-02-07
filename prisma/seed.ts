@@ -3,12 +3,12 @@ import { PrismaClient } from '@prisma/client';
 const prisma = new PrismaClient();
 
 async function main() {
-  console.log('🌱 Starting database seed...');
+  console.log('Starting database seed...');
 
   // ═══════════════════════════════════════════════════════════════
   // 1. CREATE TENANT
   // ═══════════════════════════════════════════════════════════════
-  console.log('📦 Creating tenant...');
+  console.log('Creating tenant...');
   
   const tenant = await prisma.tenant.upsert({
     where: { slug: 'demo-district' },
@@ -34,7 +34,7 @@ async function main() {
   // ═══════════════════════════════════════════════════════════════
   // 2. CREATE SCHOOL
   // ═══════════════════════════════════════════════════════════════
-  console.log('🏫 Creating school...');
+  console.log('Creating school...');
   
   const school = await prisma.school.upsert({
     where: { id: 'demo-middle-school-1' },
@@ -57,7 +57,7 @@ async function main() {
   // ═══════════════════════════════════════════════════════════════
   // 3. CREATE USERS (Educator & Students)
   // ═══════════════════════════════════════════════════════════════
-  console.log('👥 Creating users...');
+  console.log('Creating users...');
 
   // Create Educator
   const educatorUser = await prisma.user.upsert({
@@ -180,7 +180,7 @@ async function main() {
   // ═══════════════════════════════════════════════════════════════
   // 4. CREATE CLASS
   // ═══════════════════════════════════════════════════════════════
-  console.log('📚 Creating class...');
+  console.log('Creating class...');
 
   const mathClass = await prisma.class.upsert({
     where: { id: 'class-7th-grade-math-001' },
@@ -202,7 +202,7 @@ async function main() {
   // ═══════════════════════════════════════════════════════════════
   // 5. CREATE CLASS ENROLLMENTS
   // ═══════════════════════════════════════════════════════════════
-  console.log('📝 Enrolling students in class...');
+  console.log('Enrolling students in class...');
 
   for (const { student } of students.filter((s) => s.user.firstName !== 'Taylor')) {
     await prisma.classEnrollment.upsert({
@@ -227,13 +227,13 @@ async function main() {
   // ═══════════════════════════════════════════════════════════════
   // 6. CREATE STANDARDS
   // ═══════════════════════════════════════════════════════════════
-  console.log('📖 Creating academic standards...');
+  console.log('Creating academic standards...');
 
   const standards = [
     {
       code: 'MGSE7.NS.1',
-      framework: 'GEORGIA',
-      subject: 'MATH',
+      framework: 'GEORGIA' as const,
+      subject: 'MATH' as const,
       gradeLevel: [7],
       domain: 'The Number System',
       cluster: 'Apply and extend previous understandings of operations with fractions',
@@ -242,8 +242,8 @@ async function main() {
     },
     {
       code: 'MGSE7.NS.2',
-      framework: 'GEORGIA',
-      subject: 'MATH',
+      framework: 'GEORGIA' as const,
+      subject: 'MATH' as const,
       gradeLevel: [7],
       domain: 'The Number System',
       cluster: 'Apply and extend previous understandings of operations with fractions',
@@ -252,8 +252,8 @@ async function main() {
     },
     {
       code: 'MGSE7.EE.1',
-      framework: 'GEORGIA',
-      subject: 'MATH',
+      framework: 'GEORGIA' as const,
+      subject: 'MATH' as const,
       gradeLevel: [7],
       domain: 'Expressions and Equations',
       cluster: 'Use properties of operations to generate equivalent expressions',
@@ -262,8 +262,8 @@ async function main() {
     },
     {
       code: 'MGSE7.EE.4',
-      framework: 'GEORGIA',
-      subject: 'MATH',
+      framework: 'GEORGIA' as const,
+      subject: 'MATH' as const,
       gradeLevel: [7],
       domain: 'Expressions and Equations',
       cluster: 'Solve real-life and mathematical problems using numerical and algebraic expressions and equations',
@@ -286,13 +286,13 @@ async function main() {
   // ═══════════════════════════════════════════════════════════════
   // 7. CREATE TOPICS
   // ═══════════════════════════════════════════════════════════════
-  console.log('📚 Creating topics...');
+  console.log('Creating topics...');
 
   const topics = [
     {
       id: 'topic-rational-numbers-001',
       name: 'Adding and Subtracting Rational Numbers',
-      subject: 'MATH',
+      subject: 'MATH' as const,
       gradeLevel: [7],
       description: 'Understanding how to add and subtract positive and negative fractions, decimals, and integers',
       conceptualUnderstanding: 'Rational numbers extend the number system to include negatives. Operations with rational numbers follow consistent rules based on understanding magnitude and direction.',
@@ -311,7 +311,7 @@ async function main() {
     {
       id: 'topic-linear-expressions-001',
       name: 'Simplifying Linear Expressions',
-      subject: 'MATH',
+      subject: 'MATH' as const,
       gradeLevel: [7],
       description: 'Combining like terms and using properties of operations to simplify algebraic expressions',
       conceptualUnderstanding: 'Algebraic expressions represent patterns and relationships. Simplifying expressions makes them easier to work with while preserving their meaning.',
@@ -350,28 +350,28 @@ async function main() {
   // ═══════════════════════════════════════════════════════════════
   // 8. CREATE LEARNING OBJECTIVES
   // ═══════════════════════════════════════════════════════════════
-  console.log('🎯 Creating learning objectives...');
+  console.log('Creating learning objectives...');
 
   const objectives = [
     {
       topicId: 'topic-rational-numbers-001',
       description: 'Students will add two rational numbers using a number line',
-      bloomsLevel: 'APPLY',
+      bloomsLevel: 'APPLY' as const,
     },
     {
       topicId: 'topic-rational-numbers-001',
       description: 'Students will explain why subtraction is the same as adding the opposite',
-      bloomsLevel: 'UNDERSTAND',
+      bloomsLevel: 'UNDERSTAND' as const,
     },
     {
       topicId: 'topic-linear-expressions-001',
       description: 'Students will combine like terms in a linear expression',
-      bloomsLevel: 'APPLY',
+      bloomsLevel: 'APPLY' as const,
     },
     {
       topicId: 'topic-linear-expressions-001',
       description: 'Students will apply the distributive property to expand expressions',
-      bloomsLevel: 'APPLY',
+      bloomsLevel: 'APPLY' as const,
     },
   ];
 
@@ -436,8 +436,8 @@ async function main() {
       },
       gardenContext: 'A gardener planted flowers at 3.5 feet below ground level in the morning, then the soil level rose 2.8 feet after rain. What is the new depth?',
       difficulty: 3,
-      bloomsLevel: 'APPLY',
-      type: 'PRACTICE',
+      bloomsLevel: 'APPLY' as const,
+      type: 'PRACTICE' as const,
       validated: true,
     },
     {
@@ -487,8 +487,8 @@ async function main() {
       },
       gardenContext: 'You have 4 rows of x flowers each, plus 7 individual flowers. You give away 2 rows of x flowers each, but receive 3 more individual flowers. How many flowers do you have?',
       difficulty: 2,
-      bloomsLevel: 'APPLY',
-      type: 'PRACTICE',
+      bloomsLevel: 'APPLY' as const,
+      type: 'PRACTICE' as const,
       validated: true,
     },
   ];
@@ -504,7 +504,7 @@ async function main() {
   // ═══════════════════════════════════════════════════════════════
   // 10. INITIALIZE REASONING MOVE PROGRESS
   // ═══════════════════════════════════════════════════════════════
-  console.log('🧠 Initializing reasoning move tracking...');
+  console.log('Initializing reasoning move tracking...');
 
   const basicReasoningMoves = [
     'DECOMPOSE',
@@ -540,8 +540,8 @@ async function main() {
   // ═══════════════════════════════════════════════════════════════
   // SEED COMPLETE
   // ═══════════════════════════════════════════════════════════════
-  console.log('\n🎉 Database seed completed successfully!');
-  console.log('\n📊 Summary:');
+  console.log('\nDatabase seed completed successfully!');
+  console.log('\nSummary:');
   console.log(`   • 1 Tenant: ${tenant.name}`);
   console.log(`   • 1 School: ${school.name}`);
   console.log(`   • 1 Educator: ${educatorUser.firstName} ${educatorUser.lastName}`);

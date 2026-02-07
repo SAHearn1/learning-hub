@@ -1,247 +1,417 @@
-# Curriculum RAG System — Architecture & Setup Guide
+# Curriculum Management and RAG System
+
+This document describes the curriculum management and RAG-enhanced chat system implemented for the learning hub.
 
 ## Overview
 
-The Curriculum RAG (Retrieval-Augmented Generation) system enriches RootGuide's tutoring
-conversations with curriculum-aligned content. When a student asks about fractions, the
-system retrieves the relevant Georgia Standards of Excellence, prerequisite concepts,
-common misconceptions, and scaffolded problems — then injects that context into the AI
-prompt so RootGuide can tutor with precision.
+The system provides:
+1. **Curriculum Storage**: Organized curriculum content in the `docs/` directory
+2. **Webhook Ingestion**: API endpoint for receiving curriculum updates from n8n workflows
+3. **Admin Interface**: UI for monitoring and managing curriculum ingestion
+4. **Vector Database**: Pinecone integration for semantic search
+5. **RAG-Enhanced Chat**: Chat API that retrieves relevant curriculum context
+6. **Automated Workflows**: GitHub Actions for scheduled curriculum updates
 
 ## Architecture
 
 ```
-┌─────────────────────────────────────────────────────────────────┐
-│                     INGESTION PIPELINE                          │
-│                                                                 │
-│  Curriculum Files ──► n8n Webhook ──► /api/ingest               │
-│  (GitHub repo)        (on push)       │                         │
-│                                       ├─► Parse (PDF/MD/JSON)   │
-│                                       ├─► Chunk (512 tokens)    │
-│                                       ├─► Embed (OpenAI)        │
-│                                       ├─► Store (Pinecone)      │
-│                                       └─► Log (IngestLog)       │
-└─────────────────────────────────────────────────────────────────┘
+┌─────────────┐
+│   docs/     │  Curriculum files (markdown)
+└──────┬──────┘
+       │
+       ├──> n8n Workflow ──> Parse & Extract
+       │                          │
+       │                          ▼
+       │                    Generate Embeddings
+       │                          │
+       │                          ▼
+       │                    ┌──────────────┐
+       │                    │  Pinecone    │
+       │                    │  (Vectors)   │
+       │                    └──────┬───────┘
+       │                           │
+       ▼                           │
+┌─────────────────┐                │
+│  /api/ingest    │◄───────────────┘
+│  (Webhook)      │
+└────────┬────────┘
+         │
+         ▼
+┌─────────────────┐
+│  IngestLog DB   │
+│  (Audit Trail)  │
+└─────────────────┘
 
-┌─────────────────────────────────────────────────────────────────┐
-│                     RETRIEVAL PIPELINE                           │
-│                                                                 │
-│  Student Message ──► Embed Query ──► Pinecone Search            │
-│                                      │                          │
-│                                      ├─► Top-K results (k=5)   │
-│                                      ├─► Rerank by relevance    │
-│                                      └─► Inject into prompt     │
-│                                           as topicContext       │
-│                                                                 │
-│  /api/chat ──► buildMasterSystemPrompt({ topicContext }) ──► AI │
-└─────────────────────────────────────────────────────────────────┘
+User Query ──> /api/chat ──> Generate Embedding ──> Query Pinecone
+                   │                                      │
+                   │                                      ▼
+                   │                              Retrieve Context
+                   │                                      │
+                   └──────> Build Prompt <───────────────┘
+                                 │
+                                 ▼
+                           Claude API
+                                 │
+                                 ▼
+                           Stream Response
 ```
 
 ## Components
 
-### 1. Embedding Service (`src/lib/embeddings.ts`)
+### 1. Curriculum Structure (`docs/`)
 
-- **Model**: OpenAI `text-embedding-3-small` (1536 dimensions)
-- **Cost**: ~$0.02 per 1M tokens
-- **Why OpenAI**: Best cost/quality ratio for educational content, wide ecosystem support
-- Generates embeddings for both ingested documents and student queries
-- Tracks usage in AIUsageLedger with `EMBEDDING_GENERATION` request type
+Extracted from `fg2g-curriculum.zip`, the curriculum is organized in numbered folders:
 
-### 2. Vector Store (`src/lib/pinecone.ts`)
+```
+docs/
+├── README.md
+├── appendices/
+├── docs/
+│   ├── 00-front-matter/
+│   ├── 01-introduction/
+│   ├── 02-theoretical-foundation/
+│   ├── 03-5rs-framework/
+│   ├── 04-grade-bands/
+│   │   ├── K-2/
+│   │   ├── 3-5/
+│   │   ├── 6-8/
+│   │   └── 9-12/
+│   ├── 05-living-learning-labs/
+│   ├── 06-assessment-tools/
+│   ├── 07-professional-development/
+│   ├── 08-technology-integration/
+│   ├── 09-community-partnerships/
+│   └── 10-implementation-guide/
+└── assets/
+```
 
-- **Service**: Pinecone (serverless, us-east-1)
-- **Index**: `rootwork-curriculum`
-- **Dimensions**: 1536 (matching text-embedding-3-small)
-- **Metric**: cosine similarity
-- **Metadata fields**: subject, gradeLevel, standard, documentType, chunkIndex
+### 2. Webhook Ingestion Endpoint (`/api/ingest`)
 
-### 3. Ingest API (`src/app/api/ingest/route.ts`)
+**Purpose**: Receives curriculum data from n8n workflows and logs ingestion events.
 
-- Receives curriculum files via POST (multipart or JSON)
-- Supports: Markdown (.md), JSON (.json), plain text (.txt), PDF (.pdf)
-- Chunks documents into ~512-token segments with overlap
-- Generates embeddings and upserts to Pinecone
-- Logs every ingest operation in `IngestLog` table
-- Authenticated via webhook secret (for n8n) or Clerk (for admin UI)
+**Authentication**: Bearer token using `N8N_WEBHOOK_SECRET` environment variable.
 
-### 4. Vector Search (`src/lib/vector-search.ts`)
+**Request Format**:
+```json
+{
+  "source": "WEBHOOK",
+  "files": [
+    {
+      "path": "docs/01-introduction/why-this-curriculum.md",
+      "content": "...",
+      "metadata": {
+        "course": "RootWork Framework",
+        "module": "Introduction"
+      }
+    }
+  ],
+  "metadata": {
+    "triggeredBy": "github-actions",
+    "timestamp": "2026-02-07T22:00:00.000Z"
+  }
+}
+```
 
-- Embeds the student's query
-- Queries Pinecone with metadata filters (subject, gradeLevel)
-- Returns top-K results with scores
-- Formats results as structured context for the system prompt
+**Response**:
+```json
+{
+  "success": true,
+  "message": "Ingestion completed successfully",
+  "logId": "clxxx...",
+  "processedFiles": 5,
+  "durationMs": 1234
+}
+```
 
-### 5. n8n Workflow
+**TODO**: Implement actual file processing logic:
+1. Parse curriculum file content
+2. Generate embeddings using a production embedding service (OpenAI, Cohere, etc.)
+3. Upsert vectors to Pinecone with metadata
+4. Update database records as needed
 
-- **Trigger**: GitHub push to curriculum content repo
-- **Action**: Fetches changed files, POSTs each to `/api/ingest`
-- **Authentication**: Shared webhook secret (`N8N_WEBHOOK_SECRET`)
+### 3. Admin Ingest UI (`/admin/ingest`)
 
-## Data Flow
+**Features**:
+- View ingestion history with statistics
+- Real-time log updates (polls every 5 seconds)
+- Filter by status (Success, Failure, Processing, Pending)
+- Search logs by ID, source, or error message
+- Manual ingestion trigger button
+- Statistics dashboard showing total, successful, failed, and processing ingestions
 
-### Ingestion
-1. Educator pushes curriculum file to GitHub
-2. GitHub webhook triggers n8n workflow
-3. n8n fetches file content and metadata
-4. n8n POSTs to `/api/ingest` with file content + metadata
-5. Ingest route parses, chunks, embeds, and stores in Pinecone
-6. IngestLog records the operation for audit
+**Access Control**: Only accessible to users with `PLATFORM_ADMIN`, `DISTRICT_ADMIN`, or `SCHOOL_ADMIN` roles.
 
-### Retrieval (during tutoring)
-1. Student sends a message in `/api/chat`
-2. Chat route calls `searchCurriculum(query, { subject, gradeLevel })`
-3. Query is embedded via OpenAI
-4. Pinecone returns top-5 matching chunks
-5. Chunks are formatted and injected as `topicContext` in the system prompt
-6. RootGuide responds with curriculum-aligned tutoring
+### 4. IngestLog Database Model
 
-## Database Schema
-
-### IngestLog Model
 ```prisma
 model IngestLog {
-  id             String       @id @default(cuid())
-  tenantId       String
-  filename       String
-  documentType   String       // md, json, txt, pdf
-  subject        Subject?
-  gradeLevel     Int[]
-  standardCodes  String[]     // e.g., ["MGSE3.NF.1", "MGSE3.NF.2"]
-  chunkCount     Int
-  vectorIds      String[]     // Pinecone vector IDs
-  status         IngestStatus
-  errorMessage   String?
-  metadata       Json?
-  processedAt    DateTime     @default(now())
-  @@index([tenantId])
+  id               String       @id @default(cuid())
+  timestamp        DateTime     @default(now())
+  status           IngestStatus // PENDING, SUCCESS, FAILURE, PROCESSING
+  source           IngestSource // WEBHOOK, MANUAL, SCHEDULED, API
+  payload          Json?
+  errorMessage     String?      @db.Text
+  processedFiles   Int          @default(0)
+  durationMs       Int?
+  metadata         Json?
+  createdAt        DateTime     @default(now())
+  updatedAt        DateTime     @updatedAt
+
+  @@index([timestamp])
   @@index([status])
-}
-
-enum IngestStatus {
-  PENDING
-  PROCESSING
-  COMPLETED
-  FAILED
+  @@index([source])
 }
 ```
 
-## Setup Guide
+### 5. Pinecone Integration
 
-### Prerequisites
-- OpenAI API key (for embeddings)
-- Pinecone account (free tier works for development)
-- n8n instance (cloud or self-hosted)
+**Client Library** (`src/lib/pinecone/client.ts`):
+- `getPineconeClient()`: Initialize Pinecone client
+- `queryPinecone(embedding, topK, filter)`: Search for similar vectors
+- `upsertToPinecone(vectors)`: Insert/update vectors
 
-### Step 1: Environment Variables
+**Embeddings** (`src/lib/pinecone/embeddings.ts`):
+- `generateEmbedding(text)`: Generate embedding vector for text
+- `generateEmbeddings(texts[])`: Batch generate embeddings
 
-Add to `.env`:
+**⚠️ IMPORTANT**: The current implementation uses placeholder embeddings. You MUST integrate a production embedding service before deployment:
+- OpenAI: `text-embedding-3-small` or `text-embedding-3-large`
+- Cohere: `embed-english-v3.0`
+- Voyage AI: `voyage-2`
+
+### 6. RAG-Enhanced Chat API
+
+The chat API (`/api/chat`) has been enhanced with RAG capabilities:
+
+1. **Query Embedding**: User's message is converted to an embedding vector
+2. **Context Retrieval**: Query Pinecone for top-k most relevant curriculum documents
+3. **Filtering**: Filter by subject and grade level
+4. **Context Injection**: Retrieved content is added to the system prompt
+5. **Response Generation**: Claude generates response using both conversation history and curriculum context
+
+**Metrics Logged**:
+- Number of contexts retrieved
+- Retrieval duration (ms)
+- Session ID for debugging
+
+### 7. GitHub Actions Workflow
+
+**File**: `.github/workflows/trigger-ingest.yml`
+
+**Triggers**:
+- Manual dispatch via GitHub UI
+- Scheduled daily at 2 AM UTC
+- Can be customized with different sources (SCHEDULED, MANUAL, API)
+
+**Workflow**:
+1. Checkout repository
+2. Trigger n8n webhook with repository metadata
+3. Includes authentication using `N8N_WEBHOOK_SECRET`
+4. Reports success/failure status
+
+**Required Secrets**:
+- `N8N_WEBHOOK_URL`: URL of the n8n webhook endpoint
+- `N8N_WEBHOOK_SECRET`: Secret for authenticating webhook requests
+
+### 8. n8n Workflow Configuration
+
+**File**: `n8n-workflow-curriculum-ingestion.json`
+
+**Nodes**:
+1. **Webhook**: Receives trigger from GitHub Actions
+2. **GitHub**: Fetches curriculum files from repository
+3. **Transform**: Extracts and processes metadata
+4. **Pinecone**: Stores embeddings in vector database
+5. **HTTP Request**: Notifies learning hub via `/api/ingest`
+
+**Required Credentials**:
+- GitHub API credentials
+- Pinecone API key
+- Learning hub webhook authentication
+
+### 9. Enhanced System Prompt
+
+The master system prompt now includes curriculum-aware instructions:
+
+- Reference specific course materials when relevant
+- Cite curriculum sources naturally
+- Adapt explanations to match curriculum's pedagogical approach
+- Use consistent terminology from curriculum
+- Guide students through appropriate learning pathways
+- Acknowledge when curriculum context is insufficient
+
+## Environment Variables
+
+Add these to your `.env` file:
+
 ```bash
-# Embedding Service (OpenAI)
-OPENAI_API_KEY=sk-xxxxx
+# Pinecone Vector Database
+PINECONE_API_KEY=your_api_key_here
+PINECONE_ENVIRONMENT=your_environment_here  # e.g., us-west1-gcp
+PINECONE_INDEX_NAME=your_index_name_here
 
-# Vector Store (Pinecone)
-PINECONE_API_KEY=pcsk_xxxxx
-PINECONE_INDEX=rootwork-curriculum
-
-# Ingest Webhook
-N8N_WEBHOOK_SECRET=whsec_xxxxx
+# n8n Workflow Integration
+N8N_WEBHOOK_SECRET=your_secret_here
+N8N_WEBHOOK_URL=your_n8n_webhook_url_here
 ```
 
-### Step 2: Create Pinecone Index
+## Setup Instructions
+
+### 1. Pinecone Setup
 
 ```bash
-npx tsx scripts/create-pinecone-index.ts
+# Install Pinecone CLI (optional)
+npm install -g @pinecone-database/cli
+
+# Create index
+# Dimension should match your embedding model (1536 for OpenAI text-embedding-3-small)
+# Use cosine similarity for semantic search
 ```
 
-This creates a serverless index with:
-- 1536 dimensions (text-embedding-3-small)
-- Cosine similarity metric
-- us-east-1 region (AWS)
+Via Pinecone Dashboard:
+1. Create new index with dimension 1536 (or your embedding model's dimension)
+2. Choose cosine similarity metric
+3. Copy API key and environment name
 
-### Step 3: Run Database Migration
+### 2. n8n Workflow Setup
+
+1. Import `n8n-workflow-curriculum-ingestion.json` into n8n
+2. Configure credentials:
+   - GitHub API token with read access to repository
+   - Pinecone API credentials
+   - HTTP header auth for webhook callback
+3. Set environment variables in n8n:
+   - `PINECONE_API_KEY`
+   - `PINECONE_ENVIRONMENT`
+   - `PINECONE_INDEX_NAME`
+   - `NEXT_PUBLIC_APP_URL`
+4. Activate workflow
+5. Copy webhook URL
+
+### 3. GitHub Secrets Setup
+
+In your GitHub repository settings, add:
+- `N8N_WEBHOOK_URL`: The webhook URL from n8n
+- `N8N_WEBHOOK_SECRET`: Generate a secure random string
+
+### 4. Database Migration
 
 ```bash
+# Generate Prisma client with new IngestLog model
+npm run db:generate
+
+# Run migration
 npm run db:migrate
 ```
 
-This creates the `IngestLog` table.
+### 5. Embedding Service Integration
 
-### Step 4: Configure n8n Workflow
+Replace the placeholder in `src/lib/pinecone/embeddings.ts`:
 
-1. Import `scripts/n8n-workflow.json` into your n8n instance
-2. Set credentials:
-   - **GitHub**: OAuth or personal access token for the curriculum repo
-   - **HTTP Request**: Set header `x-webhook-secret` to your `N8N_WEBHOOK_SECRET`
-   - **URL**: Set to `https://your-domain.com/api/ingest`
-3. Activate the workflow
+**OpenAI Example**:
+```typescript
+import OpenAI from 'openai';
 
-### Step 5: Set GitHub Secrets
+const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
 
-In the curriculum content repository (not this app repo):
-```
-N8N_WEBHOOK_URL=https://your-n8n-instance.com/webhook/curriculum-ingest
-N8N_WEBHOOK_SECRET=whsec_xxxxx
-```
-
-Configure a GitHub webhook pointing to the n8n webhook URL, triggered on `push` events.
-
-### Step 6: Test the Pipeline
-
-```bash
-# Manual ingest test
-curl -X POST http://localhost:3000/api/ingest \
-  -H "Content-Type: application/json" \
-  -H "x-webhook-secret: your-secret" \
-  -d '{
-    "filename": "MGSE3.NF.1.md",
-    "content": "# MGSE3.NF.1\n\nUnderstand a fraction 1/b...",
-    "documentType": "md",
-    "subject": "MATH",
-    "gradeLevel": [3],
-    "standardCodes": ["MGSE3.NF.1"]
-  }'
-```
-
-## Chunking Strategy
-
-Documents are split into chunks of ~512 tokens with 50-token overlap:
-
-1. **Markdown**: Split on `## ` headers, then by paragraphs
-2. **JSON**: Each top-level object or array element becomes a chunk
-3. **Plain text**: Split on double newlines, then by sentence boundaries
-4. **PDF**: Extract text, then apply plain text splitting
-
-Each chunk preserves:
-- Source filename and document type
-- Subject and grade level metadata
-- Standard codes (if applicable)
-- Position index within the document
-
-## Metadata Schema (Pinecone)
-
-Each vector in Pinecone carries this metadata:
-```json
-{
-  "filename": "MGSE3.NF.1.md",
-  "documentType": "md",
-  "subject": "MATH",
-  "gradeLevel": 3,
-  "standardCodes": ["MGSE3.NF.1"],
-  "chunkIndex": 0,
-  "totalChunks": 4,
-  "text": "Understand a fraction 1/b as the quantity..."
+export async function generateEmbedding(text: string): Promise<number[]> {
+  const response = await openai.embeddings.create({
+    model: "text-embedding-3-small",
+    input: text,
+  });
+  return response.data[0].embedding;
 }
 ```
 
-## Cost Estimates
+## Usage
 
-| Component | Free Tier | Production |
-|-----------|-----------|------------|
-| OpenAI Embeddings | $0.02/1M tokens | ~$1-5/month |
-| Pinecone | 100K vectors free | $70/month (s1.x1) |
-| n8n | 5 workflows free | $20/month (cloud) |
+### Manual Ingestion Trigger
 
-For a typical K-12 curriculum (~500 standards, ~200 topics), expect:
-- ~2,000 vectors in Pinecone
-- ~$0.50 in embedding costs (one-time)
-- Per-query cost: ~$0.00002 (negligible)
+1. Navigate to `/admin/ingest` in your browser
+2. Click "Trigger Manual Ingestion" button
+3. Monitor the ingestion logs table for status
+
+### Automated Ingestion
+
+Runs automatically via GitHub Actions:
+- Daily at 2 AM UTC
+- Can be manually triggered from GitHub Actions tab
+
+### Testing the RAG System
+
+1. Start a new chat session as a student
+2. Ask a question related to curriculum content
+3. The system will:
+   - Generate embedding for your question
+   - Search Pinecone for relevant curriculum content
+   - Inject retrieved context into the conversation
+   - Generate response using Claude with curriculum context
+
+### Monitoring
+
+- **Admin UI**: View ingestion history at `/admin/ingest`
+- **Database**: Query `IngestLog` table for detailed audit trail
+- **Logs**: Check application logs for RAG retrieval metrics
+
+## Security Considerations
+
+✅ **Implemented**:
+- Webhook secret authentication for ingestion endpoint
+- Role-based access control for admin endpoints
+- Server-side secret handling (no client-side exposure)
+- GitHub Actions permission restrictions
+
+⚠️ **Recommendations**:
+- Use HTTPS for all webhook communications
+- Rotate webhook secrets regularly
+- Monitor ingestion logs for suspicious activity
+- Implement rate limiting on ingestion endpoint
+- Use read-only GitHub tokens with minimal scope
+
+## Performance Considerations
+
+- **RAG Query Time**: ~100-300ms depending on Pinecone latency
+- **Embedding Generation**: ~50-200ms per query (varies by service)
+- **Cache Strategy**: Consider caching embeddings for common queries
+- **Batch Processing**: Use batch embedding generation for efficiency
+- **Index Optimization**: Use appropriate Pinecone pod type for your scale
+
+## Troubleshooting
+
+### Ingestion Fails
+
+1. Check `IngestLog` table for error messages
+2. Verify webhook secret matches between n8n and application
+3. Ensure n8n workflow is active
+4. Check GitHub Actions logs for trigger failures
+
+### RAG Returns No Context
+
+1. Verify Pinecone index has data: use Pinecone dashboard
+2. Check PINECONE_INDEX_NAME environment variable
+3. Verify embeddings are being generated correctly
+4. Check filter criteria (subject, grade level)
+
+### Chat API Errors
+
+1. Check application logs for RAG retrieval errors
+2. Verify Pinecone API key and environment
+3. Test embedding generation separately
+4. Confirm Claude API is responding
+
+## Future Enhancements
+
+1. **Implement Actual File Processing**: Add logic to parse curriculum files and generate embeddings
+2. **Add Embedding Cache**: Cache frequently queried embeddings
+3. **Metadata Filtering**: Add more sophisticated filtering (difficulty, topic, standards)
+4. **Hybrid Search**: Combine semantic search with keyword search
+5. **Reranking**: Implement reranking of retrieved results for better relevance
+6. **Admin Analytics**: Add charts and metrics to admin dashboard
+7. **Batch Ingestion**: Support bulk curriculum updates
+8. **Version Control**: Track curriculum versions and changes
+9. **A/B Testing**: Compare RAG-enhanced vs. non-RAG responses
+10. **User Feedback Loop**: Collect feedback on response quality
+
+## License
+
+Part of the RootWork Learning Hub platform.

@@ -122,7 +122,7 @@ export function AssessmentCard({
 
             {showHints && hintLevel > 0 && (
               <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 space-y-2">
-                <p className="font-semibold text-blue-900">💡 Hints:</p>
+                <p className="font-semibold text-blue-900">Hints:</p>
                 {scaffoldHints.slice(0, hintLevel).map((hint, index) => (
                   <p key={index} className="text-sm text-blue-800">
                     {index + 1}. {hint}
@@ -150,7 +150,7 @@ export function AssessmentCard({
 
             {!feedback.isCorrect && feedback.scaffoldHints && feedback.scaffoldHints.length > 0 && (
               <div className="mt-4 space-y-2">
-                <p className="font-semibold text-sm">💡 Try thinking about:</p>
+                <p className="font-semibold text-sm">Try thinking about:</p>
                 {feedback.scaffoldHints.map((hint, index) => (
                   <p key={index} className="text-sm text-gray-700">
                     • {hint}
