@@ -13,7 +13,8 @@
     "db:seed": "tsx prisma/seed.ts",
     "db:studio": "prisma studio",
     "test": "vitest",
-    "test:e2e": "playwright test"
+    "test:e2e": "playwright test",
+    "rag:create-index": "tsx scripts/create-pinecone-index.ts"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.30.0",
@@ -35,6 +36,7 @@
     "date-fns": "^4.1.0",
     "lucide-react": "^0.400.0",
     "next": "^15.1.0",
+    "openai": "^6.18.0",
     "react": "^18.3.0",
     "react-dom": "^18.3.0",
     "stripe": "^16.0.0",

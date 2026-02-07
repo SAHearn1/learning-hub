@@ -550,6 +550,35 @@ enum AIFeature {
 }
 
 // ═══════════════════════════════════════════════════════════════
+// CURRICULUM RAG — INGEST TRACKING
+// ═══════════════════════════════════════════════════════════════
+
+model IngestLog {
+  id             String       @id @default(cuid())
+  tenantId       String
+  filename       String
+  documentType   String       // md, json, txt, pdf
+  subject        Subject?
+  gradeLevel     Int[]
+  standardCodes  String[]
+  chunkCount     Int          @default(0)
+  vectorIds      String[]
+  status         IngestStatus @default(PENDING)
+  errorMessage   String?
+  metadata       Json?
+  processedAt    DateTime     @default(now())
+  @@index([tenantId])
+  @@index([status])
+}
+
+enum IngestStatus {
+  PENDING
+  PROCESSING
+  COMPLETED
+  FAILED
+}
+
+// ═══════════════════════════════════════════════════════════════
 // AUDIT & COMPLIANCE
 // ═══════════════════════════════════════════════════════════════
 
