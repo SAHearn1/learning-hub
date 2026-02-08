@@ -35,6 +35,6 @@ export const POST = withApiHandler(async (req) => {
 
     return NextResponse.json({ received: true });
   } catch {
-    return NextResponse.json({ error: 'Invalid webhook payload.' }, { status: 400 });
+    throw new ValidationError('Invalid webhook payload.');
   }
 });
