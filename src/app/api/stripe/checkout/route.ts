@@ -4,6 +4,14 @@ import { db } from '@/lib/db';
 import { stripe } from '@/lib/stripe';
 import { z } from 'zod';
 
+const ALLOWED_PRICE_IDS = new Set(
+  [
+    process.env.STRIPE_PRICE_STARTER,
+    process.env.STRIPE_PRICE_PROFESSIONAL,
+    process.env.STRIPE_PRICE_ENTERPRISE,
+  ].filter(Boolean)
+);
+
 const checkoutSchema = z.object({
   priceId: z.string().min(1),
 });
@@ -20,6 +28,10 @@ export async function POST(req: NextRequest) {
   } catch (err) {
     const message = err instanceof z.ZodError ? err.errors.map(e => e.message).join(', ') : 'Invalid request';
     return NextResponse.json({ error: message }, { status: 400 });
+  }
+
+  if (!ALLOWED_PRICE_IDS.has(body.priceId)) {
+    return NextResponse.json({ error: 'Invalid price selection' }, { status: 400 });
   }
 
   const user = await db.user.findUnique({

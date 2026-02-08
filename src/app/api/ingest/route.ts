@@ -16,18 +16,22 @@ const ingestPayloadSchema = z.object({
 export async function POST(req: NextRequest) {
   const startTime = Date.now();
   
-  // Verify webhook secret
+  // Verify webhook secret — always required, never allow bypass
   const webhookSecret = process.env.N8N_WEBHOOK_SECRET;
+  if (!webhookSecret) {
+    console.error('N8N_WEBHOOK_SECRET is not configured — rejecting ingest request');
+    return NextResponse.json(
+      { error: 'Webhook not configured' },
+      { status: 500 }
+    );
+  }
+
   const authHeader = req.headers.get('authorization');
-  
-  if (webhookSecret) {
-    const expectedAuth = `Bearer ${webhookSecret}`;
-    if (authHeader !== expectedAuth) {
-      return NextResponse.json(
-        { error: 'Unauthorized', message: 'Invalid webhook secret' },
-        { status: 401 }
-      );
-    }
+  if (authHeader !== `Bearer ${webhookSecret}`) {
+    return NextResponse.json(
+      { error: 'Unauthorized' },
+      { status: 401 }
+    );
   }
 
   let body;
@@ -121,10 +125,5 @@ export async function POST(req: NextRequest) {
 }
 
 export async function GET() {
-  // Health check endpoint
-  return NextResponse.json({
-    status: 'ok',
-    endpoint: '/api/ingest',
-    methods: ['POST'],
-  });
+  return NextResponse.json({ status: 'ok' });
 }
