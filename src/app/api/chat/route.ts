@@ -2,12 +2,15 @@ import { auth } from '@clerk/nextjs/server';
 import { db } from '@/lib/db';
 import { anthropic, AI_MODELS } from '@/lib/ai/client';
 import { buildMasterSystemPrompt } from '@/lib/ai/prompts/master-system-prompt';
-import { generateEmbedding } from '@/lib/pinecone/embeddings';
-import { queryPinecone } from '@/lib/pinecone/client';
+import { searchCurriculum, formatCurriculumContext } from '@/lib/vector-search';
 import { enforceUsageLimits, UsageLimitError } from '@/lib/usage-limits';
 import { detectDysregulation, updateRegulationLevel } from '@/lib/regulation/detector';
 import { analyzeThinkingQuality } from '@/lib/trace/tracker';
 import { getRecommendedPhaseTransition } from '@/lib/five-rs/phase-transition';
+import { withApiHandler } from '@/lib/api-handler';
+import { AuthenticationError, ForbiddenError, NotFoundError, PaymentRequiredError, ValidationError } from '@/lib/api-errors';
+import { incrementMetric, observeLatency } from '@/lib/api/metrics';
+import { logger } from '@/lib/logger';
 import { z } from 'zod';
 
 const chatRequestSchema = z.object({
@@ -147,35 +150,18 @@ export const POST = withApiHandler(async (req, { requestId }) => {
   try {
     const ragStartTime = Date.now();
 
-    // Generate embedding for the user's query
-    const queryEmbedding = await generateEmbedding(body.message);
-
-    // Query Pinecone for relevant curriculum content
-    const filter: Record<string, any> = {
+    const matches = await searchCurriculum(body.message, {
       subject: session.subject,
-    };
-
-    // Add grade level filter if available
-    if (user.student.gradeLevel) {
-      filter.gradeLevel = user.student.gradeLevel;
-    }
-
-    const matches = await queryPinecone(queryEmbedding, 5, filter);
+      gradeLevel: user.student.gradeLevel ?? undefined,
+      topK: 6,
+      minScore: 0.35,
+    });
     ragMetrics.retrieved = matches.length;
     ragMetrics.durationMs = Date.now() - ragStartTime;
 
     // Format retrieved context
     if (matches.length > 0) {
-      curriculumContext = matches
-        .map((match: { metadata?: Record<string, unknown>; score?: number }, idx: number) => {
-          const metadata = (match.metadata as Record<string, string>) || {};
-          const content = metadata.content || metadata.text || 'No content available';
-          const source = metadata.source || metadata.title || 'Unknown source';
-          const score = match.score?.toFixed(3) || 'N/A';
-
-          return `[Context ${idx + 1}] (Relevance: ${score})\nSource: ${source}\n${content}`;
-        })
-        .join('\n\n---\n\n');
+      curriculumContext = formatCurriculumContext(matches);
 
       logger.info('RAG context retrieved', {
         requestId,

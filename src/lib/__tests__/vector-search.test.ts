@@ -1,0 +1,92 @@
+import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { searchCurriculum, formatCurriculumContext } from '@/lib/vector-search';
+import * as embeddings from '@/lib/embeddings';
+import * as pinecone from '@/lib/pinecone';
+
+vi.mock('@/lib/embeddings', () => ({
+  generateEmbedding: vi.fn(),
+}));
+
+vi.mock('@/lib/pinecone', () => ({
+  queryVectors: vi.fn(),
+}));
+
+describe('vector-search', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    process.env.OPENAI_API_KEY = 'test-key';
+    process.env.PINECONE_API_KEY = 'test-key';
+  });
+
+  it('retrieves curriculum-aligned contexts with metadata filtering', async () => {
+    vi.mocked(embeddings.generateEmbedding).mockResolvedValue([0.1, 0.2]);
+    vi.mocked(pinecone.queryVectors).mockResolvedValue([
+      {
+        id: 'a',
+        score: 0.91,
+        metadata: {
+          text: 'Use manipulatives to model equivalent fractions before symbolic notation.',
+          filename: 'docs/docs/04-grade-bands/3-5/part-2.md',
+          subject: 'MATH',
+          gradeLevel: 4,
+          standardCodes: ['CCSS.MATH.CONTENT.4.NF.A.1'],
+        },
+      },
+      {
+        id: 'b',
+        score: 0.2,
+        metadata: {
+          text: 'Out-of-band result',
+          filename: 'docs/docs/04-grade-bands/9-12/part-4.md',
+          subject: 'MATH',
+          gradeLevel: 10,
+          standardCodes: [],
+        },
+      },
+    ] as any);
+
+    const results = await searchCurriculum('How do I teach equivalent fractions in grade 4?', {
+      subject: 'MATH',
+      gradeLevel: 4,
+      minScore: 0.35,
+      topK: 5,
+    });
+
+    expect(embeddings.generateEmbedding).toHaveBeenCalled();
+    expect(pinecone.queryVectors).toHaveBeenCalledWith([0.1, 0.2], expect.objectContaining({
+      subject: 'MATH',
+      gradeLevel: 4,
+      topK: 5,
+    }));
+    expect(results).toHaveLength(1);
+    expect(results[0].text).toContain('equivalent fractions');
+
+    const context = formatCurriculumContext(results);
+    expect(context).toContain('Relevant Curriculum Content');
+    expect(context).toContain('CCSS.MATH.CONTENT.4.NF.A.1');
+  });
+
+  it('uses cache for repeated retrieval on same query/filter set', async () => {
+    vi.mocked(embeddings.generateEmbedding).mockResolvedValue([0.5, 0.6]);
+    vi.mocked(pinecone.queryVectors).mockResolvedValue([
+      {
+        id: 'cached-1',
+        score: 0.88,
+        metadata: {
+          text: 'Anchor SEL reflection prompts to restorative routines.',
+          filename: 'docs/docs/03-5rs-framework/reflect.md',
+          subject: 'INTERDISCIPLINARY',
+          gradeLevel: 7,
+          standardCodes: [],
+        },
+      },
+    ] as any);
+
+    const options = { subject: 'INTERDISCIPLINARY', gradeLevel: 7, topK: 3 };
+    const first = await searchCurriculum('How can I run reflection circles after conflict?', options);
+    const second = await searchCurriculum('How can I run reflection circles after conflict?', options);
+
+    expect(first).toEqual(second);
+    expect(pinecone.queryVectors).toHaveBeenCalledTimes(1);
+  });
+});

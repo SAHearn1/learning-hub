@@ -1,9 +1,12 @@
 import { NextResponse } from 'next/server';
 import { db } from '@/lib/db';
 import { z } from 'zod';
-import { chunkText, generateEmbeddings } from '@/lib/embeddings';
-import { upsertVectors, type CurriculumMetadata } from '@/lib/pinecone';
+import { generateEmbeddings } from '@/lib/embeddings';
+import { upsertVectors } from '@/lib/pinecone';
 import { logger } from '@/lib/logger';
+import { withApiHandler } from '@/lib/api-handler';
+import { AuthenticationError, ValidationError } from '@/lib/api-errors';
+import { parseCurriculumFile } from '@/lib/curriculum/parser';
 
 const ingestPayloadSchema = z.object({
   source: z.enum(['WEBHOOK', 'MANUAL', 'SCHEDULED', 'API']).optional().default('WEBHOOK'),
@@ -95,26 +98,9 @@ export const POST = withApiHandler(async (req, ctx) => {
         // Process each file in the batch
         for (const file of batchFiles) {
           try {
-            // Skip files without content
-            if (!file.content || file.content.trim().length === 0) {
-              logger.warn('Skipping file with no content', { path: file.path });
-              failedFiles++;
-              errors.push(`${file.path}: No content`);
-              continue;
-            }
-            
-            // Extract metadata with defaults
-            const metadata = file.metadata || {};
-            const subject = metadata.subject || 'MATH';
-            const gradeLevel = metadata.gradeLevel || 0;
-            const standardCodes = Array.isArray(metadata.standardCodes) 
-              ? metadata.standardCodes 
-              : [];
-            
-            // Chunk the file content
-            const chunks = chunkText(file.content, 512, 50);
-            
-            if (chunks.length === 0) {
+            const parsedChunks = await parseCurriculumFile(file);
+
+            if (parsedChunks.length === 0) {
               logger.warn('No chunks generated for file', { path: file.path });
               failedFiles++;
               errors.push(`${file.path}: No chunks generated`);
@@ -123,40 +109,22 @@ export const POST = withApiHandler(async (req, ctx) => {
             
             logger.debug('Generated chunks for file', {
               path: file.path,
-              chunkCount: chunks.length,
+              chunkCount: parsedChunks.length,
             });
             
             // Generate embeddings for all chunks
-            const embeddings = await generateEmbeddings(chunks);
+            const embeddings = await generateEmbeddings(parsedChunks.map((chunk) => chunk.text));
             
-            if (embeddings.length !== chunks.length) {
-              throw new Error(`Embedding count mismatch: ${embeddings.length} vs ${chunks.length}`);
+            if (embeddings.length !== parsedChunks.length) {
+              throw new Error(`Embedding count mismatch: ${embeddings.length} vs ${parsedChunks.length}`);
             }
             
             // Prepare vectors for Pinecone with comprehensive metadata
-            const vectors = chunks.map((chunk, i) => {
-              // Generate unique ID for each chunk
-              const cleanPath = file.path.replace(/[^a-zA-Z0-9-_]/g, '-');
-              const vectorId = `${cleanPath}-chunk-${i}`;
-              
-              const vectorMetadata: CurriculumMetadata = {
-                filename: file.path,
-                documentType: 'curriculum',
-                subject: subject,
-                gradeLevel: gradeLevel,
-                standardCodes: standardCodes,
-                chunkIndex: i,
-                totalChunks: chunks.length,
-                text: chunk,
-                // Include optional metadata if provided
-                ...(metadata.course && { course: metadata.course }),
-                ...(metadata.module && { module: metadata.module }),
-              };
-              
+            const vectors = parsedChunks.map((chunk, i) => {
               return {
-                id: vectorId,
+                id: chunk.id,
                 values: embeddings[i],
-                metadata: vectorMetadata,
+                metadata: chunk.metadata,
               };
             });
             
@@ -165,7 +133,7 @@ export const POST = withApiHandler(async (req, ctx) => {
             
             logger.info('Successfully processed file', {
               path: file.path,
-              chunks: chunks.length,
+              chunks: parsedChunks.length,
               vectorIds: vectors.length,
             });
             
