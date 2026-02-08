@@ -11,6 +11,7 @@ const updateSessionSchema = z.object({
     signals: z.array(z.string()),
     interventionCount: z.number(),
   }).optional(),
+  metadata: z.record(z.unknown()).optional(),
   endSession: z.boolean().optional(),
   endedAt: z.string().optional(),
   metadata: z.record(z.unknown()).optional(),
@@ -92,4 +93,49 @@ export async function PATCH(
   });
 
   return NextResponse.json({ data: updated });
+}
+
+/**
+ * DELETE /api/sessions/[sessionId]
+ * Ends a tutoring session (soft delete via endedAt timestamp)
+ * 
+ * @param sessionId - Session ID
+ * @returns Confirmation with updated session
+ * @throws 401 if not authenticated
+ * @throws 403 if not authorized to end session
+ * @throws 404 if session not found
+ */
+export async function DELETE(
+  _req: NextRequest,
+  { params }: { params: Promise<{ sessionId: string }> },
+) {
+  const { sessionId } = await params;
+  const { userId: clerkId } = auth();
+  if (!clerkId) {
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  }
+
+  const session = await db.session.findUnique({
+    where: { id: sessionId },
+    include: { student: true },
+  });
+  if (!session) {
+    return NextResponse.json({ error: 'Session not found' }, { status: 404 });
+  }
+
+  const user = await db.user.findUnique({ where: { clerkUserId: clerkId } });
+  if (!user || (user.role === 'STUDENT' && session.student.userId !== user.id)) {
+    return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+  }
+
+  // Soft delete: set endedAt timestamp
+  const updated = await db.session.update({
+    where: { id: sessionId },
+    data: { endedAt: new Date() },
+  });
+
+  return NextResponse.json({ 
+    data: updated,
+    message: 'Session ended successfully',
+  });
 }

@@ -19,11 +19,15 @@ interface SessionStore {
   messages: SessionMessage[];
   isLoading: boolean;
   isStreaming: boolean;
+  streamingMessageId: string | null;
 
   startSession: (sessionId: string, subject: Subject) => void;
   setPhase: (phase: FiveRPhase) => void;
   setEngagementMode: (mode: EngagementMode) => void;
   addMessage: (message: SessionMessage) => void;
+  appendToStreamingMessage: (text: string) => void;
+  startStreamingMessage: (id: string) => void;
+  finishStreamingMessage: () => void;
   setLoading: (loading: boolean) => void;
   setStreaming: (streaming: boolean) => void;
   endSession: () => void;
@@ -37,6 +41,7 @@ export const useSessionStore = create<SessionStore>((set) => ({
   messages: [],
   isLoading: false,
   isStreaming: false,
+  streamingMessageId: null,
 
   startSession: (sessionId, subject) => set({
     sessionId,
@@ -44,6 +49,8 @@ export const useSessionStore = create<SessionStore>((set) => ({
     currentPhase: 'ROOT',
     messages: [],
     isLoading: false,
+    isStreaming: false,
+    streamingMessageId: null,
   }),
 
   setPhase: (phase) => set({ currentPhase: phase }),
@@ -53,6 +60,28 @@ export const useSessionStore = create<SessionStore>((set) => ({
     messages: [...state.messages, message],
   })),
 
+  startStreamingMessage: (id) => set((state) => ({
+    streamingMessageId: id,
+    isStreaming: true,
+    messages: [
+      ...state.messages,
+      { id, role: 'ASSISTANT', content: '', timestamp: new Date() },
+    ],
+  })),
+
+  appendToStreamingMessage: (text) => set((state) => ({
+    messages: state.messages.map((msg) =>
+      msg.id === state.streamingMessageId
+        ? { ...msg, content: msg.content + text }
+        : msg
+    ),
+  })),
+
+  finishStreamingMessage: () => set({
+    streamingMessageId: null,
+    isStreaming: false,
+  }),
+
   setLoading: (loading) => set({ isLoading: loading }),
   setStreaming: (streaming) => set({ isStreaming: streaming }),
 
@@ -60,8 +89,10 @@ export const useSessionStore = create<SessionStore>((set) => ({
     sessionId: null,
     subject: null,
     currentPhase: 'ROOT',
+    engagementMode: 'FORWARD',
     messages: [],
     isLoading: false,
     isStreaming: false,
+    streamingMessageId: null,
   }),
 }));

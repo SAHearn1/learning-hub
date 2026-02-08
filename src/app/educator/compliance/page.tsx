@@ -1,23 +1,28 @@
 'use client';
 
 import { useMemo, useState } from 'react';
-import { complianceRecords } from '@/app/educator/mock-data';
+import { useEducatorPortalStore } from '@/app/educator/portal-store';
 
 export default function EducatorCompliancePage() {
+  const compliance = useEducatorPortalStore((state) => state.compliance);
+  const students = useEducatorPortalStore((state) => state.students);
+  const updateComplianceStatus = useEducatorPortalStore((state) => state.updateComplianceStatus);
+
   const [statusFilter, setStatusFilter] = useState<'All' | 'On Track' | 'At Risk' | 'Overdue'>('All');
   const [categoryFilter, setCategoryFilter] = useState('All');
 
   const records = useMemo(
     () =>
-      complianceRecords.filter((record) => {
+      compliance.filter((record) => {
         const statusMatch = statusFilter === 'All' || record.status === statusFilter;
         const categoryMatch = categoryFilter === 'All' || record.category === categoryFilter;
         return statusMatch && categoryMatch;
       }),
-    [categoryFilter, statusFilter],
+    [categoryFilter, compliance, statusFilter],
   );
 
-  const overdue = complianceRecords.filter((record) => record.status === 'Overdue').length;
+  const overdue = compliance.filter((record) => record.status === 'Overdue').length;
+  const iepStudents = students.filter((student) => student.iep).length;
 
   return (
     <main className="mx-auto max-w-6xl space-y-8 px-6 py-12">
@@ -27,13 +32,17 @@ export default function EducatorCompliancePage() {
       </section>
 
       <section className="rounded-xl border border-neutral-200 bg-white p-5 shadow-sm">
-        <div className="mb-5 grid gap-3 sm:grid-cols-4">
+        <div className="mb-5 grid gap-3 sm:grid-cols-3">
           <div className="rounded-lg bg-red-50 p-4">
             <p className="text-xs uppercase text-red-700">Overdue items</p>
             <p className="mt-1 text-2xl font-bold text-red-900">{overdue}</p>
           </div>
-          <div className="rounded-lg bg-blue-50 p-4 sm:col-span-3">
-            <p className="text-sm text-blue-800">Use filters to isolate records for audit prep, family communication, or special services follow-up.</p>
+          <div className="rounded-lg bg-violet-50 p-4">
+            <p className="text-xs uppercase text-violet-700">Students with IEPs</p>
+            <p className="mt-1 text-2xl font-bold text-violet-900">{iepStudents}</p>
+          </div>
+          <div className="rounded-lg bg-blue-50 p-4">
+            <p className="text-sm text-blue-800">Use filters and status updates to prep for audits and service reviews.</p>
           </div>
         </div>
 
@@ -51,7 +60,7 @@ export default function EducatorCompliancePage() {
 
           <select value={categoryFilter} onChange={(event) => setCategoryFilter(event.target.value)} className="rounded-lg border border-neutral-300 px-3 py-2 text-sm">
             <option value="All">All categories</option>
-            {Array.from(new Set(complianceRecords.map((record) => record.category))).map((category) => (
+            {Array.from(new Set(compliance.map((record) => record.category))).map((category) => (
               <option key={category} value={category}>{category}</option>
             ))}
           </select>
@@ -68,9 +77,15 @@ export default function EducatorCompliancePage() {
                 </div>
                 <div className="text-right text-sm">
                   <p className="font-semibold text-neutral-800">Due {record.dueDate}</p>
-                  <p className={`${record.status === 'Overdue' ? 'text-red-700' : record.status === 'At Risk' ? 'text-amber-700' : 'text-green-700'}`}>
-                    {record.status}
-                  </p>
+                  <select
+                    value={record.status}
+                    onChange={(event) => updateComplianceStatus(record.id, event.target.value as 'On Track' | 'At Risk' | 'Overdue')}
+                    className="mt-1 rounded-md border border-neutral-300 px-2 py-1"
+                  >
+                    <option value="On Track">On Track</option>
+                    <option value="At Risk">At Risk</option>
+                    <option value="Overdue">Overdue</option>
+                  </select>
                 </div>
               </div>
 

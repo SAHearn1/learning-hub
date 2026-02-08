@@ -5,8 +5,7 @@ import { anthropic, AI_MODELS } from '@/lib/ai/client';
 import { buildMasterSystemPrompt } from '@/lib/ai/prompts/master-system-prompt';
 import { generateEmbedding } from '@/lib/pinecone/embeddings';
 import { queryPinecone } from '@/lib/pinecone/client';
-import { detectDysregulation, updateRegulationLevel } from '@/lib/regulation/detector';
-import { analyzeThinkingQuality } from '@/lib/trace/tracker';
+import { enforceUsageLimits, UsageLimitError } from '@/lib/usage-limits';
 import { z } from 'zod';
 
 const chatRequestSchema = z.object({
@@ -51,6 +50,15 @@ export async function POST(req: NextRequest) {
   }
   if (session.endedAt) {
     return new Response(JSON.stringify({ error: 'Session has ended' }), { status: 400 });
+  }
+
+  try {
+    await enforceUsageLimits(user.tenantId, { additionalTokens: 2048 });
+  } catch (error) {
+    if (error instanceof UsageLimitError) {
+      return new Response(JSON.stringify({ error: error.message }), { status: 402 });
+    }
+    throw error;
   }
 
   // Save user message

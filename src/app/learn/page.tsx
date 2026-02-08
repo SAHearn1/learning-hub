@@ -1,113 +1,136 @@
-import { redirect } from 'next/navigation';
-import { auth } from '@clerk/nextjs/server';
-import { db } from '@/lib/db';
-import { LearnClient } from './learn-client';
+'use client';
 
-export default async function LearnPage() {
-  const { userId: clerkId } = auth();
-  
-  if (!clerkId) {
-    redirect('/sign-in');
-  }
+import { useCallback } from 'react';
+import { useSessionStore } from '@/stores/session-store';
+import { useRegulationStore } from '@/stores/regulation-store';
+import { useChat } from '@/hooks/useChat';
+import { SessionSetup } from '@/components/learn/SessionSetup';
+import { SessionHeader } from '@/components/learn/SessionHeader';
+import { ChatMessageList } from '@/components/learn/ChatMessageList';
+import { ChatInput } from '@/components/learn/ChatInput';
+import { CalmCorner } from '@/components/learn/CalmCorner';
 
-  // Fetch user and student profile
-  const user = await db.user.findUnique({
-    where: { clerkUserId: clerkId },
-    include: {
-      student: {
-        include: {
-          iepAccommodations: {
-            where: { active: true },
-          },
-        },
-      },
+type Subject = 'MATH' | 'SCIENCE' | 'LANGUAGE_ARTS';
+type EngagementMode = 'FORWARD' | 'REVERSE' | 'ERROR_ANALYSIS' | 'MULTIPLE_PATHWAYS' | 'PROBLEM_POSING';
+type FiveRPhase = 'ROOT' | 'REGULATE' | 'REFLECT' | 'RESTORE' | 'RECONNECT';
+
+export default function LearnPage() {
+  const sessionId = useSessionStore((s) => s.sessionId);
+  const subject = useSessionStore((s) => s.subject);
+  const currentPhase = useSessionStore((s) => s.currentPhase);
+  const engagementMode = useSessionStore((s) => s.engagementMode);
+  const messages = useSessionStore((s) => s.messages);
+  const isLoading = useSessionStore((s) => s.isLoading);
+  const isStreaming = useSessionStore((s) => s.isStreaming);
+  const streamingMessageId = useSessionStore((s) => s.streamingMessageId);
+
+  const regulationLevel = useRegulationStore((s) => s.level);
+  const interventionActive = useRegulationStore((s) => s.interventionActive);
+  const dismissIntervention = useRegulationStore((s) => s.dismissIntervention);
+  const regulationReset = useRegulationStore((s) => s.reset);
+
+  const {
+    sendMessage,
+    createSession,
+    endSession,
+    updatePhase,
+    updateEngagementMode,
+    detectTraceStep,
+  } = useChat();
+
+  const traceStep = detectTraceStep();
+
+  const handleStartSession = useCallback(
+    async (selectedSubject: Subject, selectedMode: EngagementMode) => {
+      await createSession(selectedSubject, selectedMode);
     },
-  });
+    [createSession],
+  );
 
-  if (!user?.student) {
+  const handleSendMessage = useCallback(
+    (content: string) => {
+      sendMessage(content);
+    },
+    [sendMessage],
+  );
+
+  const handlePhaseChange = useCallback(
+    (phase: FiveRPhase) => {
+      updatePhase(phase);
+    },
+    [updatePhase],
+  );
+
+  const handleModeChange = useCallback(
+    (mode: EngagementMode) => {
+      updateEngagementMode(mode);
+    },
+    [updateEngagementMode],
+  );
+
+  const handleEndSession = useCallback(() => {
+    endSession();
+    regulationReset();
+  }, [endSession, regulationReset]);
+
+  const handleCalmCornerDismiss = useCallback(() => {
+    dismissIntervention();
+  }, [dismissIntervention]);
+
+  const handleCalmCornerContinue = useCallback(() => {
+    dismissIntervention();
+    // If we transitioned to REGULATE, go back to REFLECT
+    if (currentPhase === 'REGULATE') {
+      updatePhase('REFLECT');
+    }
+  }, [dismissIntervention, currentPhase, updatePhase]);
+
+  // No active session: show setup
+  if (!sessionId || !subject) {
     return (
-      <main className="mx-auto max-w-4xl px-6 py-12">
-        <h1 className="text-3xl font-bold text-neutral-900">Learn</h1>
-        <p className="mt-3 text-neutral-700">
-          Student profile not found. Please contact your administrator.
-        </p>
+      <main className="min-h-screen px-6 py-12">
+        <SessionSetup onStart={handleStartSession} isLoading={isLoading} />
       </main>
     );
   }
 
-  // Find or create active session
-  let session = await db.session.findFirst({
-    where: {
-      studentId: user.student.id,
-      endedAt: null,
-    },
-    include: {
-      messages: {
-        orderBy: { createdAt: 'asc' },
-        take: 100,
-      },
-    },
-  });
-
-  // If no active session, create one
-  if (!session) {
-    session = await db.session.create({
-      data: {
-        tenantId: user.tenantId,
-        studentId: user.student.id,
-        subject: 'MATH', // Default subject, could be made configurable
-        currentPhase: 'ROOT',
-        engagementMode: 'FORWARD',
-        regulationState: { level: 70, signals: [], interventionCount: 0 },
-        metadata: {},
-      },
-      include: {
-        messages: {
-          orderBy: { createdAt: 'asc' },
-        },
-      },
-    });
-
-    // Add welcome system message
-    await db.message.create({
-      data: {
-        sessionId: session.id,
-        role: 'SYSTEM',
-        content: 'Welcome to your learning session! How are you feeling today? Ready to grow some thinking?',
-      },
-    });
-
-    // Reload session with the new message
-    session = await db.session.findUnique({
-      where: { id: session.id },
-      include: {
-        messages: {
-          orderBy: { createdAt: 'asc' },
-        },
-      },
-    }) as typeof session;
-  }
-
-  // Extract regulation state
-  const regulationState = session.regulationState as { level?: number } | null;
-  const regulationLevel = regulationState?.level ?? 70;
-
-  // Pass data to client component
+  // Active session: show chat interface
   return (
-    <LearnClient
-      session={{
-        id: session.id,
-        subject: session.subject,
-        currentPhase: session.currentPhase,
-        engagementMode: session.engagementMode,
-        startedAt: session.startedAt,
-      }}
-      messages={session.messages.map((msg) => ({
-        ...msg,
-        createdAt: msg.createdAt,
-      }))}
-      regulationLevel={regulationLevel}
-      studentId={user.student.id}
-    />
+    <main className="flex h-screen flex-col">
+      <SessionHeader
+        subject={subject}
+        currentPhase={currentPhase}
+        engagementMode={engagementMode}
+        traceStep={traceStep}
+        regulationLevel={regulationLevel}
+        onPhaseChange={handlePhaseChange}
+        onModeChange={handleModeChange}
+        onEndSession={handleEndSession}
+      />
+
+      <ChatMessageList
+        messages={messages}
+        isStreaming={isStreaming}
+        streamingMessageId={streamingMessageId}
+      />
+
+      <ChatInput
+        onSend={handleSendMessage}
+        disabled={isLoading || isStreaming}
+        placeholder={
+          currentPhase === 'ROOT'
+            ? 'How are you feeling today? Ready to grow some thinking?'
+            : 'Type your response...'
+        }
+      />
+
+      {/* Calm Corner overlay */}
+      {interventionActive && (
+        <CalmCorner
+          onDismiss={handleCalmCornerDismiss}
+          onContinue={handleCalmCornerContinue}
+        />
+      )}
+    </main>
   );
 }
