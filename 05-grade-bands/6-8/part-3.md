@@ -1,11 +1,4 @@
----
-title: "6-8 Lesson Part 3"
-section: "Grade Bands"
-source_path: "05-grade-bands/6-8/part-3.md"
-document_type: "curriculum"
-subsection: "6-8"
----
-# 6-8 Lesson Part 3: Sunlight and Thinking: Inquiry, Reasoning, and Meaning-Making
+# 6-8 Lesson Part 3
 
 ## 5Rs Phase Alignment
 - **Primary phase:** Reflect

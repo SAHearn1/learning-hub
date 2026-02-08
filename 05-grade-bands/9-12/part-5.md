@@ -1,11 +1,4 @@
----
-title: "9-12 Lesson Part 5"
-section: "Grade Bands"
-source_path: "05-grade-bands/9-12/part-5.md"
-document_type: "curriculum"
-subsection: "9-12"
----
-# 9-12 Lesson Part 5: Harvest and Seed-Saving: Transfer, Community, and Next Steps
+# 9-12 Lesson Part 5
 
 ## 5Rs Phase Alignment
 - **Primary phase:** Reconnect

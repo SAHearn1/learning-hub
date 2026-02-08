@@ -1,11 +1,4 @@
----
-title: "K-2 Lesson Part 5"
-section: "Grade Bands"
-source_path: "05-grade-bands/K-2/part-5.md"
-document_type: "curriculum"
-subsection: "K-2"
----
-# K-2 Lesson Part 5: Harvest and Seed-Saving: Transfer, Community, and Next Steps
+# K-2 Lesson Part 5
 
 ## 5Rs Phase Alignment
 - **Primary phase:** Reconnect

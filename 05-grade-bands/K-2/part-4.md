@@ -1,11 +1,4 @@
----
-title: "K-2 Lesson Part 4"
-section: "Grade Bands"
-source_path: "05-grade-bands/K-2/part-4.md"
-document_type: "curriculum"
-subsection: "K-2"
----
-# K-2 Lesson Part 4: Pruning and Repair: Learning From Errors and Setbacks
+# K-2 Lesson Part 4
 
 ## 5Rs Phase Alignment
 - **Primary phase:** Restore

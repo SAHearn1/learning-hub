@@ -1,11 +1,4 @@
----
-title: "6-8 Lesson Part 1"
-section: "Grade Bands"
-source_path: "05-grade-bands/6-8/part-1.md"
-document_type: "curriculum"
-subsection: "6-8"
----
-# 6-8 Lesson Part 1: Preparing the Soil: Safety, Belonging, and Readiness
+# 6-8 Lesson Part 1
 
 ## 5Rs Phase Alignment
 - **Primary phase:** Root

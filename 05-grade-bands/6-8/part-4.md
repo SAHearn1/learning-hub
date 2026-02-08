@@ -1,11 +1,4 @@
----
-title: "6-8 Lesson Part 4"
-section: "Grade Bands"
-source_path: "05-grade-bands/6-8/part-4.md"
-document_type: "curriculum"
-subsection: "6-8"
----
-# 6-8 Lesson Part 4: Pruning and Repair: Learning From Errors and Setbacks
+# 6-8 Lesson Part 4
 
 ## 5Rs Phase Alignment
 - **Primary phase:** Restore

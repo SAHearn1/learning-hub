@@ -1,11 +1,4 @@
----
-title: "K-2 Lesson Part 2"
-section: "Grade Bands"
-source_path: "05-grade-bands/K-2/part-2.md"
-document_type: "curriculum"
-subsection: "K-2"
----
-# K-2 Lesson Part 2: Water and Rhythm: Co-Regulation and Learning Stamina
+# K-2 Lesson Part 2
 
 ## 5Rs Phase Alignment
 - **Primary phase:** Regulate

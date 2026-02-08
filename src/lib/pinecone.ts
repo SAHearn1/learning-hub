@@ -76,6 +76,9 @@ export async function queryVectors(
     topK?: number;
     subject?: string;
     gradeLevel?: number;
+    course?: string;
+    module?: string;
+    documentType?: string;
   } = {},
 ): Promise<{
   id: string;
@@ -83,7 +86,7 @@ export async function queryVectors(
   metadata: CurriculumMetadata;
 }[]> {
   const index = getIndex();
-  const { topK = 5, subject, gradeLevel } = options;
+  const { topK = 5, subject, gradeLevel, course, module, documentType = 'curriculum' } = options;
 
   // Build metadata filter
   const filter: Record<string, unknown> = {};
@@ -92,6 +95,15 @@ export async function queryVectors(
   }
   if (gradeLevel) {
     filter.gradeLevel = { $eq: gradeLevel };
+  }
+  if (course) {
+    filter.course = { $eq: course };
+  }
+  if (module) {
+    filter.module = { $eq: module };
+  }
+  if (documentType) {
+    filter.documentType = { $eq: documentType };
   }
 
   const results = await index.query({

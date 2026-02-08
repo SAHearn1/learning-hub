@@ -1,11 +1,4 @@
----
-title: "9-12 Lesson Part 1"
-section: "Grade Bands"
-source_path: "05-grade-bands/9-12/part-1.md"
-document_type: "curriculum"
-subsection: "9-12"
----
-# 9-12 Lesson Part 1: Preparing the Soil: Safety, Belonging, and Readiness
+# 9-12 Lesson Part 1
 
 ## 5Rs Phase Alignment
 - **Primary phase:** Root

@@ -1,10 +1,4 @@
----
-title: "From Garden to Growth: A Trauma-Informed K-12 Curriculum"
-section: "Front Matter"
-source_path: "01-front-matter/title-page.md"
-document_type: "curriculum"
----
-# From Garden to Growth (FG2G)
+# Title Page
 
 ## Full Title
 **From Garden to Growth: A Trauma-Informed, 5Rs-Aligned Curriculum for Academic, Social-Emotional, and Community Learning**

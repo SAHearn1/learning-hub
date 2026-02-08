@@ -1,11 +1,4 @@
----
-title: "K-2 Lesson Part 1"
-section: "Grade Bands"
-source_path: "05-grade-bands/K-2/part-1.md"
-document_type: "curriculum"
-subsection: "K-2"
----
-# K-2 Lesson Part 1: Preparing the Soil: Safety, Belonging, and Readiness
+# K-2 Lesson Part 1
 
 ## 5Rs Phase Alignment
 - **Primary phase:** Root

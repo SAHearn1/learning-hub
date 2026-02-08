@@ -1,11 +1,4 @@
----
-title: "6-8 Lesson Part 2"
-section: "Grade Bands"
-source_path: "05-grade-bands/6-8/part-2.md"
-document_type: "curriculum"
-subsection: "6-8"
----
-# 6-8 Lesson Part 2: Water and Rhythm: Co-Regulation and Learning Stamina
+# 6-8 Lesson Part 2
 
 ## 5Rs Phase Alignment
 - **Primary phase:** Regulate
