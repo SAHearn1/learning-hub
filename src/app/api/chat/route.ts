@@ -12,6 +12,7 @@ import { AuthenticationError, ForbiddenError, NotFoundError, PaymentRequiredErro
 import { incrementMetric, observeLatency } from '@/lib/api/metrics';
 import { logger } from '@/lib/logger';
 import { z } from 'zod';
+import { assertMinorConsentForLearning } from '@/lib/compliance';
 
 const chatRequestSchema = z.object({
   sessionId: z.string().min(1),
@@ -36,6 +37,10 @@ export const POST = withApiHandler(async (req, { requestId }) => {
   if (!user?.student) {
     throw new NotFoundError('Student profile not found');
   }
+
+  assertMinorConsentForLearning(user.isMinor, user.consentStatus, {
+    action: 'using AI tutoring chat',
+  });
 
   const session = await db.session.findUnique({
     where: { id: body.sessionId },

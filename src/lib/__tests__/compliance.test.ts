@@ -4,6 +4,8 @@ import {
   isConsentStatusTransitionAllowed,
   retentionPolicyRecords,
   requiresGuardianForDataRequest,
+  hasOperationalConsentForLearning,
+  assertMinorConsentForLearning,
 } from '@/lib/compliance';
 
 describe('compliance utilities', () => {
@@ -23,6 +25,23 @@ describe('compliance utilities', () => {
     expect(requiresGuardianForDataRequest(true, 'STUDENT')).toBe(true);
     expect(requiresGuardianForDataRequest(true, 'PARENT')).toBe(false);
     expect(requiresGuardianForDataRequest(false, 'STUDENT')).toBe(false);
+  });
+
+
+  it('requires granted consent before minors can access learning workflows', () => {
+    expect(hasOperationalConsentForLearning(true, 'GRANTED')).toBe(true);
+    expect(hasOperationalConsentForLearning(true, 'PENDING')).toBe(false);
+    expect(hasOperationalConsentForLearning(false, null)).toBe(true);
+  });
+
+  it('throws a forbidden error when minor consent is not granted', () => {
+    expect(() =>
+      assertMinorConsentForLearning(true, 'DENIED', { action: 'starting a learning session' }),
+    ).toThrowError('Parental consent is required before starting a learning session.');
+
+    expect(() =>
+      assertMinorConsentForLearning(true, 'GRANTED', { action: 'starting a learning session' }),
+    ).not.toThrow();
   });
 
   it('defines retention categories for legal readiness', () => {
