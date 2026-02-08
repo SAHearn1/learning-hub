@@ -1,4 +1,5 @@
 import { Pinecone, type Index, type RecordMetadata } from '@pinecone-database/pinecone';
+import { PINECONE_CONFIG, type PineconeNamespace } from '@/lib/pinecone-config';
 import { logger } from '@/lib/logger';
 
 let pineconeClient: Pinecone | null = null;
@@ -17,8 +18,7 @@ function getPinecone(): Pinecone {
 
 export function getIndex(): Index {
   if (!pineconeIndex) {
-    const indexName = process.env.PINECONE_INDEX || 'rootwork-curriculum';
-    pineconeIndex = getPinecone().index(indexName);
+    pineconeIndex = getPinecone().index(PINECONE_CONFIG.indexName);
   }
   return pineconeIndex;
 }
@@ -35,7 +35,7 @@ export interface CurriculumMetadata {
 }
 
 /**
- * Upsert embedding vectors into Pinecone with curriculum metadata.
+ * Upsert embedding vectors into a specific Pinecone namespace.
  */
 export async function upsertVectors(
   vectors: {
@@ -43,19 +43,21 @@ export async function upsertVectors(
     values: number[];
     metadata: CurriculumMetadata;
   }[],
+  namespace?: PineconeNamespace,
 ): Promise<string[]> {
   const index = getIndex();
+  const target = namespace ? index.namespace(namespace) : index;
 
-  // Pinecone supports up to 100 vectors per upsert
   const batchSize = 100;
   const ids: string[] = [];
 
   for (let i = 0; i < vectors.length; i += batchSize) {
     const batch = vectors.slice(i, i + batchSize);
-    await index.upsert({ records: batch as unknown as { id: string; values: number[]; metadata: RecordMetadata }[] });
+    await target.upsert({ records: batch as unknown as { id: string; values: number[]; metadata: RecordMetadata }[] });
     ids.push(...batch.map(v => v.id));
 
     logger.debug('Pinecone upsert batch', {
+      namespace: namespace ?? 'default',
       upserted: ids.length,
       total: vectors.length,
     });
@@ -65,7 +67,7 @@ export async function upsertVectors(
 }
 
 /**
- * Query Pinecone for similar curriculum content.
+ * Query a specific Pinecone namespace for similar curriculum content.
  */
 export async function queryVectors(
   embedding: number[],
@@ -73,6 +75,7 @@ export async function queryVectors(
     topK?: number;
     subject?: string;
     gradeLevel?: number;
+    namespace?: PineconeNamespace;
   } = {},
 ): Promise<{
   id: string;
@@ -80,9 +83,9 @@ export async function queryVectors(
   metadata: CurriculumMetadata;
 }[]> {
   const index = getIndex();
-  const { topK = 5, subject, gradeLevel } = options;
+  const { topK = 5, subject, gradeLevel, namespace } = options;
+  const target = namespace ? index.namespace(namespace) : index;
 
-  // Build metadata filter
   const filter: Record<string, unknown> = {};
   if (subject) {
     filter.subject = { $eq: subject };
@@ -91,7 +94,7 @@ export async function queryVectors(
     filter.gradeLevel = { $eq: gradeLevel };
   }
 
-  const results = await index.query({
+  const results = await target.query({
     vector: embedding,
     topK,
     includeMetadata: true,
@@ -106,9 +109,65 @@ export async function queryVectors(
 }
 
 /**
- * Delete vectors by ID.
+ * Query multiple namespaces in parallel and merge results by score.
  */
-export async function deleteVectors(ids: string[]): Promise<void> {
+export async function queryMultipleNamespaces(
+  embedding: number[],
+  namespaces: PineconeNamespace[],
+  options: {
+    topK?: number;
+    subject?: string;
+    gradeLevel?: number;
+  } = {},
+): Promise<{
+  id: string;
+  score: number;
+  metadata: CurriculumMetadata;
+  namespace: string;
+}[]> {
+  const { topK = 5 } = options;
+
+  const results = await Promise.all(
+    namespaces.map(async (ns) => {
+      const matches = await queryVectors(embedding, { ...options, namespace: ns });
+      return matches.map(m => ({ ...m, namespace: ns }));
+    }),
+  );
+
+  return results
+    .flat()
+    .sort((a, b) => b.score - a.score)
+    .slice(0, topK);
+}
+
+/**
+ * Delete vectors by ID from a specific namespace.
+ */
+export async function deleteVectors(ids: string[], namespace?: PineconeNamespace): Promise<void> {
   const index = getIndex();
-  await index.deleteMany({ ids });
+  const target = namespace ? index.namespace(namespace) : index;
+  await target.deleteMany(ids);
+}
+
+/**
+ * Get vector count stats per namespace.
+ */
+export async function getIndexStats(): Promise<{
+  totalVectors: number;
+  namespaces: Record<string, number>;
+}> {
+  const index = getIndex();
+  const stats = await index.describeIndexStats();
+
+  const namespaces: Record<string, number> = {};
+  if (stats.namespaces) {
+    for (const [ns, nsStats] of Object.entries(stats.namespaces)) {
+      namespaces[ns] = nsStats.recordCount ?? 0;
+    }
+  }
+
+  return {
+    totalVectors: stats.totalRecordCount ?? 0,
+    namespaces,
+  };
 }

@@ -1,11 +1,13 @@
 import { generateEmbedding } from '@/lib/embeddings';
-import { queryVectors, type CurriculumMetadata } from '@/lib/pinecone';
+import { queryMultipleNamespaces } from '@/lib/pinecone';
+import { QUERY_DEFAULTS } from '@/lib/pinecone-config';
 import { logger } from '@/lib/logger';
 
 export interface SearchResult {
   text: string;
   score: number;
   filename: string;
+  namespace: string;
   subject?: string;
   gradeLevel?: number;
   standardCodes?: string[];
@@ -13,7 +15,8 @@ export interface SearchResult {
 
 /**
  * Search the curriculum vector store for content relevant to a student's query.
- * Returns formatted context string for injection into the system prompt.
+ * Queries standards, topics, and problems namespaces in parallel, then merges
+ * results by cosine similarity score.
  */
 export async function searchCurriculum(
   query: string,
@@ -24,9 +27,8 @@ export async function searchCurriculum(
     minScore?: number;
   } = {},
 ): Promise<SearchResult[]> {
-  const { topK = 5, minScore = 0.3 } = options;
+  const { topK = QUERY_DEFAULTS.topK, minScore = QUERY_DEFAULTS.minScore } = options;
 
-  // Check that required services are configured
   if (!process.env.OPENAI_API_KEY || !process.env.PINECONE_API_KEY) {
     logger.debug('RAG search skipped — OPENAI_API_KEY or PINECONE_API_KEY not configured');
     return [];
@@ -35,11 +37,15 @@ export async function searchCurriculum(
   try {
     const embedding = await generateEmbedding(query);
 
-    const results = await queryVectors(embedding, {
-      topK,
-      subject: options.subject,
-      gradeLevel: options.gradeLevel,
-    });
+    const results = await queryMultipleNamespaces(
+      embedding,
+      QUERY_DEFAULTS.tutoringSearchNamespaces,
+      {
+        topK,
+        subject: options.subject,
+        gradeLevel: options.gradeLevel,
+      },
+    );
 
     const filtered = results
       .filter(r => r.score >= minScore)
@@ -47,6 +53,7 @@ export async function searchCurriculum(
         text: r.metadata.text,
         score: r.score,
         filename: r.metadata.filename,
+        namespace: r.namespace,
         subject: r.metadata.subject,
         gradeLevel: r.metadata.gradeLevel,
         standardCodes: r.metadata.standardCodes,
@@ -54,6 +61,7 @@ export async function searchCurriculum(
 
     logger.debug('Curriculum search results', {
       query: query.substring(0, 80),
+      namespacesSearched: QUERY_DEFAULTS.tutoringSearchNamespaces,
       resultsFound: results.length,
       afterFilter: filtered.length,
     });

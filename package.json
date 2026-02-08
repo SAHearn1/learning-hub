@@ -14,7 +14,8 @@
     "db:studio": "prisma studio",
     "test": "vitest",
     "test:e2e": "playwright test",
-    "rag:create-index": "tsx scripts/create-pinecone-index.ts"
+    "rag:create-index": "tsx scripts/create-pinecone-index.ts",
+    "rag:verify": "tsx scripts/verify-pinecone-index.ts"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.30.0",
