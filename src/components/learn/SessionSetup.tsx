@@ -1,8 +1,7 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { BRAND } from '@/brand/brand';
 
 type Subject = 'MATH' | 'SCIENCE' | 'LANGUAGE_ARTS';
@@ -11,6 +10,14 @@ type EngagementMode = 'FORWARD' | 'REVERSE' | 'ERROR_ANALYSIS' | 'MULTIPLE_PATHW
 interface SessionSetupProps {
   onStart: (subject: Subject, mode: EngagementMode) => void;
   isLoading: boolean;
+}
+
+interface RecentSession {
+  id: string;
+  subject: Subject;
+  engagementMode: EngagementMode;
+  startedAt: string;
+  endedAt: string | null;
 }
 
 const SUBJECT_DETAILS: Record<Subject, { name: string; color: string; description: string }> = {
@@ -54,9 +61,48 @@ const MODE_DETAILS: Record<EngagementMode, { name: string; description: string }
   },
 };
 
+function formatRelativeTime(dateStr: string): string {
+  const date = new Date(dateStr);
+  const now = new Date();
+  const diffMs = now.getTime() - date.getTime();
+  const diffMin = Math.floor(diffMs / 60000);
+  if (diffMin < 1) return 'just now';
+  if (diffMin < 60) return `${diffMin}m ago`;
+  const diffHrs = Math.floor(diffMin / 60);
+  if (diffHrs < 24) return `${diffHrs}h ago`;
+  const diffDays = Math.floor(diffHrs / 24);
+  if (diffDays < 7) return `${diffDays}d ago`;
+  return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+}
+
 export function SessionSetup({ onStart, isLoading }: SessionSetupProps) {
   const [selectedSubject, setSelectedSubject] = useState<Subject | null>(null);
   const [selectedMode, setSelectedMode] = useState<EngagementMode>('FORWARD');
+  const [recentSessions, setRecentSessions] = useState<RecentSession[]>([]);
+  const [historyLoading, setHistoryLoading] = useState(true);
+
+  useEffect(() => {
+    let cancelled = false;
+    async function fetchHistory() {
+      try {
+        const response = await fetch('/api/sessions?page=1&pageSize=5');
+        if (response.ok) {
+          const { data } = await response.json();
+          if (!cancelled && Array.isArray(data)) {
+            setRecentSessions(
+              data.filter((s: RecentSession) => s.endedAt !== null).slice(0, 5)
+            );
+          }
+        }
+      } catch {
+        // Silently handle fetch failure
+      } finally {
+        if (!cancelled) setHistoryLoading(false);
+      }
+    }
+    fetchHistory();
+    return () => { cancelled = true; };
+  }, []);
 
   return (
     <div className="mx-auto max-w-3xl space-y-8">
@@ -129,6 +175,52 @@ export function SessionSetup({ onStart, isLoading }: SessionSetupProps) {
           {isLoading ? 'Starting...' : 'Begin Session'}
         </Button>
       </div>
+
+      {/* Recent Sessions */}
+      {!historyLoading && recentSessions.length > 0 && (
+        <div>
+          <h2 className="mb-3 text-lg font-semibold text-neutral-800">Recent Sessions</h2>
+          <div className="space-y-2">
+            {recentSessions.map((session) => {
+              const subjectInfo = SUBJECT_DETAILS[session.subject] ?? { name: session.subject, color: '#6B7280' };
+              const modeInfo = MODE_DETAILS[session.engagementMode];
+              return (
+                <button
+                  key={session.id}
+                  onClick={() => {
+                    setSelectedSubject(session.subject);
+                    setSelectedMode(session.engagementMode);
+                  }}
+                  className="flex w-full items-center gap-3 rounded-lg border border-neutral-200 bg-white p-3 text-left transition-colors hover:bg-neutral-50"
+                >
+                  <div
+                    className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-xs font-bold text-white"
+                    style={{ backgroundColor: subjectInfo.color }}
+                  >
+                    {subjectInfo.name[0]}
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <div className="text-sm font-medium text-neutral-800">
+                      {subjectInfo.name}
+                      {modeInfo && (
+                        <span className="ml-2 text-xs font-normal text-neutral-500">
+                          {modeInfo.name}
+                        </span>
+                      )}
+                    </div>
+                    <div className="text-xs text-neutral-500">
+                      {formatRelativeTime(session.startedAt)}
+                    </div>
+                  </div>
+                  <svg className="h-4 w-4 shrink-0 text-neutral-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5" />
+                  </svg>
+                </button>
+              );
+            })}
+          </div>
+        </div>
+      )}
     </div>
   );
 }
