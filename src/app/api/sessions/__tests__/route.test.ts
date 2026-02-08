@@ -38,6 +38,8 @@ describe('POST /api/sessions', () => {
       id: 'user_1',
       tenantId: 'tenant_1',
       student: { id: 'student_1' },
+      isMinor: false,
+      consentStatus: null,
     });
     mockEnforceUsageLimits.mockResolvedValue({});
     mockDb.session.create.mockResolvedValue({ id: 'session_1' });
@@ -69,6 +71,26 @@ describe('POST /api/sessions', () => {
     expect(body.error).toBe('Monthly session limit reached for current subscription tier.');
     expect(body.code).toBe('PAYMENT_REQUIRED');
     expect(body.requestId).toBeTruthy();
+    expect(mockDb.session.create).not.toHaveBeenCalled();
+  });
+
+
+  it('returns 403 when a minor does not have granted consent', async () => {
+    const { POST } = await import('../route');
+    mockDb.user.findUnique.mockResolvedValue({
+      id: 'user_1',
+      tenantId: 'tenant_1',
+      student: { id: 'student_1' },
+      isMinor: true,
+      consentStatus: 'PENDING',
+    });
+
+    const response = await POST(makeRequest({ subject: 'MATH' }));
+    const body = await response.json();
+
+    expect(response.status).toBe(403);
+    expect(body.code).toBe('FORBIDDEN');
+    expect(body.error).toContain('Parental consent is required');
     expect(mockDb.session.create).not.toHaveBeenCalled();
   });
 
