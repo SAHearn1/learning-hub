@@ -27,3 +27,16 @@
   - Data Retention policy
   - Educator compliance dashboard
 - `npm run compliance:check` ensures artifacts exist and warns on missing required env vars.
+
+
+## Incident and audit operations
+- Incident response procedures are documented in `docs/incident-response-playbook.md`.
+- Audit evidence requirements are tracked in `docs/audit-evidence-matrix.md`.
+- Use `X-Request-Id` and `AuditLog` correlation for consent/data-rights investigations.
+
+## Production observability baseline
+- Ensure `/api/metrics` is scraped in production at 5-minute intervals.
+- Alert baseline recommendations:
+  - API 5xx error rate > 2% over 10 minutes
+  - `/api/chat` p95 latency > 3500ms over 15 minutes
+  - sustained rate-limit blocks above normal traffic baseline

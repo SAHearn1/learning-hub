@@ -5,6 +5,7 @@ import { enforceUsageLimits, UsageLimitError } from '@/lib/usage-limits';
 import { z } from 'zod';
 import { withApiHandler } from '@/lib/api-handler';
 import { AuthenticationError, NotFoundError, PaymentRequiredError } from '@/lib/api-errors';
+import { assertMinorConsentForLearning } from '@/lib/compliance';
 
 const createSessionSchema = z.object({
   subject: z.enum(['MATH', 'SCIENCE', 'LANGUAGE_ARTS']),
@@ -24,6 +25,10 @@ export const POST = withApiHandler(async (req, _ctx) => {
   if (!user?.student) {
     throw new NotFoundError('Student profile not found');
   }
+
+  assertMinorConsentForLearning(user.isMinor, user.consentStatus, {
+    action: 'starting a learning session',
+  });
 
   const body = createSessionSchema.parse(await req.json());
 

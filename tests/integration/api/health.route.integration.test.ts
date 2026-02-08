@@ -10,8 +10,7 @@ vi.mock('@/lib/db', () => ({
 describe('GET /api/health', () => {
   it('returns a healthy status when db query succeeds', async () => {
     const { GET } = await import('@/app/api/health/route');
-    const request = new NextRequest('http://localhost/api/health');
-    const response = await GET(request);
+    const response = await GET(new NextRequest('http://localhost/api/health'));
     const data = await response.json();
 
     expect(response.status).toBe(200);

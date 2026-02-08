@@ -6,6 +6,9 @@ const requiredFiles = [
   'src/app/data-retention/page.tsx',
   'src/app/educator/compliance/page.tsx',
   'COMPLIANCE.md',
+  'docs/incident-response-playbook.md',
+  'docs/audit-evidence-matrix.md',
+  'src/app/api/metrics/route.ts',
 ];
 
 const requiredEnv = [
@@ -14,6 +17,8 @@ const requiredEnv = [
   'ANTHROPIC_API_KEY',
   'CLERK_SECRET_KEY',
   'STRIPE_SECRET_KEY',
+  'SENTRY_DSN',
+  'NEXT_PUBLIC_SENTRY_DSN',
 ];
 
 for (const file of requiredFiles) {

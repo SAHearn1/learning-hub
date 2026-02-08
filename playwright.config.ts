@@ -7,7 +7,11 @@ export default defineConfig({
   forbidOnly: !!process.env.CI,
   retries: process.env.CI ? 2 : 0,
   workers: process.env.CI ? 1 : undefined,
-  reporter: 'html',
+  reporter: [
+    ['html'],
+    ['json', { outputFile: 'test-results/a11y-results.json' }],
+    ['junit', { outputFile: 'test-results/junit.xml' }],
+  ],
   use: {
     baseURL: process.env.BASE_URL || 'http://localhost:3000',
     trace: 'on-first-retry',
@@ -30,6 +34,17 @@ export default defineConfig({
     {
       name: 'mobile',
       use: { ...devices['iPhone 13'] },
+    },
+    {
+      name: 'a11y-chromium',
+      testMatch: /.*a11y.*\.spec\.ts/,
+      use: { 
+        ...devices['Desktop Chrome'],
+        // Enable accessibility testing features
+        contextOptions: {
+          reducedMotion: 'reduce',
+        },
+      },
     },
   ],
   webServer: {
