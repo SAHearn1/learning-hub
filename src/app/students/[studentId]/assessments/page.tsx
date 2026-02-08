@@ -57,7 +57,7 @@ export default async function StudentAssessmentsPage({ params }: PageProps) {
               <CardContent>
                 <div className="text-3xl font-bold text-green-600 mb-2">12</div>
                 <p className="text-sm text-muted-foreground mb-4">Completed</p>
-                <p className="text-xs text-muted-foreground">Integrated in tutoring sessions</p>
+                <Link href={`/assessments/formative?studentId=${studentId}&sessionId=session-123&topic=Current Topic`}><Button variant="outline" size="sm" className="w-full">Start Check</Button></Link>
               </CardContent>
             </Card>
 
@@ -69,9 +69,7 @@ export default async function StudentAssessmentsPage({ params }: PageProps) {
               <CardContent>
                 <div className="text-3xl font-bold text-purple-600 mb-2">5</div>
                 <p className="text-sm text-muted-foreground mb-4">Completed</p>
-                <Button variant="outline" size="sm" className="w-full">
-                  Start New
-                </Button>
+                <Link href={`/assessments/summative?studentId=${studentId}&sessionId=session-123&topic=Current Topic`}><Button variant="outline" size="sm" className="w-full">Start New</Button></Link>
               </CardContent>
             </Card>
           </div>
@@ -119,9 +117,7 @@ export default async function StudentAssessmentsPage({ params }: PageProps) {
                 </CardDescription>
               </CardHeader>
               <CardContent>
-                <Button className="w-full" variant="outline">
-                  Start Summative
-                </Button>
+                <Link href={`/assessments/summative?studentId=${studentId}&sessionId=session-123&topic=Current Topic`}><Button className="w-full" variant="outline">Start Summative</Button></Link>
               </CardContent>
             </Card>
 
@@ -133,9 +129,7 @@ export default async function StudentAssessmentsPage({ params }: PageProps) {
                 </CardDescription>
               </CardHeader>
               <CardContent>
-                <Button className="w-full" variant="outline">
-                  Start Thinking Assessment
-                </Button>
+                <Link href={`/assessments/thinking?studentId=${studentId}&sessionId=session-123`}><Button className="w-full" variant="outline">Start Thinking Assessment</Button></Link>
               </CardContent>
             </Card>
 
@@ -147,9 +141,7 @@ export default async function StudentAssessmentsPage({ params }: PageProps) {
                 </CardDescription>
               </CardHeader>
               <CardContent>
-                <Button className="w-full" variant="outline">
-                  Start Practice
-                </Button>
+                <Link href={`/assessments/formative?studentId=${studentId}&sessionId=session-123&topic=Practice Session`}><Button className="w-full" variant="outline">Start Practice</Button></Link>
               </CardContent>
             </Card>
           </div>
