@@ -68,7 +68,7 @@ export async function upsertVectors(
 }
 
 /**
- * Query Pinecone for similar curriculum content.
+ * Query Pinecone for similar curriculum content with enhanced filtering support.
  */
 export async function queryVectors(
   embedding: number[],
@@ -76,6 +76,10 @@ export async function queryVectors(
     topK?: number;
     subject?: string;
     gradeLevel?: number;
+    documentType?: string;
+    standardCodes?: string[];
+    course?: string;
+    module?: string;
   } = {},
 ): Promise<{
   id: string;
@@ -83,15 +87,28 @@ export async function queryVectors(
   metadata: CurriculumMetadata;
 }[]> {
   const index = getIndex();
-  const { topK = 5, subject, gradeLevel } = options;
+  const { topK = 5, subject, gradeLevel, documentType, standardCodes, course, module } = options;
 
-  // Build metadata filter
+  // Build metadata filter with enhanced filtering options
   const filter: Record<string, unknown> = {};
   if (subject) {
     filter.subject = { $eq: subject };
   }
-  if (gradeLevel) {
+  if (gradeLevel !== undefined) {
     filter.gradeLevel = { $eq: gradeLevel };
+  }
+  if (documentType) {
+    filter.documentType = { $eq: documentType };
+  }
+  if (course) {
+    filter.course = { $eq: course };
+  }
+  if (module) {
+    filter.module = { $eq: module };
+  }
+  // For standardCodes, use $in operator to match any of the provided codes
+  if (standardCodes && standardCodes.length > 0) {
+    filter.standardCodes = { $in: standardCodes };
   }
 
   const results = await index.query({
