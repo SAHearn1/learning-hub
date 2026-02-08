@@ -270,46 +270,6 @@ async function main() {
       description: 'Use variables to represent quantities in a real-world or mathematical problem',
       fullText: 'Use variables to represent quantities in a real-world or mathematical problem, and construct simple equations and inequalities to solve problems by reasoning about the quantities.',
     },
-    {
-      code: 'MGSE7.RP.2',
-      framework: 'GEORGIA' as const,
-      subject: 'MATH' as const,
-      gradeLevel: [7],
-      domain: 'Ratios and Proportional Relationships',
-      cluster: 'Analyze proportional relationships and use them to solve real-world and mathematical problems',
-      description: 'Recognize and represent proportional relationships between quantities',
-      fullText: 'Recognize and represent proportional relationships between quantities, including deciding whether two quantities are in a proportional relationship and identifying constants of proportionality.',
-    },
-    {
-      code: 'MGSE7.EE.3',
-      framework: 'GEORGIA' as const,
-      subject: 'MATH' as const,
-      gradeLevel: [7],
-      domain: 'Expressions and Equations',
-      cluster: 'Solve real-life and mathematical problems using numerical and algebraic expressions and equations',
-      description: 'Solve multi-step real-life and mathematical problems with positive and negative rational numbers',
-      fullText: 'Solve multi-step real-life and mathematical problems posed with positive and negative rational numbers in any form, applying properties of operations and assessing reasonableness of answers using mental computation and estimation strategies.',
-    },
-    {
-      code: 'MGSE7.G.6',
-      framework: 'GEORGIA' as const,
-      subject: 'MATH' as const,
-      gradeLevel: [7],
-      domain: 'Geometry',
-      cluster: 'Solve real-life and mathematical problems involving angle measure, area, surface area, and volume',
-      description: 'Solve real-world and mathematical problems involving area and volume of two- and three-dimensional objects',
-      fullText: 'Solve real-world and mathematical problems involving area, volume and surface area of two- and three-dimensional objects composed of triangles, quadrilaterals, polygons, cubes, and right prisms.',
-    },
-    {
-      code: 'MGSE7.SP.7',
-      framework: 'GEORGIA' as const,
-      subject: 'MATH' as const,
-      gradeLevel: [7],
-      domain: 'Statistics and Probability',
-      cluster: 'Investigate chance processes and develop, use, and evaluate probability models',
-      description: 'Develop a probability model and use it to find probabilities of events',
-      fullText: 'Develop a probability model and use it to find probabilities of events, comparing probabilities from a model to observed frequencies and explaining possible sources of discrepancy.',
-    },
   ];
 
   const createdStandards = [];
@@ -347,7 +307,6 @@ async function main() {
         'Elevation changes (above/below sea level)',
       ],
       estimatedDuration: 45,
-      standardCodes: ['MGSE7.NS.1', 'MGSE7.NS.2'],
     },
     {
       id: 'topic-linear-expressions-001',
@@ -367,87 +326,6 @@ async function main() {
         'Formulas in science and engineering',
       ],
       estimatedDuration: 40,
-      standardCodes: ['MGSE7.EE.1', 'MGSE7.EE.3'],
-    },
-    {
-      id: 'topic-proportional-relationships-001',
-      name: 'Proportional Relationships and Unit Rates',
-      subject: 'MATH' as const,
-      gradeLevel: [7],
-      description: 'Interpreting tables, graphs, and equations to determine and use proportional relationships',
-      conceptualUnderstanding: 'Proportional relationships have a constant multiplicative relationship. The constant of proportionality can be interpreted as a unit rate and used for prediction and comparison.',
-      commonMisconceptions: [
-        'Assuming any linear relationship is proportional',
-        'Confusing additive patterns with multiplicative patterns',
-        'Treating y-intercept as the unit rate when the graph does not pass through the origin',
-      ],
-      realWorldConnections: [
-        'Comparing grocery prices by cost per unit',
-        'Scaling recipes for different group sizes',
-        'Interpreting speed as miles per hour',
-      ],
-      estimatedDuration: 50,
-      standardCodes: ['MGSE7.RP.2'],
-    },
-    {
-      id: 'topic-equations-inequalities-001',
-      name: 'Solving Equations and Inequalities',
-      subject: 'MATH' as const,
-      gradeLevel: [7],
-      description: 'Representing constraints with equations and inequalities and solving in context',
-      conceptualUnderstanding: 'Equations and inequalities model relationships between quantities. Solving means finding values that make statements true and interpreting those solutions in context.',
-      commonMisconceptions: [
-        'Performing operations on only one side of an equation',
-        'Not reversing inequality signs when multiplying/dividing by negatives',
-        'Treating a solution to an inequality as a single value instead of a set of values',
-      ],
-      realWorldConnections: [
-        'Budgeting with spending limits',
-        'Comparing mobile plan costs',
-        'Tracking points needed to meet a goal',
-      ],
-      estimatedDuration: 55,
-      standardCodes: ['MGSE7.EE.4'],
-    },
-    {
-      id: 'topic-area-volume-001',
-      name: 'Area and Volume of Composite Figures',
-      subject: 'MATH' as const,
-      gradeLevel: [7],
-      description: 'Decomposing complex figures into simpler shapes to determine area and volume',
-      conceptualUnderstanding: 'Complex geometric figures can be decomposed into familiar shapes. Area and volume formulas represent additive and multiplicative structure that supports efficient problem solving.',
-      commonMisconceptions: [
-        'Mixing up area and perimeter units',
-        'Using incorrect dimensions for rectangular prisms',
-        'Forgetting to account for all parts of a composite figure',
-      ],
-      realWorldConnections: [
-        'Planning garden bed coverage',
-        'Determining paint needed for classroom projects',
-        'Estimating storage capacity in containers',
-      ],
-      estimatedDuration: 60,
-      standardCodes: ['MGSE7.G.6'],
-    },
-    {
-      id: 'topic-probability-models-001',
-      name: 'Probability Models and Experimental Data',
-      subject: 'MATH' as const,
-      gradeLevel: [7],
-      description: 'Building and evaluating probability models using theoretical and experimental outcomes',
-      conceptualUnderstanding: 'Probability quantifies likelihood. Models should align with observed data, and differences between predictions and outcomes can be explained through variability and trial count.',
-      commonMisconceptions: [
-        'Assuming short experiments always match theoretical probability',
-        'Adding probabilities of overlapping events incorrectly',
-        'Confusing independent and dependent events',
-      ],
-      realWorldConnections: [
-        'Forecasting weather events from historical data',
-        'Evaluating game fairness',
-        'Analyzing outcomes in school surveys',
-      ],
-      estimatedDuration: 45,
-      standardCodes: ['MGSE7.SP.7'],
     },
   ];
 
@@ -460,7 +338,7 @@ async function main() {
         ...topicData,
         standards: {
           connect: createdStandards
-            .filter((s) => topicData.standardCodes.includes(s.code))
+            .filter((s) => topicData.name.includes('Rational') ? s.code.includes('NS') : s.code.includes('EE'))
             .map((s) => ({ id: s.id })),
         },
       },
@@ -498,54 +376,6 @@ async function main() {
       topicId: 'topic-linear-expressions-001',
       description: 'Students will apply the distributive property to expand expressions',
       bloomsLevel: 'APPLY' as const,
-    },
-    {
-      id: 'obj-proportional-constant-001',
-      topicId: 'topic-proportional-relationships-001',
-      description: 'Students will determine the constant of proportionality from tables, graphs, and verbal descriptions',
-      bloomsLevel: 'ANALYZE' as const,
-    },
-    {
-      id: 'obj-proportional-represent-001',
-      topicId: 'topic-proportional-relationships-001',
-      description: 'Students will represent proportional relationships with equations in the form y = kx',
-      bloomsLevel: 'APPLY' as const,
-    },
-    {
-      id: 'obj-equation-context-001',
-      topicId: 'topic-equations-inequalities-001',
-      description: 'Students will write and solve two-step equations from contextual scenarios',
-      bloomsLevel: 'APPLY' as const,
-    },
-    {
-      id: 'obj-inequality-interpret-001',
-      topicId: 'topic-equations-inequalities-001',
-      description: 'Students will interpret and graph solution sets for one-step inequalities',
-      bloomsLevel: 'UNDERSTAND' as const,
-    },
-    {
-      id: 'obj-area-composite-001',
-      topicId: 'topic-area-volume-001',
-      description: 'Students will decompose composite figures and justify area calculations',
-      bloomsLevel: 'ANALYZE' as const,
-    },
-    {
-      id: 'obj-volume-prism-001',
-      topicId: 'topic-area-volume-001',
-      description: 'Students will calculate and compare volumes of right prisms in context',
-      bloomsLevel: 'APPLY' as const,
-    },
-    {
-      id: 'obj-probability-model-001',
-      topicId: 'topic-probability-models-001',
-      description: 'Students will construct probability models and compare predictions to experimental frequencies',
-      bloomsLevel: 'EVALUATE' as const,
-    },
-    {
-      id: 'obj-probability-justify-001',
-      topicId: 'topic-probability-models-001',
-      description: 'Students will justify whether an observed discrepancy is reasonable based on sample size',
-      bloomsLevel: 'EVALUATE' as const,
     },
   ];
 
@@ -666,203 +496,6 @@ async function main() {
       gardenContext: 'You have 4 rows of x flowers each, plus 7 individual flowers. You give away 2 rows of x flowers each, but receive 3 more individual flowers. How many flowers do you have?',
       difficulty: 2,
       bloomsLevel: 'APPLY' as const,
-      type: 'PRACTICE' as const,
-      validated: true,
-    },
-    {
-      id: 'problem-proportion-table-001',
-      topicId: 'topic-proportional-relationships-001',
-      stem: 'A cafeteria recipe uses 3 cups of rice for every 8 students. How many cups are needed for 40 students?',
-      scaffold: {
-        hints: [
-          'Find the constant rate in cups per student first',
-          'Use multiplication to scale from 8 students to 40 students',
-          'Check if your answer keeps the same ratio',
-        ],
-        steps: [
-          'Compute unit rate: 3 ÷ 8 = 0.375 cups per student',
-          'Multiply by 40 students: 0.375 × 40 = 15',
-          'Verify ratio: 15/40 simplifies to 3/8',
-        ],
-      },
-      solutionPaths: [
-        {
-          method: 'scale-factor',
-          steps: ['8 to 40 is ×5', 'Multiply rice by 5: 3 × 5 = 15'],
-        },
-        {
-          method: 'unit-rate',
-          steps: ['Find 3/8 cup per student', 'Multiply by 40 students to get 15 cups'],
-        },
-      ],
-      commonErrors: {
-        'additive-scaling': {
-          incorrectAnswer: '35',
-          explanation: 'Added 32 to 3 instead of multiplying both quantities by the same factor',
-          remediation: 'Proportional relationships require multiplicative scaling',
-        },
-        'inverse-ratio': {
-          incorrectAnswer: '10.67',
-          explanation: 'Used 8/3 instead of 3/8 for cups per student',
-          remediation: 'Keep units consistent: cups divided by students',
-        },
-      },
-      rubric: {
-        correctAnswer: '15',
-        partialCredit: [
-          { condition: 'correct-scale-factor-wrong-arithmetic', points: 0.7 },
-          { condition: 'correct-unit-rate-no-final-computation', points: 0.6 },
-        ],
-      },
-      gardenContext: 'The school garden club keeps the same seed-to-plot ratio each week and must scale material amounts for larger groups.',
-      difficulty: 2,
-      bloomsLevel: 'APPLY' as const,
-      type: 'PRACTICE' as const,
-      validated: true,
-    },
-    {
-      id: 'problem-equation-budget-001',
-      topicId: 'topic-equations-inequalities-001',
-      stem: 'A class has $54 for supplies after buying notebooks. If each marker pack costs $6, how many packs can be purchased?',
-      scaffold: {
-        hints: [
-          'Represent unknown packs with a variable, such as p',
-          'Write an equation based on equal total cost',
-          'Use inverse operations to isolate the variable',
-        ],
-        steps: [
-          'Set up equation: 6p = 54',
-          'Divide both sides by 6',
-          'p = 9 marker packs',
-          'Check: 6 × 9 = 54',
-        ],
-      },
-      solutionPaths: [
-        {
-          method: 'algebraic-solve',
-          steps: ['6p = 54', 'p = 54 ÷ 6', 'p = 9'],
-        },
-        {
-          method: 'repeated-addition',
-          steps: ['Count groups of 6 in 54', 'There are 9 equal groups'],
-        },
-      ],
-      commonErrors: {
-        'operation-error': {
-          incorrectAnswer: '48',
-          explanation: 'Subtracted 6 from 54 rather than dividing',
-          remediation: 'When a variable is multiplied by a number, divide to undo multiplication',
-        },
-        'single-step-stopped': {
-          incorrectAnswer: '6p',
-          explanation: 'Equation was written but not solved',
-          remediation: 'After modeling, isolate the variable and interpret the result in context',
-        },
-      },
-      rubric: {
-        correctAnswer: '9',
-        partialCredit: [
-          { condition: 'correct-equation-only', points: 0.5 },
-          { condition: 'solved-but-no-context-label', points: 0.8 },
-        ],
-      },
-      gardenContext: 'A greenhouse team tracks fixed budgets and must choose how many supply packs fit within spending constraints.',
-      difficulty: 2,
-      bloomsLevel: 'APPLY' as const,
-      type: 'PRACTICE' as const,
-      validated: true,
-    },
-    {
-      id: 'problem-area-composite-001',
-      topicId: 'topic-area-volume-001',
-      stem: 'A rectangular garden is 12 m by 9 m. A 3 m by 2 m tool shed sits inside it. What is the remaining planting area?',
-      scaffold: {
-        hints: [
-          'Find the area of the full garden first',
-          'Find the area taken by the shed',
-          'Subtract the shed area from the total',
-        ],
-        steps: [
-          'Garden area = 12 × 9 = 108 square meters',
-          'Shed area = 3 × 2 = 6 square meters',
-          'Remaining area = 108 - 6 = 102 square meters',
-        ],
-      },
-      solutionPaths: [
-        {
-          method: 'subtract-areas',
-          steps: ['Compute each rectangle area', 'Subtract non-planting section from total'],
-        },
-      ],
-      commonErrors: {
-        'perimeter-confusion': {
-          incorrectAnswer: '34',
-          explanation: 'Computed perimeter rather than area',
-          remediation: 'Area uses multiplication of length and width with square units',
-        },
-        'missing-subtraction': {
-          incorrectAnswer: '108',
-          explanation: 'Found full area but did not remove shed space',
-          remediation: 'Read the context carefully to account for excluded regions',
-        },
-      },
-      rubric: {
-        correctAnswer: '102',
-        partialCredit: [
-          { condition: 'correct-total-area-only', points: 0.5 },
-          { condition: 'correct-sub-areas-wrong-subtraction', points: 0.7 },
-        ],
-      },
-      gardenContext: 'Students are designing how much soil and seed is needed after accounting for structures in the school garden.',
-      difficulty: 3,
-      bloomsLevel: 'ANALYZE' as const,
-      type: 'PRACTICE' as const,
-      validated: true,
-    },
-    {
-      id: 'problem-probability-spinner-001',
-      topicId: 'topic-probability-models-001',
-      stem: 'A spinner has 8 equal sections: 3 blue, 3 green, and 2 yellow. What is the probability of landing on blue or yellow?',
-      scaffold: {
-        hints: [
-          'Count favorable outcomes for blue or yellow',
-          'Use total outcomes as the denominator',
-          'Simplify the fraction if possible',
-        ],
-        steps: [
-          'Favorable sections = 3 (blue) + 2 (yellow) = 5',
-          'Total sections = 8',
-          'Probability = 5/8',
-        ],
-      },
-      solutionPaths: [
-        {
-          method: 'counting-model',
-          steps: ['List favorable categories', 'Add counts and divide by total equally likely outcomes'],
-        },
-      ],
-      commonErrors: {
-        'denominator-error': {
-          incorrectAnswer: '5/6',
-          explanation: 'Used only non-green sections as total outcomes',
-          remediation: 'The denominator includes all possible outcomes, not only favorable categories',
-        },
-        'double-counting': {
-          incorrectAnswer: '10/8',
-          explanation: 'Added outcomes incorrectly and exceeded total possible outcomes',
-          remediation: 'Check that probability values stay between 0 and 1',
-        },
-      },
-      rubric: {
-        correctAnswer: '5/8',
-        partialCredit: [
-          { condition: 'correct-favorable-count-only', points: 0.4 },
-          { condition: 'correct-setup-wrong-simplification', points: 0.8 },
-        ],
-      },
-      gardenContext: 'Garden teams model chances of drawing colored task cards to ensure fair role rotation.',
-      difficulty: 2,
-      bloomsLevel: 'UNDERSTAND' as const,
       type: 'PRACTICE' as const,
       validated: true,
     },

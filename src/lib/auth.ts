@@ -1,6 +1,5 @@
 import { auth } from '@clerk/nextjs/server';
 import { db } from '@/lib/db';
-import { AuthenticationError, ForbiddenError } from '@/lib/api-errors';
 
 export async function getCurrentUser() {
   const { userId } = auth();
@@ -22,7 +21,7 @@ export async function getCurrentUser() {
 export async function requireUser() {
   const user = await getCurrentUser();
   if (!user) {
-    throw new AuthenticationError();
+    throw new Error('Unauthorized');
   }
   return user;
 }
@@ -30,7 +29,7 @@ export async function requireUser() {
 export async function requireRole(roles: string[]) {
   const user = await requireUser();
   if (!roles.includes(user.role)) {
-    throw new ForbiddenError();
+    throw new Error('Forbidden');
   }
   return user;
 }

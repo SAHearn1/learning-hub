@@ -1,12 +1,12 @@
 'use client';
 
 const BLOOMS_LEVELS = [
-  { key: 'REMEMBER',    label: 'Remember',    color: 'var(--color-neutral-400)', description: 'Recall facts' },
-  { key: 'UNDERSTAND',  label: 'Understand',  color: 'var(--color-info-500)',    description: 'Explain ideas' },
-  { key: 'APPLY',       label: 'Apply',       color: 'var(--color-primary-500)', description: 'Use in context' },
-  { key: 'ANALYZE',     label: 'Analyze',     color: 'var(--color-secondary-500)', description: 'Break apart' },
-  { key: 'EVALUATE',    label: 'Evaluate',    color: 'var(--color-secondary-600)', description: 'Judge & justify' },
-  { key: 'CREATE',      label: 'Create',      color: 'var(--color-subject-ela)', description: 'Generate new' },
+  { key: 'REMEMBER',    label: 'Remember',    color: '#94a3b8', description: 'Recall facts' },
+  { key: 'UNDERSTAND',  label: 'Understand',  color: '#60a5fa', description: 'Explain ideas' },
+  { key: 'APPLY',       label: 'Apply',       color: '#34d399', description: 'Use in context' },
+  { key: 'ANALYZE',     label: 'Analyze',     color: '#fbbf24', description: 'Break apart' },
+  { key: 'EVALUATE',    label: 'Evaluate',    color: '#f97316', description: 'Judge & justify' },
+  { key: 'CREATE',      label: 'Create',      color: '#ef4444', description: 'Generate new' },
 ] as const;
 
 interface Standard {
@@ -83,7 +83,7 @@ export function BloomsTaxonomy({ standards, assessments = [] }: BloomsTaxonomyPr
               className="relative flex items-center justify-center rounded-md py-2 text-center transition-all"
               style={{
                 width: `${widthPercent}%`,
-                backgroundColor: isActive ? level.color : 'var(--color-neutral-100)',
+                backgroundColor: isActive ? level.color : '#f1f5f9',
                 opacity: isActive ? 1 : 0.5,
               }}
             >

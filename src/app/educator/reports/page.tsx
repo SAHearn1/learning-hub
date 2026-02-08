@@ -74,17 +74,17 @@ export default function EducatorReportsPage() {
         </div>
 
         <div className="mt-5 grid gap-3 sm:grid-cols-3">
-          <div className="rounded-lg bg-primary-50 p-4">
-            <p className="text-xs uppercase text-primary-700">Visible reports</p>
-            <p className="mt-1 text-2xl font-bold text-primary-900">{filteredReports.length}</p>
+          <div className="rounded-lg bg-green-50 p-4">
+            <p className="text-xs uppercase text-green-700">Visible reports</p>
+            <p className="mt-1 text-2xl font-bold text-green-900">{filteredReports.length}</p>
           </div>
-          <div className="rounded-lg bg-neutral-100 p-4">
-            <p className="text-xs uppercase text-neutral-700">Average mastery</p>
-            <p className="mt-1 text-2xl font-bold text-neutral-900">{avgMastery}%</p>
+          <div className="rounded-lg bg-blue-50 p-4">
+            <p className="text-xs uppercase text-blue-700">Average mastery</p>
+            <p className="mt-1 text-2xl font-bold text-blue-900">{avgMastery}%</p>
           </div>
-          <div className="rounded-lg bg-secondary-50 p-4">
-            <p className="text-xs uppercase text-secondary-700">At-risk learners</p>
-            <p className="mt-1 text-2xl font-bold text-secondary-900">
+          <div className="rounded-lg bg-amber-50 p-4">
+            <p className="text-xs uppercase text-amber-700">At-risk learners</p>
+            <p className="mt-1 text-2xl font-bold text-amber-900">
               {filteredReports.filter((item) => item.mastery < 70 || item.missingAssignments > 1).length}
             </p>
           </div>

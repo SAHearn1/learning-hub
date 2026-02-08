@@ -1,20 +1,13 @@
 'use client';
 
-import { Suspense } from 'react';
 import { FormativeCheck } from '@/components/assessments/FormativeCheck';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { useSearchParams } from 'next/navigation';
-import { useAssessmentContext } from '@/hooks/useAssessmentContext';
 
-function FormativeContent() {
+export default function FormativePage() {
   const searchParams = useSearchParams();
-  const { context, loading } = useAssessmentContext();
-  const sessionId = searchParams.get('sessionId') || context?.sessionId;
+  const sessionId = searchParams.get('sessionId') || 'session-123';
   const topic = searchParams.get('topic') || 'Fractions and Equivalent Forms';
-
-  if (loading || !sessionId) {
-    return <div className="container mx-auto max-w-4xl px-4 py-8 text-sm text-muted-foreground">Preparing assessment context...</div>;
-  }
 
   return (
     <div className="container mx-auto py-8 px-4 max-w-4xl space-y-6">
@@ -43,13 +36,5 @@ function FormativeContent() {
         recentContent={`Current focus area: ${topic}`}
       />
     </div>
-  );
-}
-
-export default function FormativePage() {
-  return (
-    <Suspense fallback={<div className="container mx-auto py-8 px-4 max-w-4xl">Loading...</div>}>
-      <FormativeContent />
-    </Suspense>
   );
 }

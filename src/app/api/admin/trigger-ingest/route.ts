@@ -1,14 +1,12 @@
-import { NextResponse } from 'next/server';
+import { NextRequest, NextResponse } from 'next/server';
 import { auth } from '@clerk/nextjs/server';
 import { db } from '@/lib/db';
-import { withApiHandler } from '@/lib/api-handler';
-import { AuthenticationError, ForbiddenError } from '@/lib/api-errors';
 
-export const POST = withApiHandler(async (req, ctx) => {
+export async function POST(req: NextRequest) {
   const { userId: clerkId } = auth();
-
+  
   if (!clerkId) {
-    throw new AuthenticationError();
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
 
   // Check if user is admin
@@ -17,31 +15,39 @@ export const POST = withApiHandler(async (req, ctx) => {
   });
 
   if (!user || !['PLATFORM_ADMIN', 'DISTRICT_ADMIN', 'SCHOOL_ADMIN'].includes(user.role)) {
-    throw new ForbiddenError();
+    return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
   }
 
-  const body = await req.json();
+  try {
+    const body = await req.json();
+    
+    // Securely call the ingest endpoint with the webhook secret
+    const webhookSecret = process.env.N8N_WEBHOOK_SECRET;
+    
+    const response = await fetch(`${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/api/ingest`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': webhookSecret ? `Bearer ${webhookSecret}` : '',
+      },
+      body: JSON.stringify(body),
+    });
 
-  // Securely call the ingest endpoint with the webhook secret
-  const webhookSecret = process.env.N8N_WEBHOOK_SECRET;
+    const data = await response.json();
 
-  const response = await fetch(`${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/api/ingest`, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      'Authorization': webhookSecret ? `Bearer ${webhookSecret}` : '',
-    },
-    body: JSON.stringify(body),
-  });
-
-  const data = await response.json();
-
-  if (response.ok) {
-    return NextResponse.json(data);
-  } else {
+    if (response.ok) {
+      return NextResponse.json(data);
+    } else {
+      return NextResponse.json(
+        { error: data.error || 'Failed to trigger ingestion' },
+        { status: response.status }
+      );
+    }
+  } catch (error) {
+    console.error('Error triggering ingestion:', error);
     return NextResponse.json(
-      { error: data.error || 'Failed to trigger ingestion' },
-      { status: response.status }
+      { error: 'Internal server error' },
+      { status: 500 }
     );
   }
-}, { rateLimit: { windowMs: 60_000, max: 30 } });
+}

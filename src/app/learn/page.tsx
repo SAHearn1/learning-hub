@@ -1,24 +1,20 @@
 'use client';
 
-import { useCallback, useState } from 'react';
-import { useRouter } from 'next/navigation';
+import { useCallback } from 'react';
 import { useSessionStore } from '@/stores/session-store';
 import { useRegulationStore } from '@/stores/regulation-store';
-import { useChat, type SessionSummary as SessionSummaryData } from '@/hooks/useChat';
+import { useChat } from '@/hooks/useChat';
 import { SessionSetup } from '@/components/learn/SessionSetup';
 import { SessionHeader } from '@/components/learn/SessionHeader';
 import { ChatMessageList } from '@/components/learn/ChatMessageList';
 import { ChatInput } from '@/components/learn/ChatInput';
 import { CalmCorner } from '@/components/learn/CalmCorner';
-import { EndSessionDialog } from '@/components/learn/EndSessionDialog';
-import { SessionSummary } from '@/components/learn/SessionSummary';
 
 type Subject = 'MATH' | 'SCIENCE' | 'LANGUAGE_ARTS';
 type EngagementMode = 'FORWARD' | 'REVERSE' | 'ERROR_ANALYSIS' | 'MULTIPLE_PATHWAYS' | 'PROBLEM_POSING';
 type FiveRPhase = 'ROOT' | 'REGULATE' | 'REFLECT' | 'RESTORE' | 'RECONNECT';
 
 export default function LearnPage() {
-  const router = useRouter();
   const sessionId = useSessionStore((s) => s.sessionId);
   const subject = useSessionStore((s) => s.subject);
   const currentPhase = useSessionStore((s) => s.currentPhase);
@@ -33,9 +29,6 @@ export default function LearnPage() {
   const dismissIntervention = useRegulationStore((s) => s.dismissIntervention);
   const regulationReset = useRegulationStore((s) => s.reset);
 
-  const [showEndDialog, setShowEndDialog] = useState(false);
-  const [completedSummary, setCompletedSummary] = useState<SessionSummaryData | null>(null);
-
   const {
     sendMessage,
     createSession,
@@ -43,14 +36,12 @@ export default function LearnPage() {
     updatePhase,
     updateEngagementMode,
     detectTraceStep,
-    getSessionSummary,
   } = useChat();
 
   const traceStep = detectTraceStep();
 
   const handleStartSession = useCallback(
     async (selectedSubject: Subject, selectedMode: EngagementMode) => {
-      setCompletedSummary(null);
       await createSession(selectedSubject, selectedMode);
     },
     [createSession],
@@ -77,21 +68,10 @@ export default function LearnPage() {
     [updateEngagementMode],
   );
 
-  const handleEndSessionRequest = useCallback(() => {
-    setShowEndDialog(true);
-  }, []);
-
-  const handleEndSessionConfirm = useCallback(() => {
-    const summary = getSessionSummary();
-    setShowEndDialog(false);
+  const handleEndSession = useCallback(() => {
     endSession();
     regulationReset();
-    setCompletedSummary(summary);
-  }, [endSession, regulationReset, getSessionSummary]);
-
-  const handleEndSessionCancel = useCallback(() => {
-    setShowEndDialog(false);
-  }, []);
+  }, [endSession, regulationReset]);
 
   const handleCalmCornerDismiss = useCallback(() => {
     dismissIntervention();
@@ -99,23 +79,11 @@ export default function LearnPage() {
 
   const handleCalmCornerContinue = useCallback(() => {
     dismissIntervention();
+    // If we transitioned to REGULATE, go back to REFLECT
     if (currentPhase === 'REGULATE') {
       updatePhase('REFLECT');
     }
   }, [dismissIntervention, currentPhase, updatePhase]);
-
-  // Session just ended: show summary
-  if (completedSummary) {
-    return (
-      <main className="min-h-screen">
-        <SessionSummary
-          summary={completedSummary}
-          onNewSession={() => setCompletedSummary(null)}
-          onViewProgress={() => router.push('/progress')}
-        />
-      </main>
-    );
-  }
 
   // No active session: show setup
   if (!sessionId || !subject) {
@@ -137,7 +105,7 @@ export default function LearnPage() {
         regulationLevel={regulationLevel}
         onPhaseChange={handlePhaseChange}
         onModeChange={handleModeChange}
-        onEndSession={handleEndSessionRequest}
+        onEndSession={handleEndSession}
       />
 
       <ChatMessageList
@@ -152,21 +120,9 @@ export default function LearnPage() {
         placeholder={
           currentPhase === 'ROOT'
             ? 'How are you feeling today? Ready to grow some thinking?'
-            : currentPhase === 'REGULATE'
-              ? 'Take your time. Share what you need...'
-              : currentPhase === 'RESTORE'
-                ? 'Let\'s work through this together...'
-                : 'Type your response...'
+            : 'Type your response...'
         }
       />
-
-      {/* End session confirmation */}
-      {showEndDialog && (
-        <EndSessionDialog
-          onConfirm={handleEndSessionConfirm}
-          onCancel={handleEndSessionCancel}
-        />
-      )}
 
       {/* Calm Corner overlay */}
       {interventionActive && (

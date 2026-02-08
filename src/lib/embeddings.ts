@@ -5,16 +5,6 @@ const EMBEDDING_MODEL = 'text-embedding-3-small';
 const EMBEDDING_DIMENSIONS = 1536;
 
 let openaiClient: OpenAI | null = null;
-const embeddingCache = new Map<string, number[]>();
-
-function hashText(text: string): string {
-  let hash = 0;
-  for (let i = 0; i < text.length; i += 1) {
-    hash = ((hash << 5) - hash) + text.charCodeAt(i);
-    hash |= 0;
-  }
-  return String(hash);
-}
 
 function getOpenAI(): OpenAI {
   if (!openaiClient) {
@@ -38,21 +28,13 @@ export async function generateEmbedding(text: string): Promise<number[]> {
     throw new Error('Cannot generate embedding for empty text');
   }
 
-  const cacheKey = `${EMBEDDING_MODEL}:${hashText(cleaned)}`;
-  const cached = embeddingCache.get(cacheKey);
-  if (cached) {
-    return cached;
-  }
-
   const response = await openai.embeddings.create({
     model: EMBEDDING_MODEL,
     input: cleaned,
     dimensions: EMBEDDING_DIMENSIONS,
   });
 
-  const embedding = response.data[0].embedding;
-  embeddingCache.set(cacheKey, embedding);
-  return embedding;
+  return response.data[0].embedding;
 }
 
 /**
@@ -62,65 +44,38 @@ export async function generateEmbedding(text: string): Promise<number[]> {
 export async function generateEmbeddings(
   texts: string[],
 ): Promise<number[][]> {
-  if (texts.length === 0) {
-    return [];
-  }
-
   const openai = getOpenAI();
 
   const cleaned = texts.map(t => t.replace(/\n+/g, ' ').trim());
-  if (cleaned.every(t => t.length === 0)) {
+  const nonEmpty = cleaned.filter(t => t.length > 0);
+  if (nonEmpty.length === 0) {
     return [];
-  }
-
-  const results: number[][] = new Array(cleaned.length);
-  const uncached: { index: number; text: string; cacheKey: string }[] = [];
-
-  cleaned.forEach((text, index) => {
-    if (!text) {
-      results[index] = new Array(EMBEDDING_DIMENSIONS).fill(0);
-      return;
-    }
-    const cacheKey = `${EMBEDDING_MODEL}:${hashText(text)}`;
-    const cached = embeddingCache.get(cacheKey);
-    if (cached) {
-      results[index] = cached;
-      return;
-    }
-    uncached.push({ index, text, cacheKey });
-  });
-
-  if (uncached.length === 0) {
-    return results;
   }
 
   // Process in batches of 100 to stay well within limits
   const batchSize = 100;
+  const allEmbeddings: number[][] = [];
 
-  for (let i = 0; i < uncached.length; i += batchSize) {
-    const batch = uncached.slice(i, i + batchSize);
+  for (let i = 0; i < nonEmpty.length; i += batchSize) {
+    const batch = nonEmpty.slice(i, i + batchSize);
     const response = await openai.embeddings.create({
       model: EMBEDDING_MODEL,
-      input: batch.map(item => item.text),
+      input: batch,
       dimensions: EMBEDDING_DIMENSIONS,
     });
 
     const sorted = response.data.sort((a, b) => a.index - b.index);
-    sorted.forEach((entry, batchIndex) => {
-      const target = batch[batchIndex];
-      embeddingCache.set(target.cacheKey, entry.embedding);
-      results[target.index] = entry.embedding;
-    });
+    allEmbeddings.push(...sorted.map(d => d.embedding));
 
-    if (i + batchSize < uncached.length) {
+    if (i + batchSize < nonEmpty.length) {
       logger.debug('Embedding batch progress', {
         processed: i + batch.length,
-        total: uncached.length,
+        total: nonEmpty.length,
       });
     }
   }
 
-  return results;
+  return allEmbeddings;
 }
 
 /**

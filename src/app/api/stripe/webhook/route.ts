@@ -1,18 +1,16 @@
 import { NextResponse } from 'next/server';
 import { handleSubscriptionCanceled, syncTenantFromSubscription } from '@/lib/billing';
 import { stripe } from '@/lib/stripe';
-import { withApiHandler } from '@/lib/api-handler';
-import { ValidationError } from '@/lib/api-errors';
 
-export const POST = withApiHandler(async (req) => {
-  const signature = req.headers.get('stripe-signature');
+export async function POST(request: Request) {
+  const signature = request.headers.get('stripe-signature');
   const webhookSecret = process.env.STRIPE_WEBHOOK_SECRET;
 
   if (!signature || !webhookSecret) {
-    throw new ValidationError('Webhook signature verification failed.');
+    return NextResponse.json({ error: 'Webhook signature verification failed.' }, { status: 400 });
   }
 
-  const payload = await req.text();
+  const payload = await request.text();
 
   try {
     const event = stripe.webhooks.constructEvent(payload, signature, webhookSecret);
@@ -35,6 +33,6 @@ export const POST = withApiHandler(async (req) => {
 
     return NextResponse.json({ received: true });
   } catch {
-    throw new ValidationError('Invalid webhook payload.');
+    return NextResponse.json({ error: 'Invalid webhook payload.' }, { status: 400 });
   }
-});
+}
