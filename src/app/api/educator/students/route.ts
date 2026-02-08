@@ -1,16 +1,18 @@
-import { NextRequest, NextResponse } from 'next/server';
+import { NextResponse } from 'next/server';
 import { auth } from '@clerk/nextjs/server';
 import { db } from '@/lib/db';
+import { withApiHandler } from '@/lib/api-handler';
+import { AuthenticationError, ForbiddenError } from '@/lib/api-errors';
 
-export async function GET(req: NextRequest) {
+export const GET = withApiHandler(async (req) => {
   const { userId: clerkId } = auth();
   if (!clerkId) {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    throw new AuthenticationError();
   }
 
   const user = await db.user.findUnique({ where: { clerkUserId: clerkId } });
   if (!user || !['EDUCATOR', 'SCHOOL_ADMIN', 'DISTRICT_ADMIN', 'PLATFORM_ADMIN'].includes(user.role)) {
-    return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+    throw new ForbiddenError();
   }
 
   const classId = req.nextUrl.searchParams.get('classId');
@@ -44,4 +46,4 @@ export async function GET(req: NextRequest) {
     pageSize,
     hasMore: skip + pageSize < total,
   });
-}
+}, { rateLimit: { windowMs: 60_000, max: 60 } });
