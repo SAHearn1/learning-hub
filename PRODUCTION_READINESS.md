@@ -124,10 +124,17 @@ Educator pages and APIs are in place, with remaining work focused on polish and 
 
 ### 3.6 Payment Processing
 
-Stripe checkout/portal/webhook routes are implemented. Remaining tasks:
+Payment processing is now substantially implemented:
+- ✅ Checkout session creation (`/api/billing/checkout`) for paid tiers
+- ✅ Subscription management synchronization via Stripe subscription lifecycle updates
+- ✅ Webhook handler (`/api/stripe/webhook`) for checkout completion + subscription create/update/delete events
+- ✅ Usage-limit enforcement tied to subscription tier during session creation and chat usage
+- ✅ Billing portal link (`/api/billing/portal`) for self-service plan management
+
+Remaining tasks:
 - End-to-end validation of subscription state transitions in production-like environments
-- Backfill retry/reconciliation handling for webhook delivery failures
-- Strengthen entitlement/usage-limit enforcement linkage with billing state
+- Add webhook retry/reconciliation tooling for delivery failures and delayed events
+- Expand billing analytics/reporting visibility for support and finance workflows
 
 ### 3.7 Data & Environment Readiness
 
