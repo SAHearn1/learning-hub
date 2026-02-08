@@ -27,15 +27,7 @@ export const POST = withApiHandler(async (req, { requestId }) => {
     throw new AuthenticationError();
   }
 
-  let body;
-  try {
-    body = chatRequestSchema.parse(await req.json());
-  } catch (err: unknown) {
-    const message = err instanceof z.ZodError
-      ? err.errors.map((e: { message: string }) => e.message).join(', ')
-      : 'Invalid request';
-    return new Response(JSON.stringify({ error: message }), { status: 400 });
-  }
+  const body = chatRequestSchema.parse(await req.json());
 
   const user = await db.user.findUnique({
     where: { clerkUserId: clerkId },

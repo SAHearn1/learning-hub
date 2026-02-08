@@ -1,7 +1,13 @@
-import { NextRequest, NextResponse } from 'next/server';
 import { auth } from '@clerk/nextjs/server';
-import { db } from '@/lib/db';
+import { NextResponse } from 'next/server';
 import { z } from 'zod';
+import { db } from '@/lib/db';
+import { withApiHandler } from '@/lib/api-handler';
+import {
+  AuthenticationError,
+  ForbiddenError,
+  NotFoundError,
+} from '@/lib/api-errors';
 
 const reviewSchema = z.object({
   assessmentId: z.string().min(1),
@@ -9,15 +15,27 @@ const reviewSchema = z.object({
   comments: z.string().min(1).max(2000),
 });
 
-export async function GET() {
+const ALLOWED_ROLES = ['EDUCATOR', 'SCHOOL_ADMIN', 'DISTRICT_ADMIN', 'PLATFORM_ADMIN'] as const;
+
+async function requireReviewer() {
   const { userId: clerkId } = auth();
-  if (!clerkId) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  if (!clerkId) {
+    throw new AuthenticationError();
+  }
 
   const user = await db.user.findUnique({ where: { clerkUserId: clerkId } });
-  if (!user) return NextResponse.json({ error: 'User not found' }, { status: 404 });
-  if (!['EDUCATOR', 'SCHOOL_ADMIN', 'DISTRICT_ADMIN', 'PLATFORM_ADMIN'].includes(user.role)) {
-    return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+  if (!user) {
+    throw new NotFoundError('User not found');
   }
+  if (!ALLOWED_ROLES.includes(user.role as typeof ALLOWED_ROLES[number])) {
+    throw new ForbiddenError();
+  }
+
+  return user;
+}
+
+export const GET = withApiHandler(async () => {
+  const user = await requireReviewer();
 
   const assessments = await db.assessment.findMany({
     where: {
@@ -48,25 +66,11 @@ export async function GET() {
       studentName: `${assessment.session.student.user.firstName} ${assessment.session.student.user.lastName}`,
     })),
   });
-}
+}, { rateLimit: { windowMs: 60_000, max: 60 } });
 
-export async function POST(request: NextRequest) {
-  const { userId: clerkId } = auth();
-  if (!clerkId) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-
-  const user = await db.user.findUnique({ where: { clerkUserId: clerkId } });
-  if (!user) return NextResponse.json({ error: 'User not found' }, { status: 404 });
-  if (!['EDUCATOR', 'SCHOOL_ADMIN', 'DISTRICT_ADMIN', 'PLATFORM_ADMIN'].includes(user.role)) {
-    return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
-  }
-
-  let body;
-  try {
-    body = reviewSchema.parse(await request.json());
-  } catch (error) {
-    const message = error instanceof z.ZodError ? error.errors.map((e) => e.message).join(', ') : 'Invalid request';
-    return NextResponse.json({ error: message }, { status: 400 });
-  }
+export const POST = withApiHandler(async (request) => {
+  const user = await requireReviewer();
+  const body = reviewSchema.parse(await request.json());
 
   const assessment = await db.assessment.findUnique({
     where: { id: body.assessmentId },
@@ -74,8 +78,9 @@ export async function POST(request: NextRequest) {
   });
 
   if (!assessment || assessment.session.tenantId !== user.tenantId) {
-    return NextResponse.json({ error: 'Assessment not found' }, { status: 404 });
+    throw new NotFoundError('Assessment not found');
   }
+
 
   const metadata = (assessment.metadata as Record<string, unknown> | null) ?? {};
   const updated = await db.assessment.update({
@@ -94,4 +99,4 @@ export async function POST(request: NextRequest) {
   });
 
   return NextResponse.json({ data: updated, message: 'Assessment reviewed successfully' });
-}
+}, { rateLimit: { windowMs: 60_000, max: 30 } });
