@@ -10,6 +10,31 @@ const rolePortals = [
   { label: 'Admin Dashboard', href: '/admin/ingest' },
 ] as const;
 
+const authEnabled = Boolean(process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY);
+
+const heroActions = [
+  {
+    label: authEnabled ? 'Get Started' : 'Start Learning',
+    href: authEnabled ? '/sign-up' : '/learn',
+    className: 'rounded-lg bg-primary-600 px-6 py-3 text-white transition-colors hover:bg-primary-700',
+  },
+  {
+    label: 'Sign In',
+    href: '/sign-in',
+    className: 'rounded-lg border border-primary-600 px-6 py-3 text-primary-600 transition-colors hover:bg-primary-50',
+  },
+  {
+    label: 'Methodology',
+    href: '/methodology',
+    className: 'rounded-lg border border-neutral-300 px-6 py-3 text-neutral-700 transition-colors hover:bg-neutral-100',
+  },
+  {
+    label: 'Contact',
+    href: '/contact',
+    className: 'rounded-lg border border-neutral-300 px-6 py-3 text-neutral-700 transition-colors hover:bg-neutral-100',
+  },
+] as const;
+
 export default function HomePage() {
   return (
     <main className="mx-auto flex min-h-screen w-full max-w-6xl flex-col px-8 py-14">
@@ -18,19 +43,12 @@ export default function HomePage() {
         <h1 className="mb-4 text-4xl font-bold text-primary-800">{siteConfig.name}</h1>
         <p className="mb-6 text-xl text-secondary-700">{siteConfig.tagline}</p>
         <p className="mx-auto mb-10 max-w-3xl text-lg text-neutral-600">{siteConfig.description}</p>
-        <div className="flex gap-4 justify-center">
-          <Link
-            href="/sign-up"
-            className="rounded-lg bg-primary-600 px-6 py-3 text-white transition-colors hover:bg-primary-700"
-          >
-            Get Started
-          </Link>
-          <Link
-            href="/methodology"
-            className="rounded-lg border border-primary-600 px-6 py-3 text-primary-600 transition-colors hover:bg-primary-50"
-          >
-            Learn More
-          </Link>
+        <div className="flex flex-wrap justify-center gap-4">
+          {heroActions.map((action) => (
+            <Link key={action.href} href={action.href} className={action.className}>
+              {action.label}
+            </Link>
+          ))}
         </div>
       </section>
 

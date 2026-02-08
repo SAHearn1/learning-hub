@@ -1,12 +1,14 @@
-import { test, expect } from '@playwright/test';
+import { test, expect } from '../fixtures/auth.fixture';
 
 test.describe('Parent dashboard', () => {
-  test.skip('navigate to parent dashboard (requires auth)', async ({ page }) => {
+  test.use({ authenticatedParent: undefined });
+
+  test('navigate to parent dashboard', async ({ page }) => {
     await page.goto('/parent/dashboard');
     await expect(page.locator('body')).toBeVisible();
   });
 
-  test.skip('verify parent dashboard loads (requires auth)', async ({ page }) => {
+  test('verify parent dashboard loads', async ({ page }) => {
     await page.goto('/parent/dashboard');
     
     // Look for parent dashboard heading
@@ -18,12 +20,12 @@ test.describe('Parent dashboard', () => {
     }
   });
 
-  test.skip('navigate to parent settings (requires auth)', async ({ page }) => {
+  test('navigate to parent settings', async ({ page }) => {
     await page.goto('/parent/settings');
     await expect(page.locator('body')).toBeVisible();
   });
 
-  test.skip('verify settings page placeholder displays (requires auth)', async ({ page }) => {
+  test('verify settings page placeholder displays', async ({ page }) => {
     await page.goto('/parent/settings');
     
     // Look for settings content
@@ -33,7 +35,7 @@ test.describe('Parent dashboard', () => {
     await expect(settingsContent).toBeVisible();
   });
 
-  test.skip('check for notification controls message (requires auth)', async ({ page }) => {
+  test('check for notification controls message', async ({ page }) => {
     await page.goto('/parent/settings');
     
     // Look for notification settings
@@ -45,7 +47,7 @@ test.describe('Parent dashboard', () => {
     }
   });
 
-  test.skip('verify page loads without errors (requires auth)', async ({ page }) => {
+  test('verify page loads without errors', async ({ page }) => {
     const errors: string[] = [];
     page.on('console', (msg) => {
       if (msg.type() === 'error') {

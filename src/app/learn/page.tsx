@@ -29,6 +29,10 @@ export default function LearnPage() {
   const dismissIntervention = useRegulationStore((s) => s.dismissIntervention);
   const regulationReset = useRegulationStore((s) => s.reset);
 
+  const [showEndDialog, setShowEndDialog] = useState(false);
+  const [completedSummary, setCompletedSummary] = useState<SessionSummaryData | null>(null);
+  const [startError, setStartError] = useState<string | null>(null);
+
   const {
     sendMessage,
     createSession,
@@ -42,7 +46,12 @@ export default function LearnPage() {
 
   const handleStartSession = useCallback(
     async (selectedSubject: Subject, selectedMode: EngagementMode) => {
-      await createSession(selectedSubject, selectedMode);
+      setStartError(null);
+      setCompletedSummary(null);
+      const createdSessionId = await createSession(selectedSubject, selectedMode);
+      if (!createdSessionId) {
+        setStartError('We could not start your session. Please try again in a moment.');
+      }
     },
     [createSession],
   );
@@ -89,7 +98,12 @@ export default function LearnPage() {
   if (!sessionId || !subject) {
     return (
       <main className="min-h-screen px-6 py-12">
-        <SessionSetup onStart={handleStartSession} isLoading={isLoading} />
+        <SessionSetup
+          onStart={handleStartSession}
+          isLoading={isLoading}
+          startError={startError}
+          onClearError={() => setStartError(null)}
+        />
       </main>
     );
   }
