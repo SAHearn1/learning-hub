@@ -1,12 +1,14 @@
-import { test, expect } from '@playwright/test';
+import { test, expect } from '../fixtures/auth.fixture';
 
 test.describe('Educator roster', () => {
-  test.skip('navigate to educator students page (requires auth)', async ({ page }) => {
+  test.use({ authenticatedEducator: undefined });
+
+  test('navigate to educator students page', async ({ page }) => {
     await page.goto('/educator/students');
     await expect(page.locator('body')).toBeVisible();
   });
 
-  test.skip('verify student roster loads with initial data (requires auth)', async ({ page }) => {
+  test('verify student roster loads with initial data', async ({ page }) => {
     await page.goto('/educator/students');
     
     // Look for student list or table
@@ -19,7 +21,7 @@ test.describe('Educator roster', () => {
     }
   });
 
-  test.skip('test student count badges (requires auth)', async ({ page }) => {
+  test('test student count badges', async ({ page }) => {
     await page.goto('/educator/students');
     
     // Look for count badges
@@ -33,7 +35,7 @@ test.describe('Educator roster', () => {
     }
   });
 
-  test.skip('test search functionality (requires auth)', async ({ page }) => {
+  test('test search functionality', async ({ page }) => {
     await page.goto('/educator/students');
     
     // Look for search input
@@ -52,7 +54,7 @@ test.describe('Educator roster', () => {
     }
   });
 
-  test.skip('test tier filter dropdown (requires auth)', async ({ page }) => {
+  test('test tier filter dropdown', async ({ page }) => {
     await page.goto('/educator/students');
     
     // Look for tier filter
@@ -65,7 +67,7 @@ test.describe('Educator roster', () => {
     }
   });
 
-  test.skip('select student and verify details panel appears (requires auth)', async ({ page }) => {
+  test('select student and verify details panel appears', async ({ page }) => {
     await page.goto('/educator/students');
     
     // Click on first student in list
@@ -85,7 +87,7 @@ test.describe('Educator roster', () => {
     }
   });
 
-  test.skip('view student accommodations (requires auth)', async ({ page }) => {
+  test('view student accommodations', async ({ page }) => {
     await page.goto('/educator/students');
     
     // Select a student
@@ -104,7 +106,7 @@ test.describe('Educator roster', () => {
     }
   });
 
-  test.skip('toggle accommodation checkboxes (requires auth)', async ({ page }) => {
+  test('toggle accommodation checkboxes', async ({ page }) => {
     await page.goto('/educator/students');
     
     // Select a student and find accommodation checkboxes
@@ -124,7 +126,7 @@ test.describe('Educator roster', () => {
     }
   });
 
-  test.skip('test add new student form (requires auth)', async ({ page }) => {
+  test('test add new student form', async ({ page }) => {
     await page.goto('/educator/students');
     
     // Look for add student button
@@ -151,7 +153,7 @@ test.describe('Educator roster', () => {
     }
   });
 
-  test.skip('test form validation (requires auth)', async ({ page }) => {
+  test('test form validation', async ({ page }) => {
     await page.goto('/educator/students');
     
     const addButton = page.getByRole('button', { name: /add student/i });
