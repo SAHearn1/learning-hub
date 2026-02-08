@@ -1,27 +1,63 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { auth } from '@clerk/nextjs/server';
 import { db } from '@/lib/db';
 import { generateDiagnosticQuestions } from '@/lib/assessments/diagnostic-generator';
 import { Subject } from '@prisma/client';
+import { z } from 'zod';
 
+const diagnosticSchema = z.object({
+  studentId: z.string().min(1),
+  sessionId: z.string().min(1),
+  subject: z.enum(['MATH', 'SCIENCE', 'LANGUAGE_ARTS']),
+  gradeLevel: z.number().int().min(1).max(12),
+  standardIds: z.array(z.string()).optional(),
+});
+
+/**
+ * POST /api/assessments/diagnostic
+ * Generates a diagnostic assessment with AI-generated questions
+ * 
+ * @body studentId, sessionId, subject, gradeLevel, standardIds (optional)
+ * @returns Array of created assessment objects
+ * @throws 401 if not authenticated
+ * @throws 403 if not authorized
+ * @throws 400 if invalid input
+ */
 export async function POST(request: NextRequest) {
   try {
-    const body = await request.json();
-    const { studentId, subject, gradeLevel, sessionId } = body;
-
-    // Validate required fields
-    if (!studentId || !subject || !gradeLevel || !sessionId) {
-      return NextResponse.json(
-        { error: 'Missing required fields: studentId, subject, gradeLevel, sessionId' },
-        { status: 400 }
-      );
+    const { userId: clerkId } = auth();
+    if (!clerkId) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    // Validate subject
-    if (!Object.values(Subject).includes(subject)) {
-      return NextResponse.json(
-        { error: `Invalid subject. Must be one of: ${Object.values(Subject).join(', ')}` },
-        { status: 400 }
-      );
+    let body;
+    try {
+      body = diagnosticSchema.parse(await request.json());
+    } catch (err) {
+      const message = err instanceof z.ZodError ? err.errors.map(e => e.message).join(', ') : 'Invalid request';
+      return NextResponse.json({ error: message }, { status: 400 });
+    }
+
+    const { studentId, sessionId, subject, gradeLevel } = body;
+
+    // Verify session exists and user has access
+    const session = await db.session.findUnique({
+      where: { id: sessionId },
+      include: { student: { include: { user: true } } },
+    });
+
+    if (!session) {
+      return NextResponse.json({ error: 'Session not found' }, { status: 404 });
+    }
+
+    const user = await db.user.findUnique({ where: { clerkUserId: clerkId } });
+    if (!user) {
+      return NextResponse.json({ error: 'User not found' }, { status: 404 });
+    }
+
+    // Verify authorization
+    if (user.role === 'STUDENT' && session.student.userId !== user.id) {
+      return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
     }
 
     // Generate diagnostic questions using AI
@@ -54,8 +90,7 @@ export async function POST(request: NextRequest) {
     }
 
     return NextResponse.json({
-      success: true,
-      assessments: createdAssessments,
+      data: createdAssessments,
       message: 'Diagnostic assessment created successfully',
     });
   } catch (error) {
@@ -70,8 +105,22 @@ export async function POST(request: NextRequest) {
   }
 }
 
+/**
+ * GET /api/assessments/diagnostic
+ * Retrieves diagnostic assessments for a student or session
+ * 
+ * @query studentId or sessionId (required)
+ * @returns Array of diagnostic assessments
+ * @throws 401 if not authenticated
+ * @throws 400 if missing required query params
+ */
 export async function GET(request: NextRequest) {
   try {
+    const { userId: clerkId } = auth();
+    if (!clerkId) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
     const { searchParams } = new URL(request.url);
     const studentId = searchParams.get('studentId');
     const sessionId = searchParams.get('sessionId');
@@ -81,6 +130,11 @@ export async function GET(request: NextRequest) {
         { error: 'Either studentId or sessionId is required' },
         { status: 400 }
       );
+    }
+
+    const user = await db.user.findUnique({ where: { clerkUserId: clerkId } });
+    if (!user) {
+      return NextResponse.json({ error: 'User not found' }, { status: 404 });
     }
 
     // Build query
@@ -119,9 +173,17 @@ export async function GET(request: NextRequest) {
       },
     });
 
+    // Verify authorization for each assessment
+    const authorizedAssessments = assessments.filter(assessment => {
+      if (user.role === 'STUDENT') {
+        return assessment.session.student.userId === user.id;
+      }
+      // Educators and admins can view all in their tenant
+      return assessment.session.tenantId === user.tenantId;
+    });
+
     return NextResponse.json({
-      success: true,
-      assessments,
+      data: authorizedAssessments,
     });
   } catch (error) {
     console.error('Error fetching diagnostic assessments:', error);
