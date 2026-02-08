@@ -1,12 +1,14 @@
-import { NextRequest, NextResponse } from 'next/server';
+import { NextResponse } from 'next/server';
 import { auth } from '@clerk/nextjs/server';
 import { db } from '@/lib/db';
+import { withApiHandler } from '@/lib/api-handler';
+import { AuthenticationError, ForbiddenError } from '@/lib/api-errors';
 
-export async function POST(req: NextRequest) {
+export const POST = withApiHandler(async (req, ctx) => {
   const { userId: clerkId } = auth();
-  
+
   if (!clerkId) {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    throw new AuthenticationError();
   }
 
   // Check if user is admin
@@ -15,39 +17,31 @@ export async function POST(req: NextRequest) {
   });
 
   if (!user || !['PLATFORM_ADMIN', 'DISTRICT_ADMIN', 'SCHOOL_ADMIN'].includes(user.role)) {
-    return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+    throw new ForbiddenError();
   }
 
-  try {
-    const body = await req.json();
-    
-    // Securely call the ingest endpoint with the webhook secret
-    const webhookSecret = process.env.N8N_WEBHOOK_SECRET;
-    
-    const response = await fetch(`${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/api/ingest`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': webhookSecret ? `Bearer ${webhookSecret}` : '',
-      },
-      body: JSON.stringify(body),
-    });
+  const body = await req.json();
 
-    const data = await response.json();
+  // Securely call the ingest endpoint with the webhook secret
+  const webhookSecret = process.env.N8N_WEBHOOK_SECRET;
 
-    if (response.ok) {
-      return NextResponse.json(data);
-    } else {
-      return NextResponse.json(
-        { error: data.error || 'Failed to trigger ingestion' },
-        { status: response.status }
-      );
-    }
-  } catch (error) {
-    console.error('Error triggering ingestion:', error);
+  const response = await fetch(`${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/api/ingest`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': webhookSecret ? `Bearer ${webhookSecret}` : '',
+    },
+    body: JSON.stringify(body),
+  });
+
+  const data = await response.json();
+
+  if (response.ok) {
+    return NextResponse.json(data);
+  } else {
     return NextResponse.json(
-      { error: 'Internal server error' },
-      { status: 500 }
+      { error: data.error || 'Failed to trigger ingestion' },
+      { status: response.status }
     );
   }
-}
+}, { rateLimit: { windowMs: 60_000, max: 30 } });

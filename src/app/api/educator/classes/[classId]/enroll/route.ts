@@ -1,43 +1,36 @@
-import { NextRequest, NextResponse } from 'next/server';
+import { NextResponse } from 'next/server';
 import { auth } from '@clerk/nextjs/server';
 import { db } from '@/lib/db';
 import { z } from 'zod';
+import { withApiHandler } from '@/lib/api-handler';
+import { AuthenticationError, ForbiddenError, NotFoundError } from '@/lib/api-errors';
 
 const enrollSchema = z.object({
   studentId: z.string().min(1),
 });
 
-export async function POST(
-  req: NextRequest,
-  { params }: { params: Promise<{ classId: string }> },
-) {
-  const { classId } = await params;
+export const POST = withApiHandler(async (req, ctx) => {
+  const { classId } = ctx.params;
   const { userId: clerkId } = auth();
   if (!clerkId) {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    throw new AuthenticationError();
   }
 
   const user = await db.user.findUnique({ where: { clerkUserId: clerkId } });
   if (!user || !['EDUCATOR', 'SCHOOL_ADMIN', 'DISTRICT_ADMIN'].includes(user.role)) {
-    return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+    throw new ForbiddenError();
   }
 
-  let body;
-  try {
-    body = enrollSchema.parse(await req.json());
-  } catch (err) {
-    const message = err instanceof z.ZodError ? err.errors.map(e => e.message).join(', ') : 'Invalid request';
-    return NextResponse.json({ error: message }, { status: 400 });
-  }
+  const body = enrollSchema.parse(await req.json());
 
   const targetClass = await db.class.findUnique({ where: { id: classId } });
   if (!targetClass) {
-    return NextResponse.json({ error: 'Class not found' }, { status: 404 });
+    throw new NotFoundError('Class not found');
   }
 
   // Verify the class belongs to the educator's tenant
   if (targetClass.tenantId !== user.tenantId) {
-    return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+    throw new ForbiddenError();
   }
 
   const student = await db.student.findUnique({
@@ -45,12 +38,12 @@ export async function POST(
     include: { user: { select: { tenantId: true } } },
   });
   if (!student) {
-    return NextResponse.json({ error: 'Student not found' }, { status: 404 });
+    throw new NotFoundError('Student not found');
   }
 
   // Verify the student belongs to the same tenant
   if (student.user.tenantId !== user.tenantId) {
-    return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+    throw new ForbiddenError();
   }
 
   const enrollment = await db.classEnrollment.upsert({
@@ -64,4 +57,4 @@ export async function POST(
   });
 
   return NextResponse.json({ data: enrollment }, { status: 201 });
-}
+}, { rateLimit: { windowMs: 60_000, max: 30 } });

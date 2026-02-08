@@ -1,4 +1,4 @@
-import { NextRequest, NextResponse } from 'next/server';
+import { NextResponse } from 'next/server';
 import { db } from '@/lib/db';
 import { z } from 'zod';
 import { chunkText, generateEmbeddings } from '@/lib/embeddings';
@@ -16,35 +16,28 @@ const ingestPayloadSchema = z.object({
   timestamp: z.string().optional(),
 });
 
-export async function POST(req: NextRequest) {
+export const POST = withApiHandler(async (req, ctx) => {
   const startTime = Date.now();
-  
+
   // Verify webhook secret — always required, never allow bypass
   const webhookSecret = process.env.N8N_WEBHOOK_SECRET;
   if (!webhookSecret) {
-    console.error('N8N_WEBHOOK_SECRET is not configured — rejecting ingest request');
-    return NextResponse.json(
-      { error: 'Webhook not configured' },
-      { status: 500 }
-    );
+    throw new Error('N8N_WEBHOOK_SECRET is not configured');
   }
 
   const authHeader = req.headers.get('authorization');
   if (authHeader !== `Bearer ${webhookSecret}`) {
-    return NextResponse.json(
-      { error: 'Unauthorized' },
-      { status: 401 }
-    );
+    throw new AuthenticationError();
   }
 
   let body;
   let payload: z.infer<typeof ingestPayloadSchema>;
-  
+
   try {
     body = await req.json();
     payload = ingestPayloadSchema.parse(body);
   } catch (err) {
-    const errorMessage = err instanceof z.ZodError 
+    const errorMessage = err instanceof z.ZodError
       ? err.errors.map(e => `${e.path.join('.')}: ${e.message}`).join(', ')
       : err instanceof Error ? err.message : 'Invalid request payload';
 
@@ -60,10 +53,7 @@ export async function POST(req: NextRequest) {
       },
     });
 
-    return NextResponse.json(
-      { error: 'Validation error', message: errorMessage },
-      { status: 400 }
-    );
+    throw new ValidationError(errorMessage);
   }
 
   // Create pending log entry
@@ -257,10 +247,9 @@ export async function POST(req: NextRequest) {
       durationMs: Date.now() - startTime,
       errors: errors.length > 0 ? errors : undefined,
     });
-
   } catch (err) {
     const errorMessage = err instanceof Error ? err.message : 'Unknown error during ingestion';
-    
+
     // Update log with failure
     await db.ingestLog.update({
       where: { id: log.id },
@@ -271,13 +260,10 @@ export async function POST(req: NextRequest) {
       },
     });
 
-    return NextResponse.json(
-      { error: 'Ingestion failed', message: errorMessage, logId: log.id },
-      { status: 500 }
-    );
+    throw err;
   }
-}
+}, { rateLimit: { windowMs: 60_000, max: 10 } });
 
-export async function GET() {
+export const GET = withApiHandler(async (req, ctx) => {
   return NextResponse.json({ status: 'ok' });
-}
+}, { rateLimit: { windowMs: 60_000, max: 60 } });
