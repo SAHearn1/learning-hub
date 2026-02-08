@@ -354,21 +354,25 @@ async function main() {
 
   const objectives = [
     {
+      id: 'obj-rational-number-line-001',
       topicId: 'topic-rational-numbers-001',
       description: 'Students will add two rational numbers using a number line',
       bloomsLevel: 'APPLY' as const,
     },
     {
+      id: 'obj-rational-subtraction-001',
       topicId: 'topic-rational-numbers-001',
       description: 'Students will explain why subtraction is the same as adding the opposite',
       bloomsLevel: 'UNDERSTAND' as const,
     },
     {
+      id: 'obj-linear-like-terms-001',
       topicId: 'topic-linear-expressions-001',
       description: 'Students will combine like terms in a linear expression',
       bloomsLevel: 'APPLY' as const,
     },
     {
+      id: 'obj-linear-distributive-001',
       topicId: 'topic-linear-expressions-001',
       description: 'Students will apply the distributive property to expand expressions',
       bloomsLevel: 'APPLY' as const,
@@ -376,8 +380,10 @@ async function main() {
   ];
 
   for (const objData of objectives) {
-    await prisma.learningObjective.create({
-      data: objData,
+    await prisma.learningObjective.upsert({
+      where: { id: objData.id },
+      update: {},
+      create: objData,
     });
   }
 
@@ -390,6 +396,7 @@ async function main() {
 
   const problems = [
     {
+      id: 'problem-rational-add-001',
       topicId: 'topic-rational-numbers-001',
       stem: 'Calculate: -3.5 + 2.8',
       scaffold: {
@@ -441,6 +448,7 @@ async function main() {
       validated: true,
     },
     {
+      id: 'problem-linear-simplify-001',
       topicId: 'topic-linear-expressions-001',
       stem: 'Simplify: 4x + 7 - 2x + 3',
       scaffold: {
@@ -494,8 +502,10 @@ async function main() {
   ];
 
   for (const probData of problems) {
-    await prisma.problem.create({
-      data: probData,
+    await prisma.problem.upsert({
+      where: { id: probData.id },
+      update: {},
+      create: probData,
     });
   }
 
