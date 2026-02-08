@@ -59,7 +59,15 @@ export const PATCH = withApiHandler(async (req, ctx) => {
     throw new AuthenticationError();
   }
 
-  const body = updateSessionSchema.parse(await req.json());
+  let body;
+  try {
+    body = updateSessionSchema.parse(await req.json());
+  } catch (err: unknown) {
+    const message = err instanceof z.ZodError
+      ? err.errors.map((e: { message: string }) => e.message).join(', ')
+      : 'Invalid request';
+    return NextResponse.json({ error: message }, { status: 400 });
+  }
 
   const session = await db.session.findUnique({
     where: { id: sessionId },

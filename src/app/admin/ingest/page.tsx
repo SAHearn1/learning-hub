@@ -92,21 +92,21 @@ export default function IngestPage() {
 
   const getStatusColor = (status: string) => {
     switch (status) {
-      case 'SUCCESS': return 'bg-green-100 text-green-800';
-      case 'FAILURE': return 'bg-red-100 text-red-800';
-      case 'PROCESSING': return 'bg-blue-100 text-blue-800';
-      case 'PENDING': return 'bg-yellow-100 text-yellow-800';
-      default: return 'bg-gray-100 text-gray-800';
+      case 'SUCCESS': return 'bg-primary-100 text-primary-800';
+      case 'FAILURE': return 'bg-error-100 text-error-800';
+      case 'PROCESSING': return 'bg-info-100 text-info-800';
+      case 'PENDING': return 'bg-secondary-100 text-secondary-800';
+      default: return 'bg-neutral-100 text-neutral-800';
     }
   };
 
   return (
     <div className="container mx-auto px-4 py-8 max-w-7xl">
       <div className="mb-8">
-        <h1 className="text-3xl font-bold text-gray-900 mb-2">
+        <h1 className="text-3xl font-bold text-neutral-900 mb-2">
           Curriculum Ingestion Management
         </h1>
-        <p className="text-gray-600">
+        <p className="text-neutral-600">
           Monitor and manage curriculum data ingestion from n8n workflows
         </p>
       </div>
@@ -114,20 +114,20 @@ export default function IngestPage() {
       {/* Statistics Cards */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-8">
         <div className="bg-white rounded-lg shadow p-6">
-          <div className="text-sm font-medium text-gray-600 mb-1">Total Ingestions</div>
-          <div className="text-3xl font-bold text-gray-900">{stats.total}</div>
+          <div className="text-sm font-medium text-neutral-600 mb-1">Total Ingestions</div>
+          <div className="text-3xl font-bold text-neutral-900">{stats.total}</div>
         </div>
         <div className="bg-white rounded-lg shadow p-6">
-          <div className="text-sm font-medium text-gray-600 mb-1">Successful</div>
-          <div className="text-3xl font-bold text-green-600">{stats.success}</div>
+          <div className="text-sm font-medium text-neutral-600 mb-1">Successful</div>
+          <div className="text-3xl font-bold text-primary-600">{stats.success}</div>
         </div>
         <div className="bg-white rounded-lg shadow p-6">
-          <div className="text-sm font-medium text-gray-600 mb-1">Failed</div>
-          <div className="text-3xl font-bold text-red-600">{stats.failure}</div>
+          <div className="text-sm font-medium text-neutral-600 mb-1">Failed</div>
+          <div className="text-3xl font-bold text-error-600">{stats.failure}</div>
         </div>
         <div className="bg-white rounded-lg shadow p-6">
-          <div className="text-sm font-medium text-gray-600 mb-1">Processing</div>
-          <div className="text-3xl font-bold text-blue-600">{stats.processing}</div>
+          <div className="text-sm font-medium text-neutral-600 mb-1">Processing</div>
+          <div className="text-3xl font-bold text-info-600">{stats.processing}</div>
         </div>
       </div>
 
@@ -140,12 +140,12 @@ export default function IngestPage() {
               placeholder="Search logs..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
-              className="flex-1 px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              className="flex-1 px-4 py-2 border border-neutral-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
             />
             <select
               value={filter}
               onChange={(e) => setFilter(e.target.value)}
-              className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              className="px-4 py-2 border border-neutral-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
             >
               <option value="ALL">All Status</option>
               <option value="SUCCESS">Success</option>
@@ -157,7 +157,7 @@ export default function IngestPage() {
           <button
             onClick={triggerIngestion}
             disabled={triggering}
-            className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:bg-gray-400 disabled:cursor-not-allowed transition-colors"
+            className="px-6 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 disabled:bg-neutral-400 disabled:cursor-not-allowed transition-colors"
           >
             {triggering ? 'Triggering...' : 'Trigger Manual Ingestion'}
           </button>
@@ -167,42 +167,42 @@ export default function IngestPage() {
       {/* Logs Table */}
       <div className="bg-white rounded-lg shadow overflow-hidden">
         {loading ? (
-          <div className="p-8 text-center text-gray-500">
+          <div className="p-8 text-center text-neutral-500">
             Loading ingestion logs...
           </div>
         ) : filteredLogs.length === 0 ? (
-          <div className="p-8 text-center text-gray-500">
+          <div className="p-8 text-center text-neutral-500">
             No logs found matching your criteria
           </div>
         ) : (
           <div className="overflow-x-auto">
             <table className="w-full">
-              <thead className="bg-gray-50 border-b border-gray-200">
+              <thead className="bg-neutral-50 border-b border-neutral-200">
                 <tr>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  <th className="px-6 py-3 text-left text-xs font-medium text-neutral-500 uppercase tracking-wider">
                     Timestamp
                   </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  <th className="px-6 py-3 text-left text-xs font-medium text-neutral-500 uppercase tracking-wider">
                     Status
                   </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  <th className="px-6 py-3 text-left text-xs font-medium text-neutral-500 uppercase tracking-wider">
                     Source
                   </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  <th className="px-6 py-3 text-left text-xs font-medium text-neutral-500 uppercase tracking-wider">
                     Files
                   </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  <th className="px-6 py-3 text-left text-xs font-medium text-neutral-500 uppercase tracking-wider">
                     Duration
                   </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  <th className="px-6 py-3 text-left text-xs font-medium text-neutral-500 uppercase tracking-wider">
                     Details
                   </th>
                 </tr>
               </thead>
-              <tbody className="bg-white divide-y divide-gray-200">
+              <tbody className="bg-white divide-y divide-neutral-200">
                 {filteredLogs.map((log) => (
-                  <tr key={log.id} className="hover:bg-gray-50">
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                  <tr key={log.id} className="hover:bg-neutral-50">
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-neutral-900">
                       {format(new Date(log.timestamp), 'MMM d, yyyy HH:mm:ss')}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
@@ -210,22 +210,22 @@ export default function IngestPage() {
                         {log.status}
                       </span>
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-neutral-900">
                       {log.source}
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-neutral-900">
                       {log.processedFiles}
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-neutral-500">
                       {log.durationMs ? `${log.durationMs}ms` : '-'}
                     </td>
-                    <td className="px-6 py-4 text-sm text-gray-500">
+                    <td className="px-6 py-4 text-sm text-neutral-500">
                       {log.errorMessage ? (
-                        <span className="text-red-600 truncate block max-w-xs" title={log.errorMessage}>
+                        <span className="text-error-600 truncate block max-w-xs" title={log.errorMessage}>
                           {log.errorMessage}
                         </span>
                       ) : (
-                        <span className="text-green-600">Success</span>
+                        <span className="text-primary-600">Success</span>
                       )}
                     </td>
                   </tr>

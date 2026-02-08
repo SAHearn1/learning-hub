@@ -15,10 +15,10 @@ export function MasteryIndicator({
 }: MasteryIndicatorProps) {
   const clamped = Math.min(100, Math.max(0, masteryLevel));
   
-  const color = 
-    clamped >= 80 ? 'bg-green-500' :
-    clamped >= 40 ? 'bg-yellow-500' :
-    'bg-red-500';
+  const color =
+    clamped >= 80 ? 'bg-primary-500' :
+    clamped >= 40 ? 'bg-secondary-500' :
+    'bg-error-500';
   
   const label =
     clamped >= 80 ? 'Mastered' :

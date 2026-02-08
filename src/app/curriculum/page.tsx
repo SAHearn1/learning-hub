@@ -2,6 +2,8 @@ import { auth } from '@clerk/nextjs/server';
 import { db } from '@/lib/db';
 import { CurriculumClient } from './curriculum-client';
 
+export const dynamic = 'force-dynamic';
+
 async function getCurriculumData() {
   // Get all topics with their standards
   const topics = await db.topic.findMany({

@@ -1,8 +1,9 @@
 import { NextResponse } from 'next/server';
 import { db } from '@/lib/db';
 import { z } from 'zod';
-import { withApiHandler } from '@/lib/api-handler';
-import { AuthenticationError, ValidationError } from '@/lib/api-errors';
+import { chunkText, generateEmbeddings } from '@/lib/embeddings';
+import { upsertVectors, type CurriculumMetadata } from '@/lib/pinecone';
+import { logger } from '@/lib/logger';
 
 const ingestPayloadSchema = z.object({
   source: z.enum(['WEBHOOK', 'MANUAL', 'SCHEDULED', 'API']).optional().default('WEBHOOK'),
@@ -67,33 +68,184 @@ export const POST = withApiHandler(async (req, ctx) => {
 
   try {
     // Process the ingestion
-    const processedFiles = payload.files?.length || 0;
-
-    // TODO: Implement actual file processing logic:
-    // 1. Parse and extract content from curriculum files in payload.files
-    // 2. Generate embeddings for each file's content using generateEmbedding()
-    // 3. Upsert embeddings to Pinecone with metadata (file path, course, module, etc.)
-    // 4. Update database records (Standards, Topics, etc.) if needed
-    // 5. Track processed file count and any errors
-    // For now, we just log the ingestion attempt
-
-    // Update log with success
+    let processedFiles = 0;
+    let failedFiles = 0;
+    const errors: string[] = [];
+    
+    logger.info('Starting file ingestion', {
+      source: payload.source,
+      fileCount: payload.files?.length || 0,
+      logId: log.id,
+    });
+    
+    // Process files if provided
+    if (payload.files && payload.files.length > 0) {
+      // Process files in batches to avoid timeouts
+      const BATCH_SIZE = 10;
+      
+      for (let batchStart = 0; batchStart < payload.files.length; batchStart += BATCH_SIZE) {
+        const batchFiles = payload.files.slice(batchStart, batchStart + BATCH_SIZE);
+        
+        logger.debug('Processing file batch', {
+          batchStart,
+          batchSize: batchFiles.length,
+          totalFiles: payload.files.length,
+        });
+        
+        // Process each file in the batch
+        for (const file of batchFiles) {
+          try {
+            // Skip files without content
+            if (!file.content || file.content.trim().length === 0) {
+              logger.warn('Skipping file with no content', { path: file.path });
+              failedFiles++;
+              errors.push(`${file.path}: No content`);
+              continue;
+            }
+            
+            // Extract metadata with defaults
+            const metadata = file.metadata || {};
+            const subject = metadata.subject || 'MATH';
+            const gradeLevel = metadata.gradeLevel || 0;
+            const standardCodes = Array.isArray(metadata.standardCodes) 
+              ? metadata.standardCodes 
+              : [];
+            
+            // Chunk the file content
+            const chunks = chunkText(file.content, 512, 50);
+            
+            if (chunks.length === 0) {
+              logger.warn('No chunks generated for file', { path: file.path });
+              failedFiles++;
+              errors.push(`${file.path}: No chunks generated`);
+              continue;
+            }
+            
+            logger.debug('Generated chunks for file', {
+              path: file.path,
+              chunkCount: chunks.length,
+            });
+            
+            // Generate embeddings for all chunks
+            const embeddings = await generateEmbeddings(chunks);
+            
+            if (embeddings.length !== chunks.length) {
+              throw new Error(`Embedding count mismatch: ${embeddings.length} vs ${chunks.length}`);
+            }
+            
+            // Prepare vectors for Pinecone with comprehensive metadata
+            const vectors = chunks.map((chunk, i) => {
+              // Generate unique ID for each chunk
+              const cleanPath = file.path.replace(/[^a-zA-Z0-9-_]/g, '-');
+              const vectorId = `${cleanPath}-chunk-${i}`;
+              
+              const vectorMetadata: CurriculumMetadata = {
+                filename: file.path,
+                documentType: 'curriculum',
+                subject: subject,
+                gradeLevel: gradeLevel,
+                standardCodes: standardCodes,
+                chunkIndex: i,
+                totalChunks: chunks.length,
+                text: chunk,
+                // Include optional metadata if provided
+                ...(metadata.course && { course: metadata.course }),
+                ...(metadata.module && { module: metadata.module }),
+              };
+              
+              return {
+                id: vectorId,
+                values: embeddings[i],
+                metadata: vectorMetadata,
+              };
+            });
+            
+            // Upsert to Pinecone
+            await upsertVectors(vectors);
+            
+            logger.info('Successfully processed file', {
+              path: file.path,
+              chunks: chunks.length,
+              vectorIds: vectors.length,
+            });
+            
+            processedFiles++;
+            
+          } catch (fileError) {
+            const errorMsg = fileError instanceof Error 
+              ? fileError.message 
+              : 'Unknown error';
+            logger.error('Failed to process file', fileError, { path: file.path });
+            failedFiles++;
+            errors.push(`${file.path}: ${errorMsg}`);
+          }
+        }
+        
+        // Update progress incrementally
+        await db.ingestLog.update({
+          where: { id: log.id },
+          data: {
+            processedFiles: processedFiles,
+            metadata: {
+              ...payload.metadata,
+              progress: {
+                processed: processedFiles,
+                failed: failedFiles,
+                total: payload.files.length,
+              },
+            },
+          },
+        });
+      }
+    }
+    
+    // Determine final status
+    // SUCCESS: All files processed successfully (no failures)
+    // FAILURE: All files failed (no successes)
+    // SUCCESS: Partial success (some files succeeded, some failed) - treat as success
+    const status = processedFiles === 0 ? 'FAILURE' : 'SUCCESS';
+    
+    const finalErrorMessage = errors.length > 0 
+      ? `Processed ${processedFiles} files successfully, ${failedFiles} failed. Errors: ${errors.join('; ')}`
+      : undefined;
+    
+    logger.info('Ingestion completed', {
+      status,
+      processedFiles,
+      failedFiles,
+      totalFiles: payload.files?.length || 0,
+    });
+    
+    // Update log with final results
     await db.ingestLog.update({
       where: { id: log.id },
       data: {
-        status: 'SUCCESS',
+        status,
         processedFiles,
         durationMs: Date.now() - startTime,
-        metadata: payload.metadata,
+        errorMessage: finalErrorMessage,
+        metadata: {
+          ...payload.metadata,
+          finalResults: {
+            processed: processedFiles,
+            failed: failedFiles,
+            total: payload.files?.length || 0,
+            errors: errors,
+          },
+        },
       },
     });
 
     return NextResponse.json({
-      success: true,
-      message: 'Ingestion completed successfully',
+      success: status !== 'FAILURE',
+      message: status === 'SUCCESS' 
+        ? 'Ingestion completed successfully'
+        : 'Ingestion completed with errors',
       logId: log.id,
       processedFiles,
+      failedFiles,
       durationMs: Date.now() - startTime,
+      errors: errors.length > 0 ? errors : undefined,
     });
   } catch (err) {
     const errorMessage = err instanceof Error ? err.message : 'Unknown error during ingestion';
