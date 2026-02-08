@@ -1,0 +1,95 @@
+'use client';
+
+import type { MessageRole } from '@prisma/client';
+import { cn } from '@/lib/utils';
+import { formatDistanceToNow } from 'date-fns';
+import ReactMarkdown from 'react-markdown';
+import remarkGfm from 'remark-gfm';
+import remarkMath from 'remark-math';
+import rehypeKatex from 'rehype-katex';
+import 'katex/dist/katex.min.css';
+
+interface MessageBubbleProps {
+  role: MessageRole;
+  content: string;
+  timestamp: Date;
+  className?: string;
+}
+
+export function MessageBubble({ role, content, timestamp, className }: MessageBubbleProps) {
+  const isSystem = role === 'SYSTEM';
+  const isAssistant = role === 'ASSISTANT';
+  const isUser = role === 'USER';
+
+  if (isSystem) {
+    return (
+      <div className={cn('flex justify-center py-4', className)}>
+        <div className="max-w-md rounded-lg bg-neutral-100 px-4 py-2 text-center text-sm text-neutral-700">
+          {content}
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div
+      className={cn(
+        'flex gap-3 py-3',
+        isUser ? 'flex-row-reverse' : 'flex-row',
+        className
+      )}
+    >
+      {/* Avatar */}
+      <div
+        className={cn(
+          'flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-full text-xs font-semibold',
+          isAssistant && 'bg-primary text-primary-foreground',
+          isUser && 'bg-neutral-300 text-neutral-700'
+        )}
+      >
+        {isAssistant ? 'AI' : 'You'}
+      </div>
+
+      {/* Message content */}
+      <div className={cn('flex max-w-[80%] flex-col gap-1', isUser && 'items-end')}>
+        <div
+          className={cn(
+            'rounded-lg px-4 py-3',
+            isAssistant && 'bg-blue-50 text-neutral-900',
+            isUser && 'bg-neutral-200 text-neutral-900'
+          )}
+        >
+          {isAssistant ? (
+            <div className="prose prose-sm max-w-none">
+              <ReactMarkdown
+                remarkPlugins={[remarkGfm, remarkMath]}
+                rehypePlugins={[rehypeKatex]}
+                components={{
+                  // Customize markdown components
+                  code: ({ inline, className, children, ...props }: any) => {
+                    return inline ? (
+                      <code className="rounded bg-neutral-200 px-1 py-0.5" {...props}>
+                        {children}
+                      </code>
+                    ) : (
+                      <code className={cn('block rounded bg-neutral-100 p-2', className)} {...props}>
+                        {children}
+                      </code>
+                    );
+                  },
+                }}
+              >
+                {content}
+              </ReactMarkdown>
+            </div>
+          ) : (
+            <p className="whitespace-pre-wrap text-sm">{content}</p>
+          )}
+        </div>
+        <span className="px-1 text-xs text-neutral-500">
+          {formatDistanceToNow(timestamp, { addSuffix: true })}
+        </span>
+      </div>
+    </div>
+  );
+}

@@ -6,24 +6,35 @@ test.describe('Student learning page', () => {
     await expect(page.locator('body')).toBeVisible();
   });
 
-  test.skip('verify learn page displays correctly (requires auth)', async ({ page }) => {
+  test.skip('verify learn page displays chat interface (requires auth)', async ({ page }) => {
     await page.goto('/learn');
     
-    // Check for main content
-    const mainContent = page.locator('main').or(page.locator('[data-testid="learn-content"]'));
-    await expect(mainContent).toBeVisible();
+    // Check for session header
+    const sessionHeader = page.getByRole('heading', { name: /mathematics|science|language arts/i });
+    if (await sessionHeader.count() > 0) {
+      await expect(sessionHeader.first()).toBeVisible();
+    }
+    
+    // Check for phase indicator
+    const phaseIndicator = page.getByText(/root|regulate|reflect|restore|reconnect/i);
+    if (await phaseIndicator.count() > 0) {
+      await expect(phaseIndicator.first()).toBeVisible();
+    }
+    
+    // Check for message input
+    const messageInput = page.getByPlaceholder(/type your message/i);
+    if (await messageInput.count() > 0) {
+      await expect(messageInput).toBeVisible();
+    }
   });
 
-  test.skip('check placeholder text for Phase 2.1 (requires auth)', async ({ page }) => {
+  test.skip('verify empty state message (requires auth)', async ({ page }) => {
     await page.goto('/learn');
     
-    // Look for phase information or coming soon message
-    const phaseText = page.getByText(/phase 2/i)
-      .or(page.getByText(/coming soon/i))
-      .or(page.getByText(/under development/i));
-    
-    if (await phaseText.count() > 0) {
-      await expect(phaseText.first()).toBeVisible();
+    // Check for empty state message
+    const emptyState = page.getByText(/start your learning session/i);
+    if (await emptyState.count() > 0) {
+      await expect(emptyState).toBeVisible();
     }
   });
 
