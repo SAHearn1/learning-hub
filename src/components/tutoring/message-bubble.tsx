@@ -3,11 +3,6 @@
 import type { MessageRole } from '@prisma/client';
 import { cn } from '@/lib/utils';
 import { formatDistanceToNow } from 'date-fns';
-import ReactMarkdown from 'react-markdown';
-import remarkGfm from 'remark-gfm';
-import remarkMath from 'remark-math';
-import rehypeKatex from 'rehype-katex';
-import 'katex/dist/katex.min.css';
 
 interface MessageBubbleProps {
   role: MessageRole;
@@ -59,32 +54,7 @@ export function MessageBubble({ role, content, timestamp, className }: MessageBu
             isUser && 'bg-neutral-200 text-neutral-900'
           )}
         >
-          {isAssistant ? (
-            <div className="prose prose-sm max-w-none">
-              <ReactMarkdown
-                remarkPlugins={[remarkGfm, remarkMath]}
-                rehypePlugins={[rehypeKatex]}
-                components={{
-                  // Customize markdown components
-                  code: ({ inline, className, children, ...props }: any) => {
-                    return inline ? (
-                      <code className="rounded bg-neutral-200 px-1 py-0.5" {...props}>
-                        {children}
-                      </code>
-                    ) : (
-                      <code className={cn('block rounded bg-neutral-100 p-2', className)} {...props}>
-                        {children}
-                      </code>
-                    );
-                  },
-                }}
-              >
-                {content}
-              </ReactMarkdown>
-            </div>
-          ) : (
-            <p className="whitespace-pre-wrap text-sm">{content}</p>
-          )}
+          <p className="whitespace-pre-wrap text-sm">{content}</p>
         </div>
         <span className="px-1 text-xs text-neutral-500">
           {formatDistanceToNow(timestamp, { addSuffix: true })}
