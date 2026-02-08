@@ -24,7 +24,8 @@
     "rag:create-index": "tsx scripts/create-pinecone-index.ts",
     "test:integration": "vitest tests/integration --run",
     "compliance:check": "node scripts/validate-compliance.mjs",
-    "vercel-build": "prisma generate && next build"
+    "vercel-build": "prisma generate && next build",
+    "ops:parallel": "node ./scripts/parallel-task-agents.mjs"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.30.0",
