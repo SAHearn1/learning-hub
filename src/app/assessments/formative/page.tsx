@@ -5,7 +5,7 @@ import { FormativeCheck } from '@/components/assessments/FormativeCheck';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { useSearchParams } from 'next/navigation';
 
-function FormativePageContent() {
+function FormativeContent() {
   const searchParams = useSearchParams();
   const sessionId = searchParams.get('sessionId') || 'session-123';
   const topic = searchParams.get('topic') || 'Fractions and Equivalent Forms';
@@ -43,7 +43,7 @@ function FormativePageContent() {
 export default function FormativePage() {
   return (
     <Suspense fallback={<div className="container mx-auto py-8 px-4 max-w-4xl">Loading...</div>}>
-      <FormativePageContent />
+      <FormativeContent />
     </Suspense>
   );
 }

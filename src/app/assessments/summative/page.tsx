@@ -11,7 +11,7 @@ const DEFAULT_OBJECTIVES = [
   'Compare multiple solution strategies',
 ];
 
-function SummativePageContent() {
+function SummativeContent() {
   const searchParams = useSearchParams();
   const studentId = searchParams.get('studentId') || 'student-123';
   const sessionId = searchParams.get('sessionId') || 'session-123';
@@ -51,7 +51,7 @@ function SummativePageContent() {
 export default function SummativePage() {
   return (
     <Suspense fallback={<div className="container mx-auto py-8 px-4 max-w-5xl">Loading...</div>}>
-      <SummativePageContent />
+      <SummativeContent />
     </Suspense>
   );
 }

@@ -6,7 +6,7 @@ import { ReasoningMoveTracker } from '@/components/assessments/ReasoningMoveTrac
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { useSearchParams } from 'next/navigation';
 
-function ThinkingPageContent() {
+function ThinkingContent() {
   const searchParams = useSearchParams();
   const studentId = searchParams.get('studentId') || 'student-123';
   const sessionId = searchParams.get('sessionId') || 'session-123';
@@ -49,7 +49,7 @@ function ThinkingPageContent() {
 export default function ThinkingPage() {
   return (
     <Suspense fallback={<div className="container mx-auto py-8 px-4 max-w-6xl">Loading...</div>}>
-      <ThinkingPageContent />
+      <ThinkingContent />
     </Suspense>
   );
 }
