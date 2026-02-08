@@ -137,7 +137,14 @@ export default async function ProgressPage() {
             Track your learning journey across standards, thinking skills, and sessions.
           </p>
         </div>
-        <ExportButton />
+        <ExportButton
+          rows={data.standards.map((s) => ({
+            standard: s.standard.code,
+            subject: s.standard.subject,
+            masteryLevel: s.masteryLevel,
+            assessmentCount: s.assessmentCount,
+          }))}
+        />
       </div>
 
       {/* Summary cards */}

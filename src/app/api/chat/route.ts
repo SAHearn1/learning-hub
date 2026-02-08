@@ -2,11 +2,15 @@ import { auth } from '@clerk/nextjs/server';
 import { db } from '@/lib/db';
 import { anthropic, AI_MODELS } from '@/lib/ai/client';
 import { buildMasterSystemPrompt } from '@/lib/ai/prompts/master-system-prompt';
-import { generateEmbedding } from '@/lib/pinecone/embeddings';
-import { queryPinecone } from '@/lib/pinecone/client';
+import { searchCurriculum, formatCurriculumContext } from '@/lib/vector-search';
 import { enforceUsageLimits, UsageLimitError } from '@/lib/usage-limits';
 import { detectDysregulation, updateRegulationLevel } from '@/lib/regulation/detector';
 import { analyzeThinkingQuality } from '@/lib/trace/tracker';
+import { getRecommendedPhaseTransition } from '@/lib/five-rs/phase-transition';
+import { withApiHandler } from '@/lib/api-handler';
+import { AuthenticationError, ForbiddenError, NotFoundError, PaymentRequiredError, ValidationError } from '@/lib/api-errors';
+import { incrementMetric, observeLatency } from '@/lib/api/metrics';
+import { logger } from '@/lib/logger';
 import { z } from 'zod';
 
 const chatRequestSchema = z.object({
@@ -99,6 +103,36 @@ export const POST = withApiHandler(async (req, { requestId }) => {
     });
   }
 
+  const phaseTransition = getRecommendedPhaseTransition({
+    currentPhase: session.currentPhase,
+    regulationLevel: newRegulationLevel,
+    hasErrorSignal: regulationCheck.signals.some((signal) =>
+      signal.toLowerCase().includes('frustrat') || signal.toLowerCase().includes('stuck')
+    ),
+    sessionMessageCount: session.messages.length,
+  });
+
+  if (phaseTransition && phaseTransition.nextPhase !== session.currentPhase) {
+    await db.session.update({
+      where: { id: session.id },
+      data: { currentPhase: phaseTransition.nextPhase },
+    });
+
+    await db.message.create({
+      data: {
+        sessionId: session.id,
+        role: 'SYSTEM',
+        content: `Transitioning from ${session.currentPhase} to ${phaseTransition.nextPhase}. ${phaseTransition.reason}`,
+        metadata: {
+          type: 'phase-transition',
+          from: session.currentPhase,
+          to: phaseTransition.nextPhase,
+          reason: phaseTransition.reason,
+        },
+      },
+    });
+  }
+
   // Build context for system prompt
   const regulationState = session.regulationState as { level?: number } | null;
   const learningPrefs = user.student.learningPreferences as { modalities?: string[] } | null;
@@ -116,35 +150,18 @@ export const POST = withApiHandler(async (req, { requestId }) => {
   try {
     const ragStartTime = Date.now();
 
-    // Generate embedding for the user's query
-    const queryEmbedding = await generateEmbedding(body.message);
-
-    // Query Pinecone for relevant curriculum content
-    const filter: Record<string, any> = {
+    const matches = await searchCurriculum(body.message, {
       subject: session.subject,
-    };
-
-    // Add grade level filter if available
-    if (user.student.gradeLevel) {
-      filter.gradeLevel = user.student.gradeLevel;
-    }
-
-    const matches = await queryPinecone(queryEmbedding, 5, filter);
+      gradeLevel: user.student.gradeLevel ?? undefined,
+      topK: 6,
+      minScore: 0.35,
+    });
     ragMetrics.retrieved = matches.length;
     ragMetrics.durationMs = Date.now() - ragStartTime;
 
     // Format retrieved context
     if (matches.length > 0) {
-      curriculumContext = matches
-        .map((match: { metadata?: Record<string, unknown>; score?: number }, idx: number) => {
-          const metadata = (match.metadata as Record<string, string>) || {};
-          const content = metadata.content || metadata.text || 'No content available';
-          const source = metadata.source || metadata.title || 'Unknown source';
-          const score = match.score?.toFixed(3) || 'N/A';
-
-          return `[Context ${idx + 1}] (Relevance: ${score})\nSource: ${source}\n${content}`;
-        })
-        .join('\n\n---\n\n');
+      curriculumContext = formatCurriculumContext(matches);
 
       logger.info('RAG context retrieved', {
         requestId,
@@ -213,6 +230,26 @@ export const POST = withApiHandler(async (req, { requestId }) => {
             fullText += event.delta.text;
             controller.enqueue(encoder.encode(`data: ${JSON.stringify({ text: event.delta.text })}\n\n`));
           }
+        }
+
+        if (phaseTransition && phaseTransition.nextPhase !== session.currentPhase) {
+          controller.enqueue(encoder.encode(`data: ${JSON.stringify({
+            phaseTransition: {
+              from: session.currentPhase,
+              to: phaseTransition.nextPhase,
+              reason: phaseTransition.reason,
+            },
+          })}\n\n`));
+        }
+
+        if (regulationCheck.recommendation === 'calm-corner') {
+          controller.enqueue(encoder.encode(`data: ${JSON.stringify({
+            dysregulation: {
+              recommendation: regulationCheck.recommendation,
+              severity: regulationCheck.severity,
+              signals: regulationCheck.signals,
+            },
+          })}\n\n`));
         }
 
         // Save assistant message
@@ -285,6 +322,7 @@ export const POST = withApiHandler(async (req, { requestId }) => {
         // Track AI usage
         const finalMessage = await stream.finalMessage();
         const latencyMs = Date.now() - startTime;
+        observeLatency('/api/chat', latencyMs);
         const inputTokens = finalMessage.usage.input_tokens;
         const outputTokens = finalMessage.usage.output_tokens;
 
@@ -310,6 +348,7 @@ export const POST = withApiHandler(async (req, { requestId }) => {
         controller.enqueue(encoder.encode(`data: ${JSON.stringify({ done: true })}\n\n`));
         controller.close();
       } catch (err) {
+        incrementMetric('api_chat_stream_error_total');
         const errorMessage = err instanceof Error ? err.message : 'Stream error';
         controller.enqueue(encoder.encode(`data: ${JSON.stringify({ error: errorMessage })}\n\n`));
         controller.close();

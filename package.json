@@ -21,7 +21,9 @@
     "test:e2e:debug": "playwright test --debug",
     "test:e2e:ui": "playwright test --ui",
     "test:e2e:report": "playwright show-report",
-    "rag:create-index": "tsx scripts/create-pinecone-index.ts"
+    "rag:create-index": "tsx scripts/create-pinecone-index.ts",
+    "test:integration": "vitest tests/integration --run",
+    "compliance:check": "node scripts/validate-compliance.mjs"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.30.0",
