@@ -13,6 +13,8 @@ const updateSessionSchema = z.object({
   }).optional(),
   metadata: z.record(z.unknown()).optional(),
   endSession: z.boolean().optional(),
+  endedAt: z.string().optional(),
+  metadata: z.record(z.unknown()).optional(),
 });
 
 export async function GET(
@@ -83,6 +85,7 @@ export async function PATCH(
   if (body.regulationState) updateData.regulationState = body.regulationState;
   if (body.metadata) updateData.metadata = body.metadata;
   if (body.endSession) updateData.endedAt = new Date();
+  if (body.endedAt) updateData.endedAt = new Date(body.endedAt);
 
   const updated = await db.session.update({
     where: { id: sessionId },
