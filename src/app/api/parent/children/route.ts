@@ -1,19 +1,14 @@
 import { NextResponse } from 'next/server';
-import { auth } from '@clerk/nextjs/server';
+import { withApiHandler } from '@/lib/api-handler';
+import { ForbiddenError } from '@/lib/api-errors';
+import { requireUser } from '@/lib/auth';
 import { db } from '@/lib/db';
 
-export async function GET() {
-  const { userId: clerkId } = auth();
-  if (!clerkId) {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-  }
+export const GET = withApiHandler(async () => {
+  const user = await requireUser();
 
-  const user = await db.user.findUnique({
-    where: { clerkUserId: clerkId },
-    include: { parent: true },
-  });
-  if (!user || user.role !== 'PARENT' || !user.parent) {
-    return NextResponse.json({ error: 'Parent profile not found' }, { status: 403 });
+  if (user.role !== 'PARENT' || !user.parent) {
+    throw new ForbiddenError('Parent profile not found');
   }
 
   if (user.parent.childrenIds.length === 0) {
@@ -46,4 +41,4 @@ export async function GET() {
   });
 
   return NextResponse.json({ data: children });
-}
+}, { rateLimit: { windowMs: 60_000, max: 60 } });

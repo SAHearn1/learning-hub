@@ -1,20 +1,17 @@
 import { NextResponse } from 'next/server';
 import { createBillingPortalSession } from '@/lib/billing';
 import { requireUser } from '@/lib/auth';
+import { withApiHandler } from '@/lib/api-handler';
 
-export async function POST() {
-  try {
-    const user = await requireUser();
-    const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? 'http://localhost:3000';
+export const POST = withApiHandler(async () => {
+  const user = await requireUser();
+  const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? 'http://localhost:3000';
 
-    const session = await createBillingPortalSession({
-      tenantId: user.tenantId,
-      email: user.email,
-      returnUrl: `${appUrl}/settings`,
-    });
+  const session = await createBillingPortalSession({
+    tenantId: user.tenantId,
+    email: user.email,
+    returnUrl: `${appUrl}/settings`,
+  });
 
-    return NextResponse.json({ url: session.url });
-  } catch {
-    return NextResponse.json({ error: 'Unable to create billing portal session' }, { status: 500 });
-  }
-}
+  return NextResponse.json({ url: session.url });
+}, { rateLimit: { windowMs: 60_000, max: 30 } });

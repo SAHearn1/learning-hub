@@ -1,12 +1,13 @@
 'use client';
 
+import { Suspense } from 'react';
 import { ThinkingAssessment } from '@/components/assessments/ThinkingAssessment';
 import { ReasoningMoveTracker } from '@/components/assessments/ReasoningMoveTracker';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { useSearchParams } from 'next/navigation';
 import { useAssessmentContext } from '@/hooks/useAssessmentContext';
 
-export default function ThinkingPage() {
+function ThinkingContent() {
   const searchParams = useSearchParams();
   const { context, loading } = useAssessmentContext();
   const studentId = searchParams.get('studentId') || context?.studentId;
@@ -48,5 +49,13 @@ export default function ThinkingPage() {
         </div>
       </div>
     </div>
+  );
+}
+
+export default function ThinkingPage() {
+  return (
+    <Suspense fallback={<div className="container mx-auto py-8 px-4 max-w-6xl">Loading...</div>}>
+      <ThinkingContent />
+    </Suspense>
   );
 }

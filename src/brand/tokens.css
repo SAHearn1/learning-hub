@@ -71,6 +71,63 @@
   --color-info: #3b82f6;
 
   /* ─────────────────────────────────────────────────────────────────────
+     STATUS COLOR SHADES
+     ───────────────────────────────────────────────────────────────────── */
+
+  /* Error shades */
+  --color-error-50: #fef2f2;
+  --color-error-100: #fee2e2;
+  --color-error-200: #fecaca;
+  --color-error-500: #ef4444;
+  --color-error-600: #dc2626;
+  --color-error-700: #b91c1c;
+  --color-error-800: #991b1b;
+  --color-error-900: #7f1d1d;
+
+  /* Info shades */
+  --color-info-50: #eff6ff;
+  --color-info-100: #dbeafe;
+  --color-info-200: #bfdbfe;
+  --color-info-500: #3b82f6;
+  --color-info-600: #2563eb;
+  --color-info-700: #1d4ed8;
+  --color-info-800: #1e40af;
+  --color-info-900: #1e3a8a;
+
+  /* ─────────────────────────────────────────────────────────────────────
+     SUBJECT COLORS
+     ───────────────────────────────────────────────────────────────────── */
+
+  --color-subject-math: #3B82F6;
+  --color-subject-math-light: #eff6ff;
+  --color-subject-math-dark: #1e40af;
+
+  --color-subject-science: #10B981;
+  --color-subject-science-light: #ecfdf5;
+  --color-subject-science-dark: #065f46;
+
+  --color-subject-ela: #8B5CF6;
+  --color-subject-ela-light: #f5f3ff;
+  --color-subject-ela-dark: #5b21b6;
+
+  /* ─────────────────────────────────────────────────────────────────────
+     SHADCN/UI COMPATIBILITY
+     ───────────────────────────────────────────────────────────────────── */
+
+  --color-background: var(--color-surface);
+  --color-foreground: var(--color-text-primary);
+  --color-primary-foreground: #ffffff;
+  --color-secondary-foreground: var(--color-neutral-900);
+  --color-destructive: var(--color-error);
+  --color-destructive-foreground: #ffffff;
+  --color-muted: var(--color-neutral-100);
+  --color-muted-foreground: var(--color-neutral-500);
+  --color-accent: var(--color-primary-100);
+  --color-accent-foreground: var(--color-primary-900);
+  --color-input: var(--color-border);
+  --color-ring: var(--color-focus);
+
+  /* ─────────────────────────────────────────────────────────────────────
      TYPOGRAPHY
      ───────────────────────────────────────────────────────────────────── */
 

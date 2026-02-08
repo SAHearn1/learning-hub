@@ -1,18 +1,20 @@
-import { NextRequest, NextResponse } from 'next/server';
+import { NextResponse } from 'next/server';
 import { auth } from '@clerk/nextjs/server';
 import { db } from '@/lib/db';
 import { enforceUsageLimits, UsageLimitError } from '@/lib/usage-limits';
 import { z } from 'zod';
+import { withApiHandler } from '@/lib/api-handler';
+import { AuthenticationError, NotFoundError, PaymentRequiredError } from '@/lib/api-errors';
 
 const createSessionSchema = z.object({
   subject: z.enum(['MATH', 'SCIENCE', 'LANGUAGE_ARTS']),
   engagementMode: z.enum(['FORWARD', 'REVERSE', 'ERROR_ANALYSIS', 'MULTIPLE_PATHWAYS', 'PROBLEM_POSING']).default('FORWARD'),
 });
 
-export async function POST(req: NextRequest) {
+export const POST = withApiHandler(async (req, _ctx) => {
   const { userId: clerkId } = auth();
   if (!clerkId) {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    throw new AuthenticationError();
   }
 
   const user = await db.user.findUnique({
@@ -20,22 +22,16 @@ export async function POST(req: NextRequest) {
     include: { student: true },
   });
   if (!user?.student) {
-    return NextResponse.json({ error: 'Student profile not found' }, { status: 404 });
+    throw new NotFoundError('Student profile not found');
   }
 
-  let body;
-  try {
-    body = createSessionSchema.parse(await req.json());
-  } catch (err) {
-    const message = err instanceof z.ZodError ? err.errors.map(e => e.message).join(', ') : 'Invalid request';
-    return NextResponse.json({ error: message }, { status: 400 });
-  }
+  const body = createSessionSchema.parse(await req.json());
 
   try {
     await enforceUsageLimits(user.tenantId);
   } catch (error) {
     if (error instanceof UsageLimitError) {
-      return NextResponse.json({ error: error.message }, { status: 402 });
+      throw new PaymentRequiredError(error.message);
     }
     throw error;
   }
@@ -53,12 +49,12 @@ export async function POST(req: NextRequest) {
   });
 
   return NextResponse.json({ data: session }, { status: 201 });
-}
+}, { rateLimit: { windowMs: 60_000, max: 30 } });
 
-export async function GET(req: NextRequest) {
+export const GET = withApiHandler(async (req, _ctx) => {
   const { userId: clerkId } = auth();
   if (!clerkId) {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    throw new AuthenticationError();
   }
 
   const user = await db.user.findUnique({
@@ -66,7 +62,7 @@ export async function GET(req: NextRequest) {
     include: { student: true },
   });
   if (!user) {
-    return NextResponse.json({ error: 'User not found' }, { status: 404 });
+    throw new NotFoundError('User not found');
   }
 
   const page = parseInt(req.nextUrl.searchParams.get('page') ?? '1', 10);
@@ -95,4 +91,4 @@ export async function GET(req: NextRequest) {
     pageSize,
     hasMore: skip + pageSize < total,
   });
-}
+}, { rateLimit: { windowMs: 60_000, max: 60 } });

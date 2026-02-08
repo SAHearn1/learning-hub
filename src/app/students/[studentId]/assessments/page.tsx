@@ -39,7 +39,7 @@ export default async function StudentAssessmentsPage({ params }: PageProps) {
                 <CardDescription>Placement & gap analysis</CardDescription>
               </CardHeader>
               <CardContent>
-                <div className="text-3xl font-bold text-blue-600 mb-2">3</div>
+                <div className="text-3xl font-bold text-info-600 mb-2">3</div>
                 <p className="text-sm text-muted-foreground mb-4">Completed</p>
                 <Link href={`/assessments/diagnostic?studentId=${studentId}`}>
                   <Button variant="outline" size="sm" className="w-full">
@@ -55,7 +55,7 @@ export default async function StudentAssessmentsPage({ params }: PageProps) {
                 <CardDescription>In-session checks</CardDescription>
               </CardHeader>
               <CardContent>
-                <div className="text-3xl font-bold text-green-600 mb-2">12</div>
+                <div className="text-3xl font-bold text-primary-600 mb-2">12</div>
                 <p className="text-sm text-muted-foreground mb-4">Completed</p>
                 <Link href={`/assessments/formative?studentId=${studentId}&sessionId=session-123&topic=Current Topic`}><Button variant="outline" size="sm" className="w-full">Start Check</Button></Link>
               </CardContent>
@@ -67,7 +67,7 @@ export default async function StudentAssessmentsPage({ params }: PageProps) {
                 <CardDescription>Mastery evaluations</CardDescription>
               </CardHeader>
               <CardContent>
-                <div className="text-3xl font-bold text-purple-600 mb-2">5</div>
+                <div className="text-3xl font-bold text-subject-ela mb-2">5</div>
                 <p className="text-sm text-muted-foreground mb-4">Completed</p>
                 <Link href={`/assessments/summative?studentId=${studentId}&sessionId=session-123&topic=Current Topic`}><Button variant="outline" size="sm" className="w-full">Start New</Button></Link>
               </CardContent>

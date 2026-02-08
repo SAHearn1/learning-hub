@@ -48,6 +48,19 @@ export function useChat(): UseChatReturn {
     }
   }, [setPhase]);
 
+  const updatePhaseInternal = useCallback(async (sid: string, phase: string) => {
+    setPhase(phase as Parameters<typeof setPhase>[0]);
+    try {
+      await fetch(`/api/sessions/${sid}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ currentPhase: phase }),
+      });
+    } catch {
+      // Silently fail phase persistence -- local state is updated
+    }
+  }, [setPhase]);
+
   const sendMessage = useCallback(async (content: string) => {
     if (!sessionId || !content.trim()) return;
 
@@ -188,7 +201,7 @@ export function useChat(): UseChatReturn {
     sessionId, messages, currentPhase, regulationLevel,
     addMessage, startStreamingMessage, appendToStreamingMessage,
     finishStreamingMessage, setLoading, addSignal, triggerIntervention,
-    setRegulationLevel, setPhase, updatePhaseInternal,
+    updatePhaseInternal,
   ]);
 
   const createSession = useCallback(async (

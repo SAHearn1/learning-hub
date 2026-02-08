@@ -1,11 +1,13 @@
-import { NextRequest, NextResponse } from 'next/server';
+import { NextResponse } from 'next/server';
 import { auth } from '@clerk/nextjs/server';
 import { db } from '@/lib/db';
+import { withApiHandler } from '@/lib/api-handler';
+import { AuthenticationError, ForbiddenError, NotFoundError, ValidationError } from '@/lib/api-errors';
 
-export async function GET(req: NextRequest) {
+export const GET = withApiHandler(async (req, _ctx) => {
   const { userId: clerkId } = auth();
   if (!clerkId) {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    throw new AuthenticationError();
   }
 
   const user = await db.user.findUnique({
@@ -13,7 +15,7 @@ export async function GET(req: NextRequest) {
     include: { student: true },
   });
   if (!user) {
-    return NextResponse.json({ error: 'User not found' }, { status: 404 });
+    throw new NotFoundError('User not found');
   }
 
   // Students see their own progress; educators/admins can specify a studentId
@@ -22,7 +24,7 @@ export async function GET(req: NextRequest) {
 
   if (user.role === 'STUDENT') {
     if (!user.student) {
-      return NextResponse.json({ error: 'Student profile not found' }, { status: 404 });
+      throw new NotFoundError('Student profile not found');
     }
     studentId = user.student.id;
   } else if (queriedStudentId) {
@@ -32,11 +34,11 @@ export async function GET(req: NextRequest) {
       include: { user: { select: { tenantId: true } } },
     });
     if (!queriedStudent || queriedStudent.user.tenantId !== user.tenantId) {
-      return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+      throw new ForbiddenError();
     }
     studentId = queriedStudentId;
   } else {
-    return NextResponse.json({ error: 'studentId required for non-student roles' }, { status: 400 });
+    throw new ValidationError('studentId required for non-student roles');
   }
 
   const subject = req.nextUrl.searchParams.get('subject') as string | null;
@@ -86,4 +88,4 @@ export async function GET(req: NextRequest) {
       recentSessions,
     },
   });
-}
+}, { rateLimit: { windowMs: 60_000, max: 60 } });

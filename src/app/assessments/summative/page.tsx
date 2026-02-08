@@ -1,5 +1,6 @@
 'use client';
 
+import { Suspense } from 'react';
 import { SummativeAssessment } from '@/components/assessments/SummativeAssessment';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { useSearchParams } from 'next/navigation';
@@ -11,7 +12,7 @@ const DEFAULT_OBJECTIVES = [
   'Compare multiple solution strategies',
 ];
 
-export default function SummativePage() {
+function SummativeContent() {
   const searchParams = useSearchParams();
   const { context, loading } = useAssessmentContext();
   const studentId = searchParams.get('studentId') || context?.studentId;
@@ -50,5 +51,13 @@ export default function SummativePage() {
         learningObjectives={DEFAULT_OBJECTIVES}
       />
     </div>
+  );
+}
+
+export default function SummativePage() {
+  return (
+    <Suspense fallback={<div className="container mx-auto py-8 px-4 max-w-5xl">Loading...</div>}>
+      <SummativeContent />
+    </Suspense>
   );
 }

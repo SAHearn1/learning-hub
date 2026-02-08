@@ -1,16 +1,18 @@
-import { NextRequest, NextResponse } from 'next/server';
+import { NextResponse } from 'next/server';
 import { auth } from '@clerk/nextjs/server';
 import { db } from '@/lib/db';
+import { withApiHandler } from '@/lib/api-handler';
+import { AuthenticationError, ForbiddenError, NotFoundError, ValidationError } from '@/lib/api-errors';
 
-export async function GET(req: NextRequest) {
+export const GET = withApiHandler(async (req) => {
   const { userId: clerkId } = auth();
   if (!clerkId) {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    throw new AuthenticationError();
   }
 
   const user = await db.user.findUnique({ where: { clerkUserId: clerkId } });
   if (!user || !['EDUCATOR', 'SCHOOL_ADMIN', 'DISTRICT_ADMIN', 'PLATFORM_ADMIN'].includes(user.role)) {
-    return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+    throw new ForbiddenError();
   }
 
   const classId = req.nextUrl.searchParams.get('classId');
@@ -21,7 +23,7 @@ export async function GET(req: NextRequest) {
     // Verify the class belongs to the educator's tenant
     const targetClass = await db.class.findUnique({ where: { id: classId } });
     if (!targetClass || targetClass.tenantId !== user.tenantId) {
-      return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+      throw new ForbiddenError();
     }
 
     const enrollments = await db.classEnrollment.findMany({
@@ -79,15 +81,15 @@ export async function GET(req: NextRequest) {
     });
 
     if (!student) {
-      return NextResponse.json({ error: 'Student not found' }, { status: 404 });
+      throw new NotFoundError('Student not found');
     }
 
     if (student.user.tenantId !== user.tenantId) {
-      return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+      throw new ForbiddenError();
     }
 
     return NextResponse.json({ data: student });
   }
 
-  return NextResponse.json({ error: 'Provide classId or studentId' }, { status: 400 });
-}
+  throw new ValidationError('Provide classId or studentId');
+}, { rateLimit: { windowMs: 60_000, max: 60 } });

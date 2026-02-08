@@ -1,11 +1,12 @@
 'use client';
 
+import { Suspense } from 'react';
 import { FormativeCheck } from '@/components/assessments/FormativeCheck';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { useSearchParams } from 'next/navigation';
 import { useAssessmentContext } from '@/hooks/useAssessmentContext';
 
-export default function FormativePage() {
+function FormativeContent() {
   const searchParams = useSearchParams();
   const { context, loading } = useAssessmentContext();
   const sessionId = searchParams.get('sessionId') || context?.sessionId;
@@ -42,5 +43,13 @@ export default function FormativePage() {
         recentContent={`Current focus area: ${topic}`}
       />
     </div>
+  );
+}
+
+export default function FormativePage() {
+  return (
+    <Suspense fallback={<div className="container mx-auto py-8 px-4 max-w-4xl">Loading...</div>}>
+      <FormativeContent />
+    </Suspense>
   );
 }
