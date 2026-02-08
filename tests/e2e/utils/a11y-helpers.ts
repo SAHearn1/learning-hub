@@ -1,5 +1,5 @@
-import { Page } from '@playwright/test';
-import { injectAxe, checkA11y, getViolations, reportViolations } from 'axe-playwright';
+import { Page, expect } from '@playwright/test';
+import AxeBuilder from '@axe-core/playwright';
 
 export interface A11yCheckOptions {
   /**
@@ -18,9 +18,11 @@ export interface A11yCheckOptions {
 
 /**
  * Initialize axe-core on the page
+ * Note: With @axe-core/playwright, axe is automatically injected when you run analyze()
  */
 export async function setupAccessibilityChecks(page: Page): Promise<void> {
-  await injectAxe(page);
+  // No setup needed with @axe-core/playwright - axe is injected automatically
+  // This function is kept for API compatibility
 }
 
 /**
@@ -36,35 +38,41 @@ export async function checkAccessibility(
     disableRules = [],
   } = options;
 
-  await checkA11y(page, undefined, {
-    runOnly: {
-      type: 'tag',
-      values: tags,
-    },
-    rules: disableRules.reduce((acc, rule) => {
-      acc[rule] = { enabled: false };
-      return acc;
-    }, {} as Record<string, { enabled: boolean }>),
-  }, true, 'v2');
+  let builder = new AxeBuilder({ page }).withTags(tags);
+  
+  if (disableRules.length > 0) {
+    builder = builder.disableRules(disableRules);
+  }
+  
+  if (exclude.length > 0) {
+    exclude.forEach(selector => {
+      builder = builder.exclude(selector);
+    });
+  }
+
+  const results = await builder.analyze();
+  
+  expect(results.violations).toEqual([]);
 }
 
 /**
  * Get detailed accessibility violations
  */
 export async function getAccessibilityViolations(page: Page) {
-  return await getViolations(page);
+  const results = await new AxeBuilder({ page }).analyze();
+  return results.violations;
 }
 
 /**
  * Check color contrast for specific elements
  */
 export async function checkColorContrast(page: Page, selector: string): Promise<void> {
-  await checkA11y(page, selector, {
-    runOnly: {
-      type: 'rule',
-      values: ['color-contrast'],
-    },
-  }, true, 'v2');
+  const results = await new AxeBuilder({ page })
+    .include(selector)
+    .withRules(['color-contrast'])
+    .analyze();
+  
+  expect(results.violations).toEqual([]);
 }
 
 /**
@@ -144,21 +152,20 @@ export async function checkHeadingHierarchy(page: Page): Promise<void> {
  * Check for proper ARIA labels and roles
  */
 export async function checkAriaLabels(page: Page): Promise<void> {
-  await checkA11y(page, undefined, {
-    runOnly: {
-      type: 'rule',
-      values: [
-        'aria-allowed-attr',
-        'aria-required-attr',
-        'aria-required-children',
-        'aria-required-parent',
-        'aria-roles',
-        'aria-valid-attr',
-        'aria-valid-attr-value',
-        'button-name',
-        'input-button-name',
-        'link-name',
-      ],
-    },
-  }, true, 'v2');
+  const results = await new AxeBuilder({ page })
+    .withRules([
+      'aria-allowed-attr',
+      'aria-required-attr',
+      'aria-required-children',
+      'aria-required-parent',
+      'aria-roles',
+      'aria-valid-attr',
+      'aria-valid-attr-value',
+      'button-name',
+      'input-button-name',
+      'link-name',
+    ])
+    .analyze();
+  
+  expect(results.violations).toEqual([]);
 }
