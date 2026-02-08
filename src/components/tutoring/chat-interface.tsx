@@ -237,7 +237,7 @@ export function ChatInterface({
 
       {/* Error display */}
       {error && (
-        <div className="border-t bg-red-50 px-4 py-3 text-sm text-red-700" role="alert" aria-live="assertive">
+        <div className="border-t bg-error-50 px-4 py-3 text-sm text-error-700" role="alert" aria-live="assertive">
           {error}
         </div>
       )}

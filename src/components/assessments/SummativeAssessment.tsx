@@ -202,7 +202,7 @@ export function SummativeAssessment({
               </CardDescription>
             </div>
             {timeRemaining !== null && (
-              <div className={`text-2xl font-bold ${timeRemaining < 300 ? 'text-red-600' : 'text-primary'}`}>
+              <div className={`text-2xl font-bold ${timeRemaining < 300 ? 'text-error-600' : 'text-primary'}`}>
                 ⏱️ {formatTime(timeRemaining)}
               </div>
             )}
@@ -282,7 +282,7 @@ export function SummativeAssessment({
             </div>
 
             <div className="space-y-4">
-              <div className="flex items-center justify-between p-4 bg-gray-50 rounded-lg">
+              <div className="flex items-center justify-between p-4 bg-neutral-50 rounded-lg">
                 <div>
                   <div className="font-semibold">
                     {Object.keys(responses).length} / {assessments.length} questions answered

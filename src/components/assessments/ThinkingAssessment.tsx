@@ -132,7 +132,7 @@ export function ThinkingAssessment({
                     className={`p-4 rounded-lg border-2 text-left transition-all ${
                       selectedMode === m
                         ? 'border-primary bg-primary/5'
-                        : 'border-gray-200 hover:border-gray-300'
+                        : 'border-neutral-200 hover:border-neutral-300'
                     }`}
                   >
                     <div className="flex items-center gap-2 mb-2">
@@ -147,13 +147,13 @@ export function ThinkingAssessment({
               </div>
             </div>
 
-            <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+            <div className="bg-info-50 border border-info-200 rounded-lg p-4">
               <h4 className="font-semibold mb-2">Problem Context:</h4>
               <p className="text-sm whitespace-pre-wrap">{problemContext}</p>
             </div>
 
             {targetReasoningMoves.length > 0 && (
-              <div className="bg-purple-50 border border-purple-200 rounded-lg p-4">
+              <div className="bg-subject-ela-light border border-subject-ela/20 rounded-lg p-4">
                 <h4 className="font-semibold mb-2">Focus on these thinking moves:</h4>
                 <div className="flex flex-wrap gap-2">
                   {targetReasoningMoves.map((move) => (
@@ -223,7 +223,7 @@ export function ThinkingAssessment({
                     <div className="text-sm text-muted-foreground mb-1">
                       {key.replace(/([A-Z])/g, ' $1').trim()}
                     </div>
-                    <div className="text-2xl font-bold text-purple-600">{value}/5</div>
+                    <div className="text-2xl font-bold text-subject-ela">{value}/5</div>
                   </div>
                 ))}
               </div>
@@ -244,19 +244,19 @@ export function ThinkingAssessment({
             )}
 
             {/* AI Analysis */}
-            <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+            <div className="bg-info-50 border border-info-200 rounded-lg p-4">
               <h4 className="font-semibold mb-2">Detailed Analysis</h4>
               <p className="text-sm whitespace-pre-wrap">{evaluation.aiAnalysis}</p>
             </div>
 
             {/* Strengths */}
             {evaluation.strengths.length > 0 && (
-              <div className="bg-green-50 border border-green-200 rounded-lg p-4">
+              <div className="bg-primary-50 border border-primary-200 rounded-lg p-4">
                 <h4 className="font-semibold mb-2">✨ Strengths</h4>
                 <ul className="space-y-1">
                   {evaluation.strengths.map((strength: string, index: number) => (
                     <li key={index} className="text-sm flex items-start gap-2">
-                      <span className="text-green-600">•</span>
+                      <span className="text-primary-600">•</span>
                       <span>{strength}</span>
                     </li>
                   ))}
@@ -266,12 +266,12 @@ export function ThinkingAssessment({
 
             {/* Areas for Growth */}
             {evaluation.areasForGrowth.length > 0 && (
-              <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
+              <div className="bg-secondary-50 border border-secondary-200 rounded-lg p-4">
                 <h4 className="font-semibold mb-2">Areas for Growth</h4>
                 <ul className="space-y-1">
                   {evaluation.areasForGrowth.map((area: string, index: number) => (
                     <li key={index} className="text-sm flex items-start gap-2">
-                      <span className="text-yellow-600">•</span>
+                      <span className="text-secondary-600">•</span>
                       <span>{area}</span>
                     </li>
                   ))}
@@ -302,12 +302,12 @@ export function ThinkingAssessment({
       </CardHeader>
 
       <CardContent className="space-y-6">
-        <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+        <div className="bg-info-50 border border-info-200 rounded-lg p-4">
           <h4 className="font-semibold mb-2">Your Task:</h4>
           <p className="text-sm whitespace-pre-wrap">{prompt}</p>
         </div>
 
-        <div className="bg-gray-50 border border-gray-200 rounded-lg p-4">
+        <div className="bg-neutral-50 border border-neutral-200 rounded-lg p-4">
           <h4 className="font-semibold mb-2">Problem:</h4>
           <p className="text-sm whitespace-pre-wrap">{problemContext}</p>
         </div>
