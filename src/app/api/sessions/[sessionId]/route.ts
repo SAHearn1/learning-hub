@@ -66,8 +66,10 @@ export async function PATCH(
   let body;
   try {
     body = updateSessionSchema.parse(await req.json());
-  } catch (err) {
-    const message = err instanceof z.ZodError ? err.errors.map(e => e.message).join(', ') : 'Invalid request';
+  } catch (err: unknown) {
+    const message = err instanceof z.ZodError
+      ? err.errors.map((e: { message: string }) => e.message).join(', ')
+      : 'Invalid request';
     return NextResponse.json({ error: message }, { status: 400 });
   }
 

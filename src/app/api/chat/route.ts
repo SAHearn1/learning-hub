@@ -27,8 +27,10 @@ export async function POST(req: NextRequest) {
   let body;
   try {
     body = chatRequestSchema.parse(await req.json());
-  } catch (err) {
-    const message = err instanceof z.ZodError ? err.errors.map(e => e.message).join(', ') : 'Invalid request';
+  } catch (err: unknown) {
+    const message = err instanceof z.ZodError
+      ? err.errors.map((e: { message: string }) => e.message).join(', ')
+      : 'Invalid request';
     return new Response(JSON.stringify({ error: message }), { status: 400 });
   }
 
@@ -73,7 +75,7 @@ export async function POST(req: NextRequest) {
   });
 
   // Check for dysregulation signals
-  const messageHistory = session.messages.map((m) => ({
+  const messageHistory = session.messages.map((m: { role: string; content: string; createdAt: Date }) => ({
     role: m.role,
     content: m.content,
     createdAt: m.createdAt,
@@ -101,11 +103,11 @@ export async function POST(req: NextRequest) {
   // Build context for system prompt
   const regulationState = session.regulationState as { level?: number } | null;
   const learningPrefs = user.student.learningPreferences as { modalities?: string[] } | null;
-  const accommodationTypes = user.student.iepAccommodations.map(a => a.type);
+  const accommodationTypes = user.student.iepAccommodations.map((a: { type: string }) => a.type);
 
   const sessionHistory = session.messages
     .slice(-20)
-    .map(m => `${m.role}: ${m.content}`)
+    .map((m: { role: string; content: string }) => `${m.role}: ${m.content}`)
     .join('\n');
 
   // RAG: Retrieve relevant curriculum context from Pinecone
@@ -135,8 +137,8 @@ export async function POST(req: NextRequest) {
     // Format retrieved context
     if (matches.length > 0) {
       curriculumContext = matches
-        .map((match, idx) => {
-          const metadata = match.metadata as Record<string, any> || {};
+        .map((match: { metadata?: Record<string, unknown>; score?: number }, idx: number) => {
+          const metadata = (match.metadata as Record<string, string>) || {};
           const content = metadata.content || metadata.text || 'No content available';
           const source = metadata.source || metadata.title || 'Unknown source';
           const score = match.score?.toFixed(3) || 'N/A';
@@ -166,7 +168,7 @@ export async function POST(req: NextRequest) {
   });
 
   // Build message history for API call
-  const apiMessages = session.messages.map(m => ({
+  const apiMessages = session.messages.map((m: { role: string; content: string }) => ({
     role: (m.role === 'USER' ? 'user' : 'assistant') as 'user' | 'assistant',
     content: m.content,
   }));
