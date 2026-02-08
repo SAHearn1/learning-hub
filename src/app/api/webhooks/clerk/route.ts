@@ -1,5 +1,5 @@
-import { NextResponse } from 'next/server';
-import { Webhook } from 'svix';
+import { NextRequest, NextResponse } from 'next/server';
+import { createHmac, timingSafeEqual } from 'crypto';
 import { db } from '@/lib/db';
 import { withApiHandler } from '@/lib/api-handler';
 import { AuthenticationError, ValidationError } from '@/lib/api-errors';
@@ -14,6 +14,43 @@ interface ClerkWebhookEvent {
     last_name: string | null;
     public_metadata: Record<string, unknown>;
   };
+}
+
+function verifySvixSignature(params: {
+  payload: string;
+  svixId: string;
+  svixTimestamp: string;
+  svixSignature: string;
+  webhookSecret: string;
+}): boolean {
+  const { payload, svixId, svixTimestamp, svixSignature, webhookSecret } = params;
+
+  // Clerk/Svix secrets are prefixed with `whsec_`.
+  const rawSecret = webhookSecret.startsWith('whsec_') ? webhookSecret.slice(6) : webhookSecret;
+  const decodedSecret = Buffer.from(rawSecret, 'base64');
+  const signedContent = `${svixId}.${svixTimestamp}.${payload}`;
+
+  const expectedSignature = createHmac('sha256', decodedSecret).update(signedContent).digest('base64');
+
+  const signatures = svixSignature
+    .split(' ')
+    .map((part) => part.trim())
+    .filter(Boolean)
+    .map((part) => {
+      const [version, signature] = part.split(',');
+      return { version, signature };
+    })
+    .filter((entry): entry is { version: string; signature: string } => Boolean(entry.version && entry.signature));
+
+  return signatures.some(({ version, signature }) => {
+    if (version !== 'v1') {
+      return false;
+    }
+
+    const expected = Buffer.from(expectedSignature, 'utf8');
+    const actual = Buffer.from(signature, 'utf8');
+    return expected.length === actual.length && timingSafeEqual(expected, actual);
+  });
 }
 
 /**
@@ -46,12 +83,24 @@ export const POST = withApiHandler(async (req, { requestId }) => {
   let event: ClerkWebhookEvent;
   try {
     const body = await req.text();
-    const wh = new Webhook(webhookSecret);
-    event = wh.verify(body, {
-      'svix-id': svixId,
-      'svix-timestamp': svixTimestamp,
-      'svix-signature': svixSignature,
-    }) as ClerkWebhookEvent;
+    const timestampAge = Math.abs(Date.now() / 1000 - Number(svixTimestamp));
+    if (!Number.isFinite(timestampAge) || timestampAge > 300) {
+      return NextResponse.json({ error: 'Invalid webhook timestamp' }, { status: 401 });
+    }
+
+    const isValid = verifySvixSignature({
+      payload: body,
+      svixId,
+      svixTimestamp,
+      svixSignature,
+      webhookSecret,
+    });
+
+    if (!isValid) {
+      return NextResponse.json({ error: 'Invalid webhook signature' }, { status: 401 });
+    }
+
+    event = JSON.parse(body) as ClerkWebhookEvent;
   } catch (error) {
     logger.error('Webhook signature verification failed', error, { requestId });
     throw new AuthenticationError('Invalid webhook signature');
