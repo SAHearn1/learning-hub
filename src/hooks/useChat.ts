@@ -199,7 +199,7 @@ export function useChat(): UseChatReturn {
     sessionId, messages, currentPhase, regulationLevel,
     addMessage, startStreamingMessage, appendToStreamingMessage,
     finishStreamingMessage, setLoading, addSignal, triggerIntervention,
-    updatePhaseInternal,
+    updatePhaseInternal, setPhase, setRegulationLevel,
   ]);
 
   const createSession = useCallback(async (

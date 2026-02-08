@@ -25,7 +25,7 @@ vi.mock('@/lib/monitoring', () => ({
 
 function makeRequest(
   path = '/api/test',
-  init?: RequestInit & { headers?: Record<string, string> },
+  init?: ConstructorParameters<typeof NextRequest>[1],
 ) {
   const url = `http://localhost${path}`;
   return new NextRequest(url, init);
@@ -141,6 +141,7 @@ describe('withApiHandler', () => {
 
       const handler = withApiHandler(async () => {
         z.object({ name: z.string() }).parse({});
+        return NextResponse.json({ ok: true });
       });
 
       const res = await handler(makeRequest());
