@@ -225,6 +225,83 @@ async function main() {
   console.log(`✅ Students enrolled`);
 
   // ═══════════════════════════════════════════════════════════════
+  // 5.5. CREATE PARENT & ADMIN USERS
+  // ═══════════════════════════════════════════════════════════════
+  console.log('Creating parent and admin users...');
+
+  // Create Parent User (linked to Alex Martinez)
+  const parentUser = await prisma.user.upsert({
+    where: { clerkUserId: 'clerk_parent_demo_001' },
+    update: {},
+    create: {
+      clerkUserId: 'clerk_parent_demo_001',
+      tenantId: tenant.id,
+      schoolId: school.id,
+      email: 'parent@demo.rootwork.edu',
+      firstName: 'Maria',
+      lastName: 'Martinez',
+      role: 'PARENT',
+      dateOfBirth: new Date('1980-03-20'),
+      isMinor: false,
+    },
+  });
+
+  const parent = await prisma.parent.upsert({
+    where: { userId: parentUser.id },
+    update: {},
+    create: {
+      userId: parentUser.id,
+      relationshipType: 'PARENT',
+      communicationPreferences: {
+        email: true,
+        sms: false,
+        weeklyReports: true,
+      },
+    },
+  });
+
+  // Link parent to Alex Martinez (first student)
+  if (students.length > 0) {
+    await prisma.parentStudentRelationship.upsert({
+      where: {
+        parentId_studentId: {
+          parentId: parent.id,
+          studentId: students[0].student.id,
+        },
+      },
+      update: {},
+      create: {
+        tenantId: tenant.id,
+        parentId: parent.id,
+        studentId: students[0].student.id,
+        relationshipType: 'PARENT',
+        isPrimary: true,
+      },
+    });
+  }
+
+  console.log(`✅ Parent created: ${parentUser.firstName} ${parentUser.lastName}`);
+
+  // Create Admin User
+  const adminUser = await prisma.user.upsert({
+    where: { clerkUserId: 'clerk_admin_demo_001' },
+    update: {},
+    create: {
+      clerkUserId: 'clerk_admin_demo_001',
+      tenantId: tenant.id,
+      schoolId: school.id,
+      email: 'admin@demo.rootwork.edu',
+      firstName: 'Robert',
+      lastName: 'Admin',
+      role: 'ADMIN',
+      dateOfBirth: new Date('1975-07-10'),
+      isMinor: false,
+    },
+  });
+
+  console.log(`✅ Admin created: ${adminUser.firstName} ${adminUser.lastName}`);
+
+  // ═══════════════════════════════════════════════════════════════
   // 6. CREATE STANDARDS
   // ═══════════════════════════════════════════════════════════════
   console.log('Creating academic standards...');

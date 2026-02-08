@@ -1,7 +1,10 @@
-import { test, expect } from '@playwright/test';
+import { test, expect } from '../fixtures/auth.fixture';
 
 test.describe('Student navigation', () => {
-  test.skip('test student navigation items from home page (requires auth)', async ({ page }) => {
+  // Use authenticated student fixture for all tests in this suite
+  test.use({ authenticatedStudent: undefined });
+
+  test('test student navigation items from home page', async ({ page }) => {
     await page.goto('/');
     
     // Look for student workspace/portal section
@@ -13,7 +16,7 @@ test.describe('Student navigation', () => {
     }
   });
 
-  test.skip('verify each card is clickable and leads to correct page (requires auth)', async ({ page }) => {
+  test('verify each card is clickable and leads to correct page', async ({ page }) => {
     await page.goto('/');
     
     // Test learn card
@@ -41,7 +44,7 @@ test.describe('Student navigation', () => {
     }
   });
 
-  test.skip('check icons render properly (requires auth)', async ({ page }) => {
+  test('check icons render properly', async ({ page }) => {
     await page.goto('/');
     
     // Look for icons in navigation cards
@@ -54,7 +57,7 @@ test.describe('Student navigation', () => {
     }
   });
 
-  test.skip('test hover states and transitions (requires auth)', async ({ page }) => {
+  test('test hover states and transitions', async ({ page }) => {
     await page.goto('/');
     
     // Find a navigation card
@@ -73,7 +76,7 @@ test.describe('Student navigation', () => {
     }
   });
 
-  test.skip('verify navigation is smooth without errors (requires auth)', async ({ page }) => {
+  test('verify navigation is smooth without errors', async ({ page }) => {
     const errors: string[] = [];
     page.on('console', (msg) => {
       if (msg.type() === 'error') {

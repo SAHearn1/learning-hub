@@ -1,12 +1,14 @@
-import { test, expect } from '@playwright/test';
+import { test, expect } from '../fixtures/auth.fixture';
 
 test.describe('Educator dashboard', () => {
-  test.skip('navigate to educator dashboard (requires auth)', async ({ page }) => {
+  test.use({ authenticatedEducator: undefined });
+
+  test('navigate to educator dashboard', async ({ page }) => {
     await page.goto('/educator/dashboard');
     await expect(page.locator('body')).toBeVisible();
   });
 
-  test.skip('verify educator workspace title and description (requires auth)', async ({ page }) => {
+  test('verify educator workspace title and description', async ({ page }) => {
     await page.goto('/educator/dashboard');
     
     // Look for educator workspace heading
@@ -18,7 +20,7 @@ test.describe('Educator dashboard', () => {
     }
   });
 
-  test.skip('check all educator navigation items display (requires auth)', async ({ page }) => {
+  test('check all educator navigation items display', async ({ page }) => {
     await page.goto('/educator/dashboard');
     
     // Look for common educator navigation items
@@ -31,7 +33,7 @@ test.describe('Educator dashboard', () => {
     expect(totalLinks).toBeGreaterThan(0);
   });
 
-  test.skip('test navigation to each educator tool (requires auth)', async ({ page }) => {
+  test('test navigation to each educator tool', async ({ page }) => {
     await page.goto('/educator/dashboard');
     
     // Test navigation to students page
@@ -47,7 +49,7 @@ test.describe('Educator dashboard', () => {
     await expect(page.locator('body')).toBeVisible();
   });
 
-  test.skip('verify portal home component renders correctly (requires auth)', async ({ page }) => {
+  test('verify portal home component renders correctly', async ({ page }) => {
     await page.goto('/educator/dashboard');
     
     // Check for main dashboard content
@@ -57,7 +59,7 @@ test.describe('Educator dashboard', () => {
     await expect(dashboard).toBeVisible();
   });
 
-  test.skip('verify page loads without errors (requires auth)', async ({ page }) => {
+  test('verify page loads without errors', async ({ page }) => {
     const errors: string[] = [];
     page.on('console', (msg) => {
       if (msg.type() === 'error') {

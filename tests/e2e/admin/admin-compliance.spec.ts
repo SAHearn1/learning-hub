@@ -1,12 +1,14 @@
-import { test, expect } from '@playwright/test';
+import { test, expect } from '../fixtures/auth.fixture';
 
 test.describe('Admin compliance', () => {
-  test.skip('navigate to admin dashboard (requires auth)', async ({ page }) => {
+  test.use({ authenticatedAdmin: undefined });
+
+  test('navigate to admin dashboard', async ({ page }) => {
     await page.goto('/admin/dashboard');
     await expect(page.locator('body')).toBeVisible();
   });
 
-  test.skip('verify admin portal loads (requires auth)', async ({ page }) => {
+  test('verify admin portal loads', async ({ page }) => {
     await page.goto('/admin/dashboard');
     
     // Look for admin dashboard heading

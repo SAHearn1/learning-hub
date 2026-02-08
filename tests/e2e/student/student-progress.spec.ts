@@ -1,16 +1,15 @@
-import { test, expect } from '@playwright/test';
+import { test, expect } from '../fixtures/auth.fixture';
 
 test.describe('Student progress page', () => {
-  // Note: These tests assume authentication is set up
-  // For now, they will test the page structure without authentication
+  // Use authenticated student fixture for all tests in this suite
+  test.use({ authenticatedStudent: undefined });
   
-  test.skip('navigate to progress page (requires auth)', async ({ page }) => {
-    // This test is skipped until authentication is implemented
+  test('navigate to progress page', async ({ page }) => {
     await page.goto('/progress');
     await expect(page.locator('body')).toBeVisible();
   });
 
-  test.skip('verify progress summary displays (requires auth)', async ({ page }) => {
+  test('verify progress summary displays', async ({ page }) => {
     await page.goto('/progress');
     
     // Look for progress summary components
@@ -20,7 +19,7 @@ test.describe('Student progress page', () => {
     await expect(progressSummary.first()).toBeVisible();
   });
 
-  test.skip('check mastery by standard component renders (requires auth)', async ({ page }) => {
+  test('check mastery by standard component renders', async ({ page }) => {
     await page.goto('/progress');
     
     // Look for mastery breakdown
@@ -32,7 +31,7 @@ test.describe('Student progress page', () => {
     }
   });
 
-  test.skip('verify session history displays (requires auth)', async ({ page }) => {
+  test('verify session history displays', async ({ page }) => {
     await page.goto('/progress');
     
     // Look for session history table or list
@@ -44,7 +43,7 @@ test.describe('Student progress page', () => {
     }
   });
 
-  test.skip('test reasoning move chart visualization (requires auth)', async ({ page }) => {
+  test('test reasoning move chart visualization', async ({ page }) => {
     await page.goto('/progress');
     
     // Look for chart or visualization
@@ -57,7 +56,7 @@ test.describe('Student progress page', () => {
     }
   });
 
-  test.skip('check Blooms taxonomy breakdown (requires auth)', async ({ page }) => {
+  test('check Blooms taxonomy breakdown', async ({ page }) => {
     await page.goto('/progress');
     
     // Look for Bloom's taxonomy section
@@ -69,7 +68,7 @@ test.describe('Student progress page', () => {
     }
   });
 
-  test.skip('test export button functionality (requires auth)', async ({ page }) => {
+  test('test export button functionality', async ({ page }) => {
     await page.goto('/progress');
     
     // Look for export button
@@ -82,7 +81,7 @@ test.describe('Student progress page', () => {
     }
   });
 
-  test.skip('verify data loads without errors (requires auth)', async ({ page }) => {
+  test('verify data loads without errors', async ({ page }) => {
     // Listen for console errors
     const errors: string[] = [];
     page.on('console', (msg) => {
