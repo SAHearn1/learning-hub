@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { auth } from '@clerk/nextjs/server';
 import { db } from '@/lib/db';
+import { enforceUsageLimits, UsageLimitError } from '@/lib/usage-limits';
 import { z } from 'zod';
 
 const createSessionSchema = z.object({
@@ -28,6 +29,15 @@ export async function POST(req: NextRequest) {
   } catch (err) {
     const message = err instanceof z.ZodError ? err.errors.map(e => e.message).join(', ') : 'Invalid request';
     return NextResponse.json({ error: message }, { status: 400 });
+  }
+
+  try {
+    await enforceUsageLimits(user.tenantId);
+  } catch (error) {
+    if (error instanceof UsageLimitError) {
+      return NextResponse.json({ error: error.message }, { status: 402 });
+    }
+    throw error;
   }
 
   const session = await db.session.create({
