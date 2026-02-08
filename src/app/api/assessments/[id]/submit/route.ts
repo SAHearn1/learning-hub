@@ -1,33 +1,60 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { auth } from '@clerk/nextjs/server';
 import { db } from '@/lib/db';
 import { generateAIFeedback } from '@/lib/assessments/ai-feedback-generator';
 import { updateProgress } from '@/lib/assessments/progress-calculator';
+import { z } from 'zod';
 
+const submitAssessmentSchema = z.object({
+  studentResponse: z.string().min(1),
+  timeTaken: z.number().optional(),
+});
+
+/**
+ * POST /api/assessments/[id]/submit
+ * Submits a student's response to an assessment
+ * 
+ * @param id - Assessment ID
+ * @body studentResponse (string), timeTaken (number, optional)
+ * @returns Updated assessment with AI-generated feedback
+ * @throws 401 if not authenticated
+ * @throws 403 if not authorized (must be session owner)
+ * @throws 404 if assessment not found
+ */
 export async function POST(
   request: NextRequest,
   context: { params: Promise<{ id: string }> }
 ) {
   try {
-    const params = await context.params;
-    const assessmentId = params.id;
-    const body = await request.json();
-    const { studentResponse } = body;
-
-    // Validate required fields
-    if (!studentResponse) {
-      return NextResponse.json(
-        { error: 'Missing required field: studentResponse' },
-        { status: 400 }
-      );
+    const { userId: clerkId } = auth();
+    if (!clerkId) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    // Get assessment
+    const params = await context.params;
+    const assessmentId = params.id;
+
+    let body;
+    try {
+      body = submitAssessmentSchema.parse(await request.json());
+    } catch (err) {
+      const message = err instanceof z.ZodError ? err.errors.map(e => e.message).join(', ') : 'Invalid request';
+      return NextResponse.json({ error: message }, { status: 400 });
+    }
+
+    const { studentResponse, timeTaken } = body;
+
+    // Get assessment with session and student details
     const assessment = await db.assessment.findUnique({
       where: { id: assessmentId },
       include: {
         session: {
           include: {
-            student: true,
+            student: {
+              include: {
+                user: true,
+              },
+            },
           },
         },
         standard: true,
@@ -36,6 +63,16 @@ export async function POST(
 
     if (!assessment) {
       return NextResponse.json({ error: 'Assessment not found' }, { status: 404 });
+    }
+
+    // Verify the user owns this assessment's session
+    const user = await db.user.findUnique({ where: { clerkUserId: clerkId } });
+    if (!user) {
+      return NextResponse.json({ error: 'User not found' }, { status: 404 });
+    }
+
+    if (user.role === 'STUDENT' && assessment.session.student.userId !== user.id) {
+      return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
     }
 
     // Extract metadata
@@ -65,49 +102,33 @@ export async function POST(
           scaffoldHints: feedback.scaffoldHints,
           commonErrors: feedback.commonErrors,
           nextSteps: feedback.nextSteps,
+          timeTaken,
         },
       },
     });
 
     // Update progress if standard is associated
     if (assessment.standardId && assessment.session) {
-      // Get tenant ID from session student
-      const sessionWithTenant = await db.session.findUnique({
-        where: { id: assessment.sessionId },
-        include: {
-          student: {
-            include: {
-              user: {
-                select: {
-                  tenantId: true,
-                },
-              },
-            },
-          },
-        },
+      await updateProgress({
+        studentId: assessment.session.studentId,
+        standardId: assessment.standardId,
+        tenantId: assessment.session.student.user.tenantId,
+        assessmentScore: feedback.score,
+        bloomsLevel: assessment.bloomsLevel,
+        difficulty: assessment.difficulty,
       });
-
-      if (sessionWithTenant) {
-        await updateProgress({
-          studentId: assessment.session.studentId,
-          standardId: assessment.standardId,
-          tenantId: sessionWithTenant.student.user.tenantId,
-          assessmentScore: feedback.score,
-          bloomsLevel: assessment.bloomsLevel,
-          difficulty: assessment.difficulty,
-        });
-      }
     }
 
     return NextResponse.json({
-      success: true,
-      assessment: updatedAssessment,
-      feedback: {
-        isCorrect: feedback.isCorrect,
-        score: feedback.score,
-        feedback: feedback.feedback,
-        scaffoldHints: feedback.scaffoldHints,
-        nextSteps: feedback.nextSteps,
+      data: {
+        ...updatedAssessment,
+        feedback: {
+          isCorrect: feedback.isCorrect,
+          score: feedback.score,
+          feedback: feedback.feedback,
+          scaffoldHints: feedback.scaffoldHints,
+          nextSteps: feedback.nextSteps,
+        },
       },
       message: 'Assessment submitted successfully',
     });
