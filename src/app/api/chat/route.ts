@@ -8,6 +8,8 @@ import { queryPinecone } from '@/lib/pinecone/client';
 import { enforceUsageLimits, UsageLimitError } from '@/lib/usage-limits';
 import { detectDysregulation, updateRegulationLevel } from '@/lib/regulation/detector';
 import { analyzeThinkingQuality } from '@/lib/trace/tracker';
+import { incrementMetric, observeLatency } from '@/lib/api/metrics';
+import { logger } from '@/lib/logger';
 import { z } from 'zod';
 
 const chatRequestSchema = z.object({
@@ -19,6 +21,7 @@ const chatRequestSchema = z.object({
 const MIN_MESSAGE_LENGTH_FOR_TRACE = 10;
 
 export async function POST(req: NextRequest) {
+  incrementMetric('api_chat_requests_total');
   const { userId: clerkId } = auth();
   if (!clerkId) {
     return new Response(JSON.stringify({ error: 'Unauthorized' }), { status: 401 });
@@ -145,10 +148,17 @@ export async function POST(req: NextRequest) {
         })
         .join('\n\n---\n\n');
       
-      console.log(`RAG: Retrieved ${matches.length} curriculum contexts in ${ragMetrics.durationMs}ms for session ${session.id}`);
+      observeLatency('rag_retrieval', ragMetrics.durationMs);
+      incrementMetric('rag_retrieval_total');
+      logger.info('RAG retrieval complete', {
+        sessionId: session.id,
+        retrieved: matches.length,
+        durationMs: ragMetrics.durationMs,
+      });
     }
   } catch (error) {
-    console.error(`RAG retrieval error for session ${session.id}:`, error);
+    incrementMetric('rag_retrieval_error_total');
+    logger.error('RAG retrieval error', error, { sessionId: session.id });
     // Continue without RAG context if Pinecone fails
     curriculumContext = '';
   }
@@ -279,6 +289,7 @@ export async function POST(req: NextRequest) {
         // Track AI usage
         const finalMessage = await stream.finalMessage();
         const latencyMs = Date.now() - startTime;
+        observeLatency('/api/chat', latencyMs);
         const inputTokens = finalMessage.usage.input_tokens;
         const outputTokens = finalMessage.usage.output_tokens;
 
@@ -304,6 +315,7 @@ export async function POST(req: NextRequest) {
         controller.enqueue(encoder.encode(`data: ${JSON.stringify({ done: true })}\n\n`));
         controller.close();
       } catch (err) {
+        incrementMetric('api_chat_stream_error_total');
         const errorMessage = err instanceof Error ? err.message : 'Stream error';
         controller.enqueue(encoder.encode(`data: ${JSON.stringify({ error: errorMessage })}\n\n`));
         controller.close();

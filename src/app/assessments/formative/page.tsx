@@ -1,10 +1,11 @@
 'use client';
 
+import { Suspense } from 'react';
 import { FormativeCheck } from '@/components/assessments/FormativeCheck';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { useSearchParams } from 'next/navigation';
 
-export default function FormativePage() {
+function FormativeContent() {
   const searchParams = useSearchParams();
   const sessionId = searchParams.get('sessionId') || 'session-123';
   const topic = searchParams.get('topic') || 'Fractions and Equivalent Forms';
@@ -36,5 +37,13 @@ export default function FormativePage() {
         recentContent={`Current focus area: ${topic}`}
       />
     </div>
+  );
+}
+
+export default function FormativePage() {
+  return (
+    <Suspense fallback={<div className="container mx-auto py-8 px-4">Loading formative assessment...</div>}>
+      <FormativeContent />
+    </Suspense>
   );
 }
