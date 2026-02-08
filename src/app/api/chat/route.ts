@@ -13,6 +13,9 @@ const chatRequestSchema = z.object({
   message: z.string().min(1).max(5000),
 });
 
+// Minimum message length to trigger TRACE analysis (avoid analyzing very short responses)
+const MIN_MESSAGE_LENGTH_FOR_TRACE = 10;
+
 export async function POST(req: NextRequest) {
   const { userId: clerkId } = auth();
   if (!clerkId) {
@@ -59,13 +62,39 @@ export async function POST(req: NextRequest) {
   }
 
   // Save user message
-  await db.message.create({
+  const userMessage = await db.message.create({
     data: {
       sessionId: session.id,
       role: 'USER',
       content: body.message,
     },
   });
+
+  // Check for dysregulation signals
+  const messageHistory = session.messages.map((m) => ({
+    role: m.role,
+    content: m.content,
+    createdAt: m.createdAt,
+  }));
+
+  const regulationCheck = detectDysregulation(body.message, messageHistory);
+  const currentRegulationState = session.regulationState as { level?: number; signals?: string[]; interventionCount?: number } | null;
+  const currentLevel = currentRegulationState?.level ?? 70;
+  const newRegulationLevel = updateRegulationLevel(currentLevel, regulationCheck);
+
+  // Update regulation state if changed
+  if (newRegulationLevel !== currentLevel || regulationCheck.signals.length > 0) {
+    await db.session.update({
+      where: { id: session.id },
+      data: {
+        regulationState: {
+          level: newRegulationLevel,
+          signals: regulationCheck.signals,
+          interventionCount: (currentRegulationState?.interventionCount ?? 0) + (regulationCheck.severity === 'high' ? 1 : 0),
+        },
+      },
+    });
+  }
 
   // Build context for system prompt
   const regulationState = session.regulationState as { level?: number } | null;
@@ -186,6 +215,64 @@ export async function POST(req: NextRequest) {
             content: fullText,
           },
         });
+
+        // Track thinking quality with TRACE protocol (async, don't block response)
+        if (body.message.length > MIN_MESSAGE_LENGTH_FOR_TRACE) {
+          analyzeThinkingQuality(body.message, fullText)
+            .then(async (traceData) => {
+              if (!traceData) return;
+
+              // Save thinking assessment
+              await db.thinkingAssessment.create({
+                data: {
+                  sessionId: session.id,
+                  assessmentType: 'INTEGRATED',
+                  reasoningArticulation: traceData.thinkingQualityScores.reasoningArticulation,
+                  assumptionAwareness: traceData.thinkingQualityScores.assumptionAwareness,
+                  evidenceEvaluation: traceData.thinkingQualityScores.evidenceEvaluation,
+                  alternativePerspectives: traceData.thinkingQualityScores.alternativePerspectives,
+                  conclusionJustification: traceData.thinkingQualityScores.conclusionJustification,
+                  metacognitiveAwareness: traceData.thinkingQualityScores.metacognitiveAwareness,
+                  fluency: traceData.creativityIndicators.fluency,
+                  flexibility: traceData.creativityIndicators.flexibility,
+                  originality: traceData.creativityIndicators.originality,
+                  elaboration: traceData.creativityIndicators.elaboration,
+                  riskTaking: traceData.creativityIndicators.riskTaking,
+                  modeUsed: session.engagementMode,
+                  reasoningMovesUsed: traceData.reasoningMovesUsed,
+                  rawResponse: body.message,
+                },
+              });
+
+              // Update reasoning move progress for detected moves
+              for (const move of traceData.reasoningMovesUsed) {
+                await db.reasoningMoveProgress.upsert({
+                  where: {
+                    studentId_move: {
+                      studentId: user.student!.id,
+                      move,
+                    },
+                  },
+                  update: {
+                    usageCount: { increment: 1 },
+                    spontaneousUsage: { increment: 1 },
+                  },
+                  create: {
+                    studentId: user.student!.id,
+                    move,
+                    introducedAt: new Date(),
+                    usageCount: 1,
+                    spontaneousUsage: 1,
+                    promptedUsage: 0,
+                    proficiencyLevel: 1,
+                  },
+                });
+              }
+            })
+            .catch((error) => {
+              console.error('Error tracking TRACE data:', error);
+            });
+        }
 
         // Track AI usage
         const finalMessage = await stream.finalMessage();
