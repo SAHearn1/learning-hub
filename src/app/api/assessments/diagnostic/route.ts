@@ -10,6 +10,7 @@ import {
   NotFoundError,
   ValidationError,
 } from '@/lib/api-errors';
+import { assertMinorConsentForLearning } from '@/lib/compliance';
 
 const diagnosticSchema = z.object({
   studentId: z.string().min(1),
@@ -49,6 +50,10 @@ export const POST = withApiHandler(async (req) => {
   if (!user) {
     throw new NotFoundError('User not found');
   }
+
+  assertMinorConsentForLearning(user.isMinor, user.consentStatus, {
+    action: 'creating diagnostic assessments',
+  });
 
   // Verify authorization
   if (user.role === 'STUDENT' && session.student.userId !== user.id) {

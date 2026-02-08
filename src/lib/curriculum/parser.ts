@@ -49,8 +49,8 @@ function inferCourseAndModule(filePath: string): { course?: string; module?: str
   const parts = normalizePath(filePath).split('/').filter(Boolean);
   const course = parts.length >= 2 ? parts[parts.length - 2] : undefined;
   const moduleFile = parts.at(-1);
-  const module = moduleFile?.replace(/\.md$/i, '');
-  return { course, module };
+  const moduleName = moduleFile?.replace(/\.md$/i, '');
+  return { course, module: moduleName };
 }
 
 function inferSubject(metadata: Record<string, unknown>, content: string): string {
@@ -96,7 +96,7 @@ export async function parseCurriculumFile(
 
   const inferred = inferCourseAndModule(file.path);
   const course = typeof metadata.course === 'string' ? metadata.course : inferred.course;
-  const module = typeof metadata.module === 'string' ? metadata.module : inferred.module;
+  const moduleName = typeof metadata.module === 'string' ? metadata.module : inferred.module;
 
   const chunks = file.path.endsWith('.md')
     ? chunkMarkdown(content, 512)
@@ -117,7 +117,7 @@ export async function parseCurriculumFile(
       totalChunks: chunks.length,
       text: chunk,
       ...(course ? { course } : {}),
-      ...(module ? { module } : {}),
+      ...(moduleName ? { module: moduleName } : {}),
     },
   }));
 }

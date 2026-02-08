@@ -36,7 +36,7 @@ The RootWork Learning Hub has progressed beyond the original “early Phase 1”
 | **Phase 2 — Core Backend MVP** | **85%** | API routes now exist for sessions, chat, assessments, educator/parent/admin workflows, ingestion, billing, Stripe, and Clerk webhook sync. | Finish endpoint-level integration validation, standardize error contracts, and add rate limiting/observability around high-traffic endpoints. |
 | **Phase 3 — Product Experience** | **60%** | Major UI surfaces (assessments, educator, parent, admin, progress components) are implemented; many routes are no longer stubs. | Complete `/learn` guided lesson experience (still marked as Phase 2.1 placeholder), tighten UX flows, and connect remaining UI interactions to live APIs. |
 | **Phase 4 — Quality & Readiness** | **45%** | Unit tests exist across config, stores, libs, and several API routes; Docker/deployment-related files now exist. | Expand integration/E2E coverage for end-to-end learner and educator journeys, improve accessibility validation, and formalize CI quality gates. |
-| **Phase 5 — Compliance & Operations** | **40%** | Compliance and monitoring scaffolding is present in schema/app structure; billing lifecycle wiring exists. | Implement/verify operational consent enforcement, data-rights workflows, audit evidence, incident playbooks, and production observability baselines. |
+| **Phase 5 — Compliance & Operations** | **65%** | Consent/data-rights APIs are wired with audit logging, and ops runbooks now cover incident response + evidence collection with metrics baselines. | Complete fulfillment automation for deletion/export tickets, wire alerting to on-call escalation, and run quarterly incident tabletop drills. |
 
 ### Immediate Priorities (Next Sprint)
 
