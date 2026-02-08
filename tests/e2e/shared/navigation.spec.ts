@@ -10,14 +10,10 @@ test.describe('Navigation and branding', () => {
   test('RootWork logo and branding are visible', async ({ page }) => {
     await page.goto('/');
     
-    // Check for logo - may be image or text
-    const logo = page.getByRole('img', { name: /rootwork/i })
-      .or(page.getByRole('link', { name: /rootwork/i }))
-      .or(page.locator('[data-testid="logo"]'));
+    // Check for logo component or heading with site name
+    const heading = page.getByRole('heading', { name: /rootwork/i });
     
-    // At least one brand element should be visible
-    const logoCount = await logo.count();
-    expect(logoCount).toBeGreaterThan(0);
+    await expect(heading).toBeVisible();
   });
 
   test('site tagline and description are visible', async ({ page }) => {

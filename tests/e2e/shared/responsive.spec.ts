@@ -7,10 +7,9 @@ test.describe('Responsive design', () => {
     
     await page.goto('/');
     await expect(page).toHaveTitle(/RootWork/);
-    await expect(page.locator('body')).toBeVisible();
     
-    // Check that content is visible and not cut off
-    const mainContent = page.locator('main').or(page.locator('body'));
+    // Check that main content is visible
+    const mainContent = page.locator('main');
     await expect(mainContent).toBeVisible();
   });
 
