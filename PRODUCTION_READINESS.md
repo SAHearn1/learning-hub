@@ -8,9 +8,9 @@
 
 ## Executive Summary
 
-The RootWork Learning Hub has a **solid architectural foundation** but is currently in **early Phase 1** — the scaffolding, data modeling, and configuration layers are in place, while the core functional features (AI tutoring sessions, assessments, progress tracking, payment flows) remain unimplemented. The project is **not production-ready** and requires significant implementation work across 7 critical areas before students and teachers can use it.
+The RootWork Learning Hub has progressed beyond the original “early Phase 1” baseline. The platform now includes a substantial API surface (sessions, chat, assessments, educator, parent, admin, billing, and webhooks), Prisma migrations, and Stripe checkout/webhook paths. The biggest blockers have shifted to **frontend completion**, **test hardening**, and **build reliability**.
 
-**Overall readiness: ~20% toward MVP launch.**
+**Updated overall readiness: ~65% toward MVP launch.**
 
 ---
 
@@ -24,7 +24,26 @@ The RootWork Learning Hub has a **solid architectural foundation** but is curren
 | Prisma schema validation | PASS (requires `DATABASE_URL` at runtime) |
 | npm audit | 5 moderate vulnerabilities (all in dev-only `vitest`/`vite`/`esbuild` chain) |
 
-**Verdict:** The codebase compiles and lints cleanly. No blockers here.
+**Verdict:** Build currently fails due to a missing `openai` package/type dependency in `src/lib/embeddings.ts`. Linting and most feature scaffolding appear healthy.
+
+---
+
+## 1.1 Build Status by Phase (Completion + Remaining Tasks)
+
+| Phase | Completion | Current Status | Remaining Tasks |
+|---|---:|---|---|
+| **Phase 1 — Foundation** | **95%** | Core architecture, auth middleware, Prisma schema/migrations, state stores, config, and role-based navigation are in place. | Resolve the build blocker and close minor dependency/config hygiene items. |
+| **Phase 2 — Core Backend MVP** | **85%** | API routes now exist for sessions, chat, assessments, educator/parent/admin workflows, ingestion, billing, Stripe, and Clerk webhook sync. | Finish endpoint-level integration validation, standardize error contracts, and add rate limiting/observability around high-traffic endpoints. |
+| **Phase 3 — Product Experience** | **60%** | Major UI surfaces (assessments, educator, parent, admin, progress components) are implemented; many routes are no longer stubs. | Complete `/learn` guided lesson experience (still marked as Phase 2.1 placeholder), tighten UX flows, and connect remaining UI interactions to live APIs. |
+| **Phase 4 — Quality & Readiness** | **45%** | Unit tests exist across config, stores, libs, and several API routes; Docker/deployment-related files now exist. | Expand integration/E2E coverage for end-to-end learner and educator journeys, improve accessibility validation, and formalize CI quality gates. |
+| **Phase 5 — Compliance & Operations** | **40%** | Compliance and monitoring scaffolding is present in schema/app structure; billing lifecycle wiring exists. | Implement/verify operational consent enforcement, data-rights workflows, audit evidence, incident playbooks, and production observability baselines. |
+
+### Immediate Priorities (Next Sprint)
+
+1. **Unblock build:** add/fix `openai` dependency typing so `next build` completes.
+2. **Finish Learn flow:** replace `/learn` placeholder with live tutoring UI and streaming/persistence wiring.
+3. **Stabilize quality gates:** require unit + critical route tests + smoke E2E in CI.
+4. **Production hardening:** add endpoint rate limiting, alerting, and compliance workflow verification.
 
 ---
 
@@ -44,23 +63,20 @@ These foundational layers are in place and well-structured:
 
 ---
 
-## 3. Critical Gaps — What Is NOT Built
+## 3. Critical Gaps — Remaining Work
 
-### 3.1 API Routes (ZERO exist)
+### 3.1 API Layer Hardening (routes exist, maturity incomplete)
 
-**No `src/app/api/` routes are implemented.** This means:
+`src/app/api/` now includes a broad route surface for chat, sessions, assessments, educator/parent/admin actions, ingest, billing, Stripe, and Clerk webhooks. The immediate gap is now **hardening and consistency**, not initial creation.
 
-- No AI tutoring conversation endpoint
-- No session create/read/update/delete
-- No assessment generation or submission
-- No progress retrieval
-- No Stripe checkout session creation
-- No Stripe webhook handler
-- No user onboarding/profile sync with Clerk
-- No educator data retrieval endpoints
-- No parent data retrieval endpoints
+Remaining work:
 
-**Priority: CRITICAL — nothing works without API routes.**
+- Standardize request/response contracts and error payloads across all route groups
+- Add systematic rate limiting and abuse controls for chat/assessment endpoints
+- Expand endpoint-level integration tests for auth + tenancy boundaries
+- Add structured observability (metrics + trace IDs + actionable alert thresholds)
+
+**Priority: HIGH — backend exists, but production safeguards are still incomplete.**
 
 ### 3.2 Core Tutoring Flow (Learn Page)
 
@@ -77,12 +93,11 @@ Required implementation:
 
 ### 3.3 Assessment System
 
-No assessment UI or logic exists:
-- Diagnostic placement assessments
-- Formative in-session checks
-- Summative mastery evaluations
-- Thinking quality and creativity scoring
-- Reasoning move tracking (21 move types)
+Assessment routes/components are present, but calibration and coverage work remains:
+- Validate scoring quality and rubric consistency across diagnostic/formative/summative paths
+- Increase automated tests around edge cases and malformed submissions
+- Add educator-facing review workflows for intervention planning
+- Verify reasoning move analytics are complete and accurate across session histories
 
 ### 3.4 Progress Dashboard
 
@@ -95,27 +110,25 @@ The `/progress` page is a stub. Needs:
 
 ### 3.5 Educator Portal Functionality
 
-All educator pages (`/educator/students`, `/educator/classes`, `/educator/reports`, `/educator/compliance`) are stubs. Needs:
-- Student roster management
-- Class creation and enrollment
-- Progress reports with filtering
-- IEP accommodation management
-- Compliance reporting
+Educator pages and APIs are in place, with remaining work focused on polish and operational depth:
+- Improve reporting filters/export options and high-volume performance
+- Add advanced roster and intervention tooling for day-to-day educator workflows
+- Tighten compliance dashboard experience and audit traceability UX
 
 ### 3.6 Payment Processing
 
-Stripe client is initialized but nothing else:
-- No checkout session creation
-- No subscription management
-- No webhook handler for payment events
-- No usage limit enforcement based on tier
-- No billing portal link
+Stripe checkout/portal/webhook routes are implemented. Remaining tasks:
+- End-to-end validation of subscription state transitions in production-like environments
+- Backfill retry/reconciliation handling for webhook delivery failures
+- Strengthen entitlement/usage-limit enforcement linkage with billing state
 
-### 3.7 Database Not Provisioned
+### 3.7 Data & Environment Readiness
 
-- No Prisma migrations have been created (`prisma/migrations/` does not exist)
-- No seed script implementation (`prisma/seed.ts` referenced but not verified)
-- No database provisioned for any environment
+Prisma migrations now exist in-repo, but deployment readiness still needs work:
+
+- Validate migration workflow across staging/production promotion paths
+- Confirm seed strategy and fixture lifecycle for test/staging parity
+- Ensure environment-level backup, restore, and rollback runbooks are documented and tested
 
 ---
 
