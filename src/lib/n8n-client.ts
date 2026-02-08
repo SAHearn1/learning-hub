@@ -122,8 +122,12 @@ export async function sendToN8nWebhook<T = any, R = any>(
   const timeoutId = setTimeout(() => controller.abort(), timeout);
 
   try {
+    // Extract just the domain for secure logging
+    const urlObj = new URL(url);
+    const safeUrl = `${urlObj.protocol}//${urlObj.host}/webhook/...`;
+    
     logger.debug('Sending request to n8n webhook', {
-      url: url.substring(0, 50) + '...',
+      url: safeUrl,
       payloadSize: JSON.stringify(payload).length,
     });
 
