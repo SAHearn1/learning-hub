@@ -8,7 +8,6 @@ export const studentNavItems = [
 ] as const;
 
 export const educatorNavItems = [
-  { label: 'Dashboard', href: '/educator/dashboard', icon: 'layout-dashboard' },
   { label: 'Students', href: '/educator/students', icon: 'users' },
   { label: 'Classes', href: '/educator/classes', icon: 'school' },
   { label: 'Reports', href: '/educator/reports', icon: 'file-text' },
@@ -16,10 +15,10 @@ export const educatorNavItems = [
 ] as const;
 
 export const parentNavItems = [
-  { label: 'Dashboard', href: '/parent/dashboard', icon: 'home' },
+  { label: 'Child Assessments', href: '/students/demo-student/assessments', icon: 'progress' },
   { label: 'Settings', href: '/parent/settings', icon: 'settings' },
 ] as const;
 
 export const adminNavItems = [
-  { label: 'Dashboard', href: '/admin/dashboard', icon: 'layout-dashboard' },
+  { label: 'Ingestion Control', href: '/admin/ingest', icon: 'shield-check' },
 ] as const;
