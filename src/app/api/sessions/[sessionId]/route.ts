@@ -41,7 +41,13 @@ export async function GET(
   }
 
   const user = await db.user.findUnique({ where: { clerkUserId: clerkId } });
-  if (!user || (user.role === 'STUDENT' && session.student.userId !== user.id)) {
+  if (!user) {
+    return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+  }
+  if (user.role === 'STUDENT' && session.student.userId !== user.id) {
+    return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+  }
+  if (user.role !== 'STUDENT' && session.tenantId !== user.tenantId) {
     return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
   }
 
@@ -75,7 +81,13 @@ export async function PATCH(
   }
 
   const user = await db.user.findUnique({ where: { clerkUserId: clerkId } });
-  if (!user || (user.role === 'STUDENT' && session.student.userId !== user.id)) {
+  if (!user) {
+    return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+  }
+  if (user.role === 'STUDENT' && session.student.userId !== user.id) {
+    return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+  }
+  if (user.role !== 'STUDENT' && session.tenantId !== user.tenantId) {
     return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
   }
 
@@ -124,7 +136,13 @@ export async function DELETE(
   }
 
   const user = await db.user.findUnique({ where: { clerkUserId: clerkId } });
-  if (!user || (user.role === 'STUDENT' && session.student.userId !== user.id)) {
+  if (!user) {
+    return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+  }
+  if (user.role === 'STUDENT' && session.student.userId !== user.id) {
+    return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+  }
+  if (user.role !== 'STUDENT' && session.tenantId !== user.tenantId) {
     return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
   }
 

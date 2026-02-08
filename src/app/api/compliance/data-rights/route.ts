@@ -38,8 +38,11 @@ export async function POST(request: Request) {
     }
 
     const sameUser = actor.id === subject.id;
+    if (!sameUser && subject.tenantId !== actor.tenantId) {
+      return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+    }
     if (!sameUser && !canManageMinorConsent(actor.role)) {
-      return NextResponse.json({ error: 'Forbidden for requested subject' }, { status: 403 });
+      return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
     }
 
     if (requiresGuardianForDataRequest(subject.isMinor, actor.role)) {
@@ -94,7 +97,7 @@ export async function POST(request: Request) {
     });
   } catch (error) {
     if (error instanceof z.ZodError) {
-      return NextResponse.json({ error: 'Invalid request payload', issues: error.issues }, { status: 400 });
+      return NextResponse.json({ error: 'Invalid request payload' }, { status: 400 });
     }
 
     return NextResponse.json({ error: 'Unable to process data-rights request' }, { status: 500 });

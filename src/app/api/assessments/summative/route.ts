@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { auth } from '@clerk/nextjs/server';
 import { db } from '@/lib/db';
 import { generateSummativeAssessment, calculateMasteryScore } from '@/lib/assessments/summative-generator';
 import { updateProgress } from '@/lib/assessments/progress-calculator';
@@ -6,6 +7,11 @@ import { Subject } from '@prisma/client';
 
 export async function POST(request: NextRequest) {
   try {
+    const { userId: clerkId } = auth();
+    if (!clerkId) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
     const body = await request.json();
     const { studentId, sessionId, topicId, topicName, learningObjectives } = body;
 
@@ -15,6 +21,11 @@ export async function POST(request: NextRequest) {
         { error: 'Missing required fields: studentId, sessionId, topicName, learningObjectives' },
         { status: 400 }
       );
+    }
+
+    const user = await db.user.findUnique({ where: { clerkUserId: clerkId } });
+    if (!user) {
+      return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
     }
 
     // Get session info
@@ -27,6 +38,13 @@ export async function POST(request: NextRequest) {
 
     if (!session) {
       return NextResponse.json({ error: 'Session not found' }, { status: 404 });
+    }
+
+    if (user.role === 'STUDENT' && session.student.userId !== user.id) {
+      return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+    }
+    if (user.role !== 'STUDENT' && session.tenantId !== user.tenantId) {
+      return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
     }
 
     // Get topic standards if topicId provided
@@ -86,10 +104,7 @@ export async function POST(request: NextRequest) {
   } catch (error) {
     console.error('Error creating summative assessment:', error);
     return NextResponse.json(
-      {
-        error: 'Failed to create summative assessment',
-        details: error instanceof Error ? error.message : 'Unknown error',
-      },
+      { error: 'Failed to create summative assessment' },
       { status: 500 }
     );
   }
@@ -97,6 +112,16 @@ export async function POST(request: NextRequest) {
 
 export async function GET(request: NextRequest) {
   try {
+    const { userId: clerkId } = auth();
+    if (!clerkId) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
+    const user = await db.user.findUnique({ where: { clerkUserId: clerkId } });
+    if (!user) {
+      return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+    }
+
     const { searchParams } = new URL(request.url);
     const studentId = searchParams.get('studentId');
     const sessionId = searchParams.get('sessionId');
@@ -139,6 +164,8 @@ export async function GET(request: NextRequest) {
               include: {
                 user: {
                   select: {
+                    id: true,
+                    tenantId: true,
                     firstName: true,
                     lastName: true,
                   },
@@ -154,17 +181,22 @@ export async function GET(request: NextRequest) {
       },
     });
 
+    // Filter to user's tenant for non-student roles
+    const authorizedAssessments = assessments.filter(assessment => {
+      if (user.role === 'STUDENT') {
+        return assessment.session.student.userId === user.id;
+      }
+      return assessment.session.tenantId === user.tenantId;
+    });
+
     return NextResponse.json({
       success: true,
-      assessments,
+      assessments: authorizedAssessments,
     });
   } catch (error) {
     console.error('Error fetching summative assessments:', error);
     return NextResponse.json(
-      {
-        error: 'Failed to fetch summative assessments',
-        details: error instanceof Error ? error.message : 'Unknown error',
-      },
+      { error: 'Failed to fetch summative assessments' },
       { status: 500 }
     );
   }

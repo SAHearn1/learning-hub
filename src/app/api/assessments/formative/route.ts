@@ -1,10 +1,16 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { auth } from '@clerk/nextjs/server';
 import { db } from '@/lib/db';
 import { generateFormativeCheck } from '@/lib/assessments/formative-generator';
 import { Subject, BloomsLevel } from '@prisma/client';
 
 export async function POST(request: NextRequest) {
   try {
+    const { userId: clerkId } = auth();
+    if (!clerkId) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
     const body = await request.json();
     const { sessionId, currentTopic, recentContent, targetBloomsLevel } = body;
 
@@ -20,12 +26,23 @@ export async function POST(request: NextRequest) {
     const session = await db.session.findUnique({
       where: { id: sessionId },
       include: {
-        student: true,
+        student: { include: { user: { select: { id: true, tenantId: true } } } },
       },
     });
 
     if (!session) {
       return NextResponse.json({ error: 'Session not found' }, { status: 404 });
+    }
+
+    const user = await db.user.findUnique({ where: { clerkUserId: clerkId } });
+    if (!user) {
+      return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+    }
+    if (user.role === 'STUDENT' && session.student.user.id !== user.id) {
+      return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+    }
+    if (user.role !== 'STUDENT' && session.tenantId !== user.tenantId) {
+      return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
     }
 
     // Generate formative check question using AI
@@ -64,10 +81,7 @@ export async function POST(request: NextRequest) {
   } catch (error) {
     console.error('Error creating formative check:', error);
     return NextResponse.json(
-      {
-        error: 'Failed to create formative check',
-        details: error instanceof Error ? error.message : 'Unknown error',
-      },
+      { error: 'Failed to create formative check' },
       { status: 500 }
     );
   }
@@ -75,6 +89,11 @@ export async function POST(request: NextRequest) {
 
 export async function GET(request: NextRequest) {
   try {
+    const { userId: clerkId } = auth();
+    if (!clerkId) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
     const { searchParams } = new URL(request.url);
     const sessionId = searchParams.get('sessionId');
 
@@ -83,6 +102,25 @@ export async function GET(request: NextRequest) {
         { error: 'sessionId is required' },
         { status: 400 }
       );
+    }
+
+    const user = await db.user.findUnique({ where: { clerkUserId: clerkId } });
+    if (!user) {
+      return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+    }
+
+    const session = await db.session.findUnique({
+      where: { id: sessionId },
+      include: { student: true },
+    });
+    if (!session) {
+      return NextResponse.json({ error: 'Session not found' }, { status: 404 });
+    }
+    if (user.role === 'STUDENT' && session.student.userId !== user.id) {
+      return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+    }
+    if (user.role !== 'STUDENT' && session.tenantId !== user.tenantId) {
+      return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
     }
 
     const assessments = await db.assessment.findMany({
@@ -102,10 +140,7 @@ export async function GET(request: NextRequest) {
   } catch (error) {
     console.error('Error fetching formative checks:', error);
     return NextResponse.json(
-      {
-        error: 'Failed to fetch formative checks',
-        details: error instanceof Error ? error.message : 'Unknown error',
-      },
+      { error: 'Failed to fetch formative checks' },
       { status: 500 }
     );
   }

@@ -25,6 +25,7 @@ export async function GET(request: Request) {
     where: { id: studentUserId },
     select: {
       id: true,
+      tenantId: true,
       firstName: true,
       lastName: true,
       isMinor: true,
@@ -35,6 +36,10 @@ export async function GET(request: Request) {
 
   if (!student) {
     return NextResponse.json({ error: 'Student not found' }, { status: 404 });
+  }
+
+  if (student.tenantId !== actor.tenantId) {
+    return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
   }
 
   return NextResponse.json({ consent: student });
@@ -61,6 +66,10 @@ export async function POST(request: Request) {
 
     if (!student) {
       return NextResponse.json({ error: 'Student not found' }, { status: 404 });
+    }
+
+    if (student.tenantId !== actor.tenantId) {
+      return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
     }
 
     if (!student.isMinor) {
@@ -108,7 +117,7 @@ export async function POST(request: Request) {
     return NextResponse.json({ success: true, consent: updated });
   } catch (error) {
     if (error instanceof z.ZodError) {
-      return NextResponse.json({ error: 'Invalid request payload', issues: error.issues }, { status: 400 });
+      return NextResponse.json({ error: 'Invalid request payload' }, { status: 400 });
     }
 
     return NextResponse.json({ error: 'Unable to update consent status' }, { status: 500 });

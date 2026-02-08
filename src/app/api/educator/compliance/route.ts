@@ -31,6 +31,15 @@ export async function GET(req: NextRequest) {
   const studentId = req.nextUrl.searchParams.get('studentId');
 
   if (studentId) {
+    // Verify the student belongs to the educator's tenant
+    const student = await db.student.findUnique({
+      where: { id: studentId },
+      include: { user: { select: { tenantId: true } } },
+    });
+    if (!student || student.user.tenantId !== user.tenantId) {
+      return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+    }
+
     const accommodations = await db.iepAccommodation.findMany({
       where: { studentId },
       orderBy: { startDate: 'desc' },
@@ -71,6 +80,15 @@ export async function POST(req: NextRequest) {
   } catch (err) {
     const message = err instanceof z.ZodError ? err.errors.map(e => e.message).join(', ') : 'Invalid request';
     return NextResponse.json({ error: message }, { status: 400 });
+  }
+
+  // Verify the student belongs to the educator's tenant
+  const student = await db.student.findUnique({
+    where: { id: body.studentId },
+    include: { user: { select: { tenantId: true } } },
+  });
+  if (!student || student.user.tenantId !== user.tenantId) {
+    return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
   }
 
   const accommodation = await db.iepAccommodation.create({

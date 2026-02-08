@@ -35,9 +35,22 @@ export async function POST(
     return NextResponse.json({ error: 'Class not found' }, { status: 404 });
   }
 
-  const student = await db.student.findUnique({ where: { id: body.studentId } });
+  // Verify the class belongs to the educator's tenant
+  if (targetClass.tenantId !== user.tenantId) {
+    return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+  }
+
+  const student = await db.student.findUnique({
+    where: { id: body.studentId },
+    include: { user: { select: { tenantId: true } } },
+  });
   if (!student) {
     return NextResponse.json({ error: 'Student not found' }, { status: 404 });
+  }
+
+  // Verify the student belongs to the same tenant
+  if (student.user.tenantId !== user.tenantId) {
+    return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
   }
 
   const enrollment = await db.classEnrollment.upsert({

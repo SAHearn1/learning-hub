@@ -14,6 +14,7 @@ const isPublicRoute = createRouteMatcher([
 
 const RATE_LIMIT_WINDOW_MS = 60_000;
 const RATE_LIMIT_MAX_REQUESTS = 120;
+const RATE_LIMIT_MAX_ENTRIES = 10_000;
 const rateLimitStore = new Map<string, { count: number; resetAt: number }>();
 
 const isApiRoute = (pathname: string) => pathname.startsWith("/api/");
@@ -29,6 +30,15 @@ const getClientIp = (request: NextRequest) => {
   return request.headers.get("x-real-ip") ?? "unknown";
 };
 
+const pruneRateLimitStore = (now: number) => {
+  if (rateLimitStore.size <= RATE_LIMIT_MAX_ENTRIES) return;
+  for (const [key, entry] of rateLimitStore) {
+    if (now >= entry.resetAt) {
+      rateLimitStore.delete(key);
+    }
+  }
+};
+
 const enforceRateLimit = (request: NextRequest) => {
   const pathname = request.nextUrl.pathname;
   if (!isApiRoute(pathname) || isWebhookRoute(pathname)) {
@@ -36,6 +46,8 @@ const enforceRateLimit = (request: NextRequest) => {
   }
 
   const now = Date.now();
+  pruneRateLimitStore(now);
+
   const key = `${getClientIp(request)}:${pathname}`;
   const current = rateLimitStore.get(key);
 
