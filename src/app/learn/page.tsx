@@ -35,6 +35,7 @@ export default function LearnPage() {
 
   const [showEndDialog, setShowEndDialog] = useState(false);
   const [completedSummary, setCompletedSummary] = useState<SessionSummaryData | null>(null);
+  const [startError, setStartError] = useState<string | null>(null);
 
   const {
     sendMessage,
@@ -50,8 +51,12 @@ export default function LearnPage() {
 
   const handleStartSession = useCallback(
     async (selectedSubject: Subject, selectedMode: EngagementMode) => {
+      setStartError(null);
       setCompletedSummary(null);
-      await createSession(selectedSubject, selectedMode);
+      const createdSessionId = await createSession(selectedSubject, selectedMode);
+      if (!createdSessionId) {
+        setStartError('We could not start your session. Please try again in a moment.');
+      }
     },
     [createSession],
   );
@@ -121,7 +126,12 @@ export default function LearnPage() {
   if (!sessionId || !subject) {
     return (
       <main className="min-h-screen px-6 py-12">
-        <SessionSetup onStart={handleStartSession} isLoading={isLoading} />
+        <SessionSetup
+          onStart={handleStartSession}
+          isLoading={isLoading}
+          startError={startError}
+          onClearError={() => setStartError(null)}
+        />
       </main>
     );
   }
