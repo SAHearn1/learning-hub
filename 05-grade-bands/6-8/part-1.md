@@ -1,10 +1,3 @@
----
-title: "6-8 Lesson Part 1"
-section: "Grade Bands"
-source_path: "05-grade-bands/6-8/part-1.md"
-document_type: "curriculum"
-subsection: "6-8"
----
 # 6-8 Lesson Part 1
 
 Content for part 1 of the 6-8 grade band.
