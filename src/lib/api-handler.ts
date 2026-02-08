@@ -22,11 +22,11 @@ import { z } from 'zod';
 import {
   AppError,
   RateLimitError,
-  ValidationError,
 } from '@/lib/api-errors';
-import { checkRateLimit, type RateLimitConfig } from '@/lib/rate-limit';
+import { checkRateLimit, type RateLimitConfig, type RateLimitResult } from '@/lib/rate-limit';
 import { logger } from '@/lib/logger';
 import { captureError } from '@/lib/monitoring';
+import { incrementMetric, observeLatency } from '@/lib/api/metrics';
 
 // ---------------------------------------------------------------------------
 // Types
@@ -108,13 +108,20 @@ export function withApiHandler(
     const method = req.method;
     const pathname = req.nextUrl.pathname;
 
+    incrementMetric('api_requests_total');
+    incrementMetric(`api_requests_${method.toLowerCase()}_total`);
+
     // --- Rate limiting ---------------------------------------------------
+    let rateLimitResult: RateLimitResult | null = null;
     if (options.rateLimit) {
       const ip = resolveClientIp(req);
       const key = `${pathname}:${ip}`;
       const result = checkRateLimit(key, options.rateLimit);
+      rateLimitResult = result;
 
       if (!result.allowed) {
+        incrementMetric('api_rate_limit_exceeded_total');
+        incrementMetric(`api_rate_limit_exceeded_${method.toLowerCase()}_total`);
         logger.warn('Rate limit exceeded', {
           requestId,
           pathname,
@@ -160,6 +167,14 @@ export function withApiHandler(
       }
 
       const durationMs = Date.now() - startTime;
+      observeLatency(pathname, durationMs);
+
+      if (options.rateLimit && rateLimitResult) {
+        response.headers.set('X-RateLimit-Limit', String(options.rateLimit.max));
+        response.headers.set('X-RateLimit-Remaining', String(rateLimitResult.remaining));
+        response.headers.set('X-RateLimit-Reset', String(rateLimitResult.resetAt));
+      }
+
       logger.info('API response', {
         requestId,
         method,
@@ -174,6 +189,9 @@ export function withApiHandler(
 
       // ---- Known application errors ------------------------------------
       if (error instanceof AppError) {
+        incrementMetric('api_errors_total');
+        incrementMetric(`api_errors_${error.code.toLowerCase()}_total`);
+        observeLatency(pathname, durationMs);
         logger.warn('API error', {
           requestId,
           method,
@@ -202,6 +220,9 @@ export function withApiHandler(
 
       // ---- Zod validation errors (thrown outside handler's own catch) ---
       if (error instanceof z.ZodError) {
+        incrementMetric('api_errors_total');
+        incrementMetric('api_errors_validation_error_total');
+        observeLatency(pathname, durationMs);
         const details = error.errors.map((e) => ({
           path: e.path.join('.'),
           message: e.message,
@@ -226,6 +247,9 @@ export function withApiHandler(
 
       // ---- Unexpected errors -------------------------------------------
       captureError(error, { requestId, route: pathname });
+      incrementMetric('api_errors_total');
+      incrementMetric('api_errors_internal_error_total');
+      observeLatency(pathname, durationMs);
       logger.error('Unhandled API error', error, {
         requestId,
         method,

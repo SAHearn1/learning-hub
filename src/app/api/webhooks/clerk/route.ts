@@ -85,7 +85,7 @@ export const POST = withApiHandler(async (req, { requestId }) => {
     const body = await req.text();
     const timestampAge = Math.abs(Date.now() / 1000 - Number(svixTimestamp));
     if (!Number.isFinite(timestampAge) || timestampAge > 300) {
-      return NextResponse.json({ error: 'Invalid webhook timestamp' }, { status: 401 });
+      throw new AuthenticationError('Invalid webhook timestamp');
     }
 
     const isValid = verifySvixSignature({
@@ -97,7 +97,7 @@ export const POST = withApiHandler(async (req, { requestId }) => {
     });
 
     if (!isValid) {
-      return NextResponse.json({ error: 'Invalid webhook signature' }, { status: 401 });
+      throw new AuthenticationError('Invalid webhook signature');
     }
 
     event = JSON.parse(body) as ClerkWebhookEvent;
