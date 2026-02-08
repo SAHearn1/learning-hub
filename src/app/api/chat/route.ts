@@ -336,6 +336,7 @@ export const POST = withApiHandler(async (req, { requestId }) => {
         // Track AI usage
         const finalMessage = await stream.finalMessage();
         const latencyMs = Date.now() - startTime;
+        observeLatency('/api/chat', latencyMs);
         const inputTokens = finalMessage.usage.input_tokens;
         const outputTokens = finalMessage.usage.output_tokens;
 
@@ -361,6 +362,7 @@ export const POST = withApiHandler(async (req, { requestId }) => {
         controller.enqueue(encoder.encode(`data: ${JSON.stringify({ done: true })}\n\n`));
         controller.close();
       } catch (err) {
+        incrementMetric('api_chat_stream_error_total');
         const errorMessage = err instanceof Error ? err.message : 'Stream error';
         controller.enqueue(encoder.encode(`data: ${JSON.stringify({ error: errorMessage })}\n\n`));
         controller.close();
