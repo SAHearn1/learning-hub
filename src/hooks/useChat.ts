@@ -33,6 +33,20 @@ export function useChat(): UseChatReturn {
   const regulationLevel = useRegulationStore((s) => s.level);
   const addSignal = useRegulationStore((s) => s.addSignal);
   const triggerIntervention = useRegulationStore((s) => s.triggerIntervention);
+  const setRegulationLevel = useRegulationStore((s) => s.setLevel);
+
+  const updatePhaseInternal = useCallback(async (sid: string, phase: string) => {
+    setPhase(phase as Parameters<typeof setPhase>[0]);
+    try {
+      await fetch(`/api/sessions/${sid}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ currentPhase: phase }),
+      });
+    } catch {
+      // Silently fail phase persistence -- local state is updated
+    }
+  }, [setPhase]);
 
   const sendMessage = useCallback(async (content: string) => {
     if (!sessionId || !content.trim()) return;
@@ -128,6 +142,22 @@ export function useChat(): UseChatReturn {
             if (data.done) {
               finishStreamingMessage();
             }
+            if (data.phaseTransition?.to) {
+              setPhase(data.phaseTransition.to as Parameters<typeof setPhase>[0]);
+              addMessage({
+                id: `msg-${Date.now()}-phase`,
+                role: 'SYSTEM',
+                content: `5Rs transition: ${data.phaseTransition.from} → ${data.phaseTransition.to}. ${data.phaseTransition.reason || ''}`.trim(),
+                timestamp: new Date(),
+              });
+            }
+            if (data.dysregulation) {
+              if (typeof data.dysregulation.severity === 'string' && data.dysregulation.severity === 'high') {
+                triggerIntervention();
+              }
+              const nextLevel = Math.max(0, regulationLevel - 15);
+              setRegulationLevel(nextLevel);
+            }
             if (data.error) {
               finishStreamingMessage();
               console.error('Stream error:', data.error);
@@ -158,6 +188,7 @@ export function useChat(): UseChatReturn {
     sessionId, messages, currentPhase, regulationLevel,
     addMessage, startStreamingMessage, appendToStreamingMessage,
     finishStreamingMessage, setLoading, addSignal, triggerIntervention,
+    setRegulationLevel, setPhase, updatePhaseInternal,
   ]);
 
   const createSession = useCallback(async (
@@ -187,23 +218,10 @@ export function useChat(): UseChatReturn {
     }
   }, [setLoading, startSession, setEngagementMode]);
 
-  async function updatePhaseInternal(sid: string, phase: string) {
-    setPhase(phase as Parameters<typeof setPhase>[0]);
-    try {
-      await fetch(`/api/sessions/${sid}`, {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ currentPhase: phase }),
-      });
-    } catch {
-      // Silently fail phase persistence -- local state is updated
-    }
-  }
-
   const updatePhase = useCallback(async (phase: string) => {
     if (!sessionId) return;
     await updatePhaseInternal(sessionId, phase);
-  }, [sessionId, setPhase]);
+  }, [sessionId, updatePhaseInternal]);
 
   const updateEngagementMode = useCallback(async (mode: string) => {
     if (!sessionId) return;

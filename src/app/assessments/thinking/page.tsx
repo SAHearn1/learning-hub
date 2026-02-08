@@ -4,13 +4,19 @@ import { ThinkingAssessment } from '@/components/assessments/ThinkingAssessment'
 import { ReasoningMoveTracker } from '@/components/assessments/ReasoningMoveTracker';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { useSearchParams } from 'next/navigation';
+import { useAssessmentContext } from '@/hooks/useAssessmentContext';
 
 export default function ThinkingPage() {
   const searchParams = useSearchParams();
-  const studentId = searchParams.get('studentId') || 'student-123';
-  const sessionId = searchParams.get('sessionId') || 'session-123';
+  const { context, loading } = useAssessmentContext();
+  const studentId = searchParams.get('studentId') || context?.studentId;
+  const sessionId = searchParams.get('sessionId') || context?.sessionId;
   const problemContext = searchParams.get('problem')
     || 'A school garden has 3/4 of a plot planted with vegetables and 2/3 planted with herbs in another section. Compare the planted areas and justify your conclusion in two ways.';
+
+  if (loading || !studentId || !sessionId) {
+    return <div className="container mx-auto max-w-6xl px-4 py-8 text-sm text-muted-foreground">Preparing assessment context...</div>;
+  }
 
   return (
     <div className="container mx-auto py-8 px-4 max-w-6xl space-y-6">

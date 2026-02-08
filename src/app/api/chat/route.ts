@@ -8,6 +8,7 @@ import { queryPinecone } from '@/lib/pinecone/client';
 import { enforceUsageLimits, UsageLimitError } from '@/lib/usage-limits';
 import { detectDysregulation, updateRegulationLevel } from '@/lib/regulation/detector';
 import { analyzeThinkingQuality } from '@/lib/trace/tracker';
+import { getRecommendedPhaseTransition } from '@/lib/five-rs/phase-transition';
 import { z } from 'zod';
 
 const chatRequestSchema = z.object({
@@ -93,6 +94,36 @@ export async function POST(req: NextRequest) {
           level: newRegulationLevel,
           signals: regulationCheck.signals,
           interventionCount: (currentRegulationState?.interventionCount ?? 0) + (regulationCheck.severity === 'high' ? 1 : 0),
+        },
+      },
+    });
+  }
+
+  const phaseTransition = getRecommendedPhaseTransition({
+    currentPhase: session.currentPhase,
+    regulationLevel: newRegulationLevel,
+    hasErrorSignal: regulationCheck.signals.some((signal) =>
+      signal.toLowerCase().includes('frustrat') || signal.toLowerCase().includes('stuck')
+    ),
+    sessionMessageCount: session.messages.length,
+  });
+
+  if (phaseTransition && phaseTransition.nextPhase !== session.currentPhase) {
+    await db.session.update({
+      where: { id: session.id },
+      data: { currentPhase: phaseTransition.nextPhase },
+    });
+
+    await db.message.create({
+      data: {
+        sessionId: session.id,
+        role: 'SYSTEM',
+        content: `Transitioning from ${session.currentPhase} to ${phaseTransition.nextPhase}. ${phaseTransition.reason}`,
+        metadata: {
+          type: 'phase-transition',
+          from: session.currentPhase,
+          to: phaseTransition.nextPhase,
+          reason: phaseTransition.reason,
         },
       },
     });
@@ -207,6 +238,26 @@ export async function POST(req: NextRequest) {
             fullText += event.delta.text;
             controller.enqueue(encoder.encode(`data: ${JSON.stringify({ text: event.delta.text })}\n\n`));
           }
+        }
+
+        if (phaseTransition && phaseTransition.nextPhase !== session.currentPhase) {
+          controller.enqueue(encoder.encode(`data: ${JSON.stringify({
+            phaseTransition: {
+              from: session.currentPhase,
+              to: phaseTransition.nextPhase,
+              reason: phaseTransition.reason,
+            },
+          })}\n\n`));
+        }
+
+        if (regulationCheck.recommendation === 'calm-corner') {
+          controller.enqueue(encoder.encode(`data: ${JSON.stringify({
+            dysregulation: {
+              recommendation: regulationCheck.recommendation,
+              severity: regulationCheck.severity,
+              signals: regulationCheck.signals,
+            },
+          })}\n\n`));
         }
 
         // Save assistant message
