@@ -1,11 +1,13 @@
-import { NextRequest, NextResponse } from 'next/server';
+import { NextResponse } from 'next/server';
 import { auth } from '@clerk/nextjs/server';
 import { db } from '@/lib/db';
+import { withApiHandler } from '@/lib/api-handler';
+import { AuthenticationError, ForbiddenError, NotFoundError, ValidationError } from '@/lib/api-errors';
 
 /**
  * GET /api/progress/standards/[standardId]
  * Retrieves detailed progress for a specific standard
- * 
+ *
  * @param standardId - Standard ID
  * @query studentId (optional for educators/admins)
  * @returns Detailed progress data for the standard
@@ -13,15 +15,12 @@ import { db } from '@/lib/db';
  * @throws 403 if not authorized
  * @throws 404 if standard not found
  */
-export async function GET(
-  req: NextRequest,
-  { params }: { params: Promise<{ standardId: string }> }
-) {
-  const { standardId } = await params;
+export const GET = withApiHandler(async (req, ctx) => {
+  const { standardId } = ctx.params;
   const { userId: clerkId } = auth();
-  
+
   if (!clerkId) {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    throw new AuthenticationError();
   }
 
   const user = await db.user.findUnique({
@@ -30,7 +29,7 @@ export async function GET(
   });
 
   if (!user) {
-    return NextResponse.json({ error: 'User not found' }, { status: 404 });
+    throw new NotFoundError('User not found');
   }
 
   // Determine which student's progress to view
@@ -39,29 +38,29 @@ export async function GET(
 
   if (user.role === 'STUDENT') {
     if (!user.student) {
-      return NextResponse.json({ error: 'Student profile not found' }, { status: 404 });
+      throw new NotFoundError('Student profile not found');
     }
     studentId = user.student.id;
   } else if (user.role === 'PARENT') {
     if (!user.parent) {
-      return NextResponse.json({ error: 'Parent profile not found' }, { status: 404 });
+      throw new NotFoundError('Parent profile not found');
     }
     if (!queriedStudentId) {
-      return NextResponse.json({ error: 'studentId required for parent role' }, { status: 400 });
+      throw new ValidationError('studentId required for parent role');
     }
     // Verify parent-child relationship
     const student = await db.student.findUnique({
       where: { id: queriedStudentId },
     });
     if (!student || !user.parent.childrenIds.includes(student.userId)) {
-      return NextResponse.json({ error: 'Not authorized to view this student\'s progress' }, { status: 403 });
+      throw new ForbiddenError('Not authorized to view this student\'s progress');
     }
     studentId = queriedStudentId;
   } else if (queriedStudentId) {
     // Educators/admins can view any student in their tenant
     studentId = queriedStudentId;
   } else {
-    return NextResponse.json({ error: 'studentId required for non-student roles' }, { status: 400 });
+    throw new ValidationError('studentId required for non-student roles');
   }
 
   // Get the standard
@@ -77,7 +76,7 @@ export async function GET(
   });
 
   if (!standard) {
-    return NextResponse.json({ error: 'Standard not found' }, { status: 404 });
+    throw new NotFoundError('Standard not found');
   }
 
   // Get progress for this standard
@@ -163,4 +162,4 @@ export async function GET(
       relatedStandards,
     },
   });
-}
+}, { rateLimit: { windowMs: 60_000, max: 60 } });

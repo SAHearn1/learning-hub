@@ -2,11 +2,13 @@ import { NextResponse } from 'next/server';
 import { auth } from '@clerk/nextjs/server';
 import { db } from '@/lib/db';
 import { stripe } from '@/lib/stripe';
+import { withApiHandler } from '@/lib/api-handler';
+import { AuthenticationError, NotFoundError } from '@/lib/api-errors';
 
-export async function POST() {
+export const POST = withApiHandler(async () => {
   const { userId: clerkId } = auth();
   if (!clerkId) {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    throw new AuthenticationError();
   }
 
   const user = await db.user.findUnique({
@@ -14,7 +16,7 @@ export async function POST() {
     include: { tenant: true },
   });
   if (!user?.tenant.stripeCustomerId) {
-    return NextResponse.json({ error: 'No billing account found' }, { status: 404 });
+    throw new NotFoundError('No billing account found');
   }
 
   const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000';
@@ -25,4 +27,4 @@ export async function POST() {
   });
 
   return NextResponse.json({ data: { url: portalSession.url } });
-}
+}, { rateLimit: { windowMs: 60_000, max: 30 } });

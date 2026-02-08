@@ -1,4 +1,3 @@
-import { NextRequest } from 'next/server';
 import { auth } from '@clerk/nextjs/server';
 import { db } from '@/lib/db';
 import { anthropic, AI_MODELS } from '@/lib/ai/client';
@@ -18,26 +17,20 @@ const chatRequestSchema = z.object({
 // Minimum message length to trigger TRACE analysis (avoid analyzing very short responses)
 const MIN_MESSAGE_LENGTH_FOR_TRACE = 10;
 
-export async function POST(req: NextRequest) {
+export const POST = withApiHandler(async (req, { requestId }) => {
   const { userId: clerkId } = auth();
   if (!clerkId) {
-    return new Response(JSON.stringify({ error: 'Unauthorized' }), { status: 401 });
+    throw new AuthenticationError();
   }
 
-  let body;
-  try {
-    body = chatRequestSchema.parse(await req.json());
-  } catch (err) {
-    const message = err instanceof z.ZodError ? err.errors.map(e => e.message).join(', ') : 'Invalid request';
-    return new Response(JSON.stringify({ error: message }), { status: 400 });
-  }
+  const body = chatRequestSchema.parse(await req.json());
 
   const user = await db.user.findUnique({
     where: { clerkUserId: clerkId },
     include: { student: { include: { iepAccommodations: { where: { active: true } } } } },
   });
   if (!user?.student) {
-    return new Response(JSON.stringify({ error: 'Student profile not found' }), { status: 404 });
+    throw new NotFoundError('Student profile not found');
   }
 
   const session = await db.session.findUnique({
@@ -45,20 +38,20 @@ export async function POST(req: NextRequest) {
     include: { messages: { orderBy: { createdAt: 'asc' }, take: 50 } },
   });
   if (!session) {
-    return new Response(JSON.stringify({ error: 'Session not found' }), { status: 404 });
+    throw new NotFoundError('Session not found');
   }
   if (session.studentId !== user.student.id) {
-    return new Response(JSON.stringify({ error: 'Forbidden' }), { status: 403 });
+    throw new ForbiddenError();
   }
   if (session.endedAt) {
-    return new Response(JSON.stringify({ error: 'Session has ended' }), { status: 400 });
+    throw new ValidationError('Session has ended');
   }
 
   try {
     await enforceUsageLimits(user.tenantId, { additionalTokens: 2048 });
   } catch (error) {
     if (error instanceof UsageLimitError) {
-      return new Response(JSON.stringify({ error: error.message }), { status: 402 });
+      throw new PaymentRequiredError(error.message);
     }
     throw error;
   }
@@ -111,27 +104,27 @@ export async function POST(req: NextRequest) {
   // RAG: Retrieve relevant curriculum context from Pinecone
   let curriculumContext = '';
   let ragMetrics = { retrieved: 0, durationMs: 0 };
-  
+
   try {
     const ragStartTime = Date.now();
-    
+
     // Generate embedding for the user's query
     const queryEmbedding = await generateEmbedding(body.message);
-    
+
     // Query Pinecone for relevant curriculum content
     const filter: Record<string, any> = {
       subject: session.subject,
     };
-    
+
     // Add grade level filter if available
     if (user.student.gradeLevel) {
       filter.gradeLevel = user.student.gradeLevel;
     }
-    
+
     const matches = await queryPinecone(queryEmbedding, 5, filter);
     ragMetrics.retrieved = matches.length;
     ragMetrics.durationMs = Date.now() - ragStartTime;
-    
+
     // Format retrieved context
     if (matches.length > 0) {
       curriculumContext = matches
@@ -140,15 +133,20 @@ export async function POST(req: NextRequest) {
           const content = metadata.content || metadata.text || 'No content available';
           const source = metadata.source || metadata.title || 'Unknown source';
           const score = match.score?.toFixed(3) || 'N/A';
-          
+
           return `[Context ${idx + 1}] (Relevance: ${score})\nSource: ${source}\n${content}`;
         })
         .join('\n\n---\n\n');
-      
-      console.log(`RAG: Retrieved ${matches.length} curriculum contexts in ${ragMetrics.durationMs}ms for session ${session.id}`);
+
+      logger.info('RAG context retrieved', {
+        requestId,
+        sessionId: session.id,
+        matchCount: matches.length,
+        durationMs: ragMetrics.durationMs,
+      });
     }
   } catch (error) {
-    console.error(`RAG retrieval error for session ${session.id}:`, error);
+    logger.error('RAG retrieval error', error, { requestId, sessionId: session.id });
     // Continue without RAG context if Pinecone fails
     curriculumContext = '';
   }
@@ -272,7 +270,7 @@ export async function POST(req: NextRequest) {
               }
             })
             .catch((error) => {
-              console.error('Error tracking TRACE data:', error);
+              logger.error('Error tracking TRACE data', error, { requestId, sessionId: session.id });
             });
         }
 
@@ -318,4 +316,4 @@ export async function POST(req: NextRequest) {
       Connection: 'keep-alive',
     },
   });
-}
+}, { rateLimit: { windowMs: 60_000, max: 20 } });

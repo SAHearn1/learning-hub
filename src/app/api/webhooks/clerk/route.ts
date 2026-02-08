@@ -1,6 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createHmac, timingSafeEqual } from 'crypto';
 import { db } from '@/lib/db';
+import { withApiHandler } from '@/lib/api-handler';
+import { AuthenticationError, ValidationError } from '@/lib/api-errors';
+import { logger } from '@/lib/logger';
 
 interface ClerkWebhookEvent {
   type: string;
@@ -63,11 +66,10 @@ function verifySvixSignature(params: {
  *
  * @returns 200 OK for all cases to prevent retries
  */
-export async function POST(req: NextRequest) {
+export const POST = withApiHandler(async (req, { requestId }) => {
   const webhookSecret = process.env.CLERK_WEBHOOK_SECRET;
   if (!webhookSecret) {
-    console.error('CLERK_WEBHOOK_SECRET is not configured');
-    return NextResponse.json({ error: 'Webhook not configured' }, { status: 500 });
+    throw new Error('CLERK_WEBHOOK_SECRET is not configured');
   }
 
   const svixId = req.headers.get('svix-id');
@@ -75,7 +77,7 @@ export async function POST(req: NextRequest) {
   const svixSignature = req.headers.get('svix-signature');
 
   if (!svixId || !svixTimestamp || !svixSignature) {
-    return NextResponse.json({ error: 'Missing webhook signature headers' }, { status: 401 });
+    throw new AuthenticationError('Missing webhook signature headers');
   }
 
   let event: ClerkWebhookEvent;
@@ -100,8 +102,8 @@ export async function POST(req: NextRequest) {
 
     event = JSON.parse(body) as ClerkWebhookEvent;
   } catch (error) {
-    console.error('Webhook signature verification failed:', error);
-    return NextResponse.json({ error: 'Invalid webhook signature' }, { status: 401 });
+    logger.error('Webhook signature verification failed', error, { requestId });
+    throw new AuthenticationError('Invalid webhook signature');
   }
 
   const { type, data } = event;
@@ -110,7 +112,7 @@ export async function POST(req: NextRequest) {
     try {
       const email = data.email_addresses?.[0]?.email_address;
       if (!email) {
-        return NextResponse.json({ error: 'No email found' }, { status: 400 });
+        throw new ValidationError('No email found');
       }
 
       const role = (data.public_metadata?.role as string) || 'STUDENT';
@@ -143,7 +145,6 @@ export async function POST(req: NextRequest) {
           firstName: data.first_name ?? '',
           lastName: data.last_name ?? '',
           role: role as 'STUDENT' | 'EDUCATOR' | 'PARENT' | 'SCHOOL_ADMIN' | 'DISTRICT_ADMIN' | 'PLATFORM_ADMIN',
-          // Calculate if user is a minor (under 13) based on metadata
           isMinor: (data.public_metadata?.isMinor ?? false) as boolean,
         },
       });
@@ -187,13 +188,17 @@ export async function POST(req: NextRequest) {
 
       return NextResponse.json({ data: { userId: user.id } });
     } catch (error) {
-      console.error(`Error handling ${type}:`, error);
-      // Return 200 to prevent retries, but log the error
-      return NextResponse.json({ 
-        data: { 
+      // For webhook processing errors (not signature verification), return 200
+      // to prevent retries but log the error for investigation.
+      if (error instanceof AuthenticationError || error instanceof ValidationError) {
+        throw error;
+      }
+      logger.error(`Error handling ${type}`, error, { requestId });
+      return NextResponse.json({
+        data: {
           error: `Failed to ${type === 'user.created' ? 'create' : 'update'} user`,
-          logged: true 
-        } 
+          logged: true,
+        },
       });
     }
   }
@@ -209,27 +214,25 @@ export async function POST(req: NextRequest) {
           email: `deleted_${data.id}@deleted.local`,
           firstName: 'Deleted',
           lastName: 'User',
-          // Note: For full FERPA compliance, consider adding an 'isActive' field
-          // to the User model and set it to false instead
         },
       });
-      return NextResponse.json({ 
-        data: { 
+      return NextResponse.json({
+        data: {
           deactivated: true,
-          message: 'User deactivated for FERPA compliance' 
-        } 
+          message: 'User deactivated for FERPA compliance',
+        },
       });
     } catch (error) {
-      console.error('Error deactivating user:', error);
+      logger.error('Error deactivating user', error, { requestId });
       // Return 200 to prevent webhook retries
-      return NextResponse.json({ 
-        data: { 
+      return NextResponse.json({
+        data: {
           error: 'Failed to deactivate user',
-          logged: true 
-        } 
+          logged: true,
+        },
       });
     }
   }
 
   return NextResponse.json({ data: { ignored: true } });
-}
+});
