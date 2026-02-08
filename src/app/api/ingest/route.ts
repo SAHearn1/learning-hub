@@ -210,9 +210,10 @@ export async function POST(req: NextRequest) {
     }
     
     // Determine final status
-    const status = failedFiles === 0 ? 'SUCCESS' : 
-                   processedFiles === 0 ? 'FAILURE' : 
-                   'SUCCESS'; // Partial success still counts as success
+    // SUCCESS: All files processed successfully (no failures)
+    // FAILURE: All files failed (no successes)
+    // SUCCESS: Partial success (some files succeeded, some failed) - treat as success
+    const status = processedFiles === 0 ? 'FAILURE' : 'SUCCESS';
     
     const finalErrorMessage = errors.length > 0 
       ? `Processed ${processedFiles} files successfully, ${failedFiles} failed. Errors: ${errors.join('; ')}`
