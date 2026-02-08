@@ -10,6 +10,8 @@ type EngagementMode = 'FORWARD' | 'REVERSE' | 'ERROR_ANALYSIS' | 'MULTIPLE_PATHW
 interface SessionSetupProps {
   onStart: (subject: Subject, mode: EngagementMode) => void;
   isLoading: boolean;
+  startError?: string | null;
+  onClearError?: () => void;
 }
 
 interface RecentSession {
@@ -75,7 +77,7 @@ function formatRelativeTime(dateStr: string): string {
   return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
 }
 
-export function SessionSetup({ onStart, isLoading }: SessionSetupProps) {
+export function SessionSetup({ onStart, isLoading, startError, onClearError }: SessionSetupProps) {
   const [selectedSubject, setSelectedSubject] = useState<Subject | null>(null);
   const [selectedMode, setSelectedMode] = useState<EngagementMode>('FORWARD');
   const [recentSessions, setRecentSessions] = useState<RecentSession[]>([]);
@@ -121,7 +123,10 @@ export function SessionSetup({ onStart, isLoading }: SessionSetupProps) {
             ([key, subject]) => (
               <button
                 key={key}
-                onClick={() => setSelectedSubject(key)}
+                onClick={() => {
+                  onClearError?.();
+                  setSelectedSubject(key);
+                }}
                 className={`rounded-lg border-2 p-4 text-left transition-all ${
                   selectedSubject === key
                     ? 'border-current shadow-md'
@@ -147,7 +152,10 @@ export function SessionSetup({ onStart, isLoading }: SessionSetupProps) {
             ([key, mode]) => (
               <button
                 key={key}
-                onClick={() => setSelectedMode(key)}
+                onClick={() => {
+                  onClearError?.();
+                  setSelectedMode(key);
+                }}
                 className={`rounded-lg border-2 p-3 text-left transition-all ${
                   selectedMode === key
                     ? 'border-primary-600 bg-primary-50 shadow-sm'
@@ -169,12 +177,24 @@ export function SessionSetup({ onStart, isLoading }: SessionSetupProps) {
         <Button
           size="lg"
           disabled={!selectedSubject || isLoading}
-          onClick={() => selectedSubject && onStart(selectedSubject, selectedMode)}
+          onClick={() => {
+            onClearError?.();
+            if (selectedSubject) {
+              onStart(selectedSubject, selectedMode);
+            }
+          }}
           className="px-12"
         >
           {isLoading ? 'Starting...' : 'Begin Session'}
         </Button>
       </div>
+
+
+      {startError && (
+        <div className="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700" role="alert">
+          {startError}
+        </div>
+      )}
 
       {/* Recent Sessions */}
       {!historyLoading && recentSessions.length > 0 && (
@@ -188,6 +208,7 @@ export function SessionSetup({ onStart, isLoading }: SessionSetupProps) {
                 <button
                   key={session.id}
                   onClick={() => {
+                    onClearError?.();
                     setSelectedSubject(session.subject);
                     setSelectedMode(session.engagementMode);
                   }}
