@@ -184,7 +184,7 @@ export function FormativeCheck({
 
         {feedback && (
           <div className={`rounded-lg p-4 ${
-            feedback.isCorrect ? 'bg-primary-50 border border-primary-200' : 'bg-info-50 border border-info-200'
+            feedback.isCorrect ? 'bg-green-50 border border-green-200' : 'bg-blue-50 border border-blue-200'
           }`}>
             <div className="flex items-center gap-2 mb-2">
               <span className="text-xl">{feedback.isCorrect ? '✓' : '?'}</span>

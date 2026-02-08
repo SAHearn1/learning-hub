@@ -24,12 +24,12 @@ interface AssessmentResultsProps {
 }
 
 const BLOOMS_COLORS: Record<BloomsLevel, string> = {
-  REMEMBER: 'bg-neutral-100 text-neutral-800',
-  UNDERSTAND: 'bg-info-100 text-info-800',
-  APPLY: 'bg-primary-100 text-primary-800',
-  ANALYZE: 'bg-secondary-100 text-secondary-800',
-  EVALUATE: 'bg-error-100 text-error-800',
-  CREATE: 'bg-subject-ela-light text-subject-ela-dark',
+  REMEMBER: 'bg-blue-100 text-blue-800',
+  UNDERSTAND: 'bg-green-100 text-green-800',
+  APPLY: 'bg-yellow-100 text-yellow-800',
+  ANALYZE: 'bg-orange-100 text-orange-800',
+  EVALUATE: 'bg-red-100 text-red-800',
+  CREATE: 'bg-purple-100 text-purple-800',
 };
 
 export function AssessmentResults({
@@ -84,17 +84,17 @@ export function AssessmentResults({
 
           <div className="grid grid-cols-3 gap-4 pt-4 border-t">
             <div className="text-center">
-              <div className="text-2xl font-bold text-primary-600">{correctCount}</div>
+              <div className="text-2xl font-bold text-green-600">{correctCount}</div>
               <div className="text-xs text-muted-foreground">Correct</div>
             </div>
             <div className="text-center">
-              <div className="text-2xl font-bold text-error-600">
+              <div className="text-2xl font-bold text-red-600">
                 {totalCount - correctCount}
               </div>
               <div className="text-xs text-muted-foreground">Incorrect</div>
             </div>
             <div className="text-center">
-              <div className="text-2xl font-bold text-info-600">{totalCount}</div>
+              <div className="text-2xl font-bold text-blue-600">{totalCount}</div>
               <div className="text-xs text-muted-foreground">Total</div>
             </div>
           </div>
@@ -146,8 +146,8 @@ export function AssessmentResults({
               key={assessment.id}
               className={`border rounded-lg p-4 ${
                 assessment.isCorrect
-                  ? 'border-primary-200 bg-primary-50'
-                  : 'border-secondary-200 bg-secondary-50'
+                  ? 'border-green-200 bg-green-50'
+                  : 'border-yellow-200 bg-yellow-50'
               }`}
             >
               <div className="flex items-start justify-between mb-2">

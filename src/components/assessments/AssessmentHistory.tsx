@@ -31,10 +31,10 @@ interface HistoricalAssessment {
 }
 
 const TYPE_COLORS: Record<AssessmentType, string> = {
-  DIAGNOSTIC: 'bg-info-100 text-info-800',
-  FORMATIVE: 'bg-primary-100 text-primary-800',
-  SUMMATIVE: 'bg-subject-ela-light text-subject-ela-dark',
-  PRACTICE: 'bg-secondary-100 text-secondary-800',
+  DIAGNOSTIC: 'bg-blue-100 text-blue-800',
+  FORMATIVE: 'bg-green-100 text-green-800',
+  SUMMATIVE: 'bg-purple-100 text-purple-800',
+  PRACTICE: 'bg-yellow-100 text-yellow-800',
 };
 
 export function AssessmentHistory({
@@ -134,7 +134,7 @@ export function AssessmentHistory({
 
           {/* Summary Stats */}
           {filteredAssessments.length > 0 && (
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6 p-4 bg-neutral-50 rounded-lg">
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6 p-4 bg-gray-50 rounded-lg">
               <div className="text-center">
                 <div className="text-2xl font-bold text-primary">
                   {filteredAssessments.length}
@@ -148,13 +148,13 @@ export function AssessmentHistory({
                 <div className="text-xs text-muted-foreground">Avg Score</div>
               </div>
               <div className="text-center">
-                <div className="text-2xl font-bold text-primary-600">
+                <div className="text-2xl font-bold text-green-600">
                   {filteredAssessments.filter((a) => a.isCorrect).length}
                 </div>
                 <div className="text-xs text-muted-foreground">Correct</div>
               </div>
               <div className="text-center">
-                <div className="text-2xl font-bold text-error-600">
+                <div className="text-2xl font-bold text-red-600">
                   {filteredAssessments.filter((a) => a.isCorrect === false).length}
                 </div>
                 <div className="text-xs text-muted-foreground">Incorrect</div>
@@ -172,7 +172,7 @@ export function AssessmentHistory({
               filteredAssessments.map((assessment) => (
                 <div
                   key={assessment.id}
-                  className="border rounded-lg p-4 hover:bg-neutral-50 transition-colors"
+                  className="border rounded-lg p-4 hover:bg-gray-50 transition-colors"
                 >
                   <div className="flex items-start justify-between">
                     <div className="flex-1">

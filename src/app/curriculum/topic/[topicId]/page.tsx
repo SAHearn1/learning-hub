@@ -275,7 +275,7 @@ export default async function TopicDetailPage({ params }: PageProps) {
                 <ul className="space-y-2">
                   {topic.commonMisconceptions.map((misconception, i) => (
                     <li key={i} className="flex gap-2 text-sm text-neutral-700">
-                      <span className="text-secondary-600">•</span>
+                      <span className="text-amber-600">•</span>
                       <span>{misconception}</span>
                     </li>
                   ))}
@@ -294,7 +294,7 @@ export default async function TopicDetailPage({ params }: PageProps) {
                 <ul className="space-y-2">
                   {topic.realWorldConnections.map((connection, i) => (
                     <li key={i} className="flex gap-2 text-sm text-neutral-700">
-                      <span className="text-primary-600">•</span>
+                      <span className="text-green-600">•</span>
                       <span>{connection}</span>
                     </li>
                   ))}

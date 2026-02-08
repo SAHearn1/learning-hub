@@ -1,14 +1,12 @@
 import { NextResponse } from 'next/server';
 import { auth } from '@clerk/nextjs/server';
 import { db } from '@/lib/db';
-import { withApiHandler } from '@/lib/api-handler';
-import { AuthenticationError, ForbiddenError } from '@/lib/api-errors';
 
-export const GET = withApiHandler(async (req, ctx) => {
+export async function GET() {
   const { userId: clerkId } = auth();
-
+  
   if (!clerkId) {
-    throw new AuthenticationError();
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
 
   // Check if user is admin
@@ -17,13 +15,21 @@ export const GET = withApiHandler(async (req, ctx) => {
   });
 
   if (!user || !['PLATFORM_ADMIN', 'DISTRICT_ADMIN', 'SCHOOL_ADMIN'].includes(user.role)) {
-    throw new ForbiddenError();
+    return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
   }
 
-  const logs = await db.ingestLog.findMany({
-    orderBy: { timestamp: 'desc' },
-    take: 100,
-  });
+  try {
+    const logs = await db.ingestLog.findMany({
+      orderBy: { timestamp: 'desc' },
+      take: 100,
+    });
 
-  return NextResponse.json({ logs });
-}, { rateLimit: { windowMs: 60_000, max: 60 } });
+    return NextResponse.json({ logs });
+  } catch (error) {
+    console.error('Error fetching ingest logs:', error);
+    return NextResponse.json(
+      { error: 'Failed to fetch logs' },
+      { status: 500 }
+    );
+  }
+}

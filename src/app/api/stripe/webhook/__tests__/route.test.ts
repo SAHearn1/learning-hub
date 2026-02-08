@@ -1,5 +1,4 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { NextRequest } from 'next/server';
 
 const mockConstructEvent = vi.fn();
 const mockRetrieveSubscription = vi.fn();
@@ -18,19 +17,6 @@ vi.mock('@/lib/billing', () => ({
   handleSubscriptionCanceled: mockHandleSubscriptionCanceled,
 }));
 
-vi.mock('@/lib/logger', () => ({
-  logger: { debug: vi.fn(), info: vi.fn(), warn: vi.fn(), error: vi.fn() },
-}));
-vi.mock('@/lib/monitoring', () => ({ captureError: vi.fn() }));
-
-function makeRequest(headers?: Record<string, string>, body = '{}') {
-  return new NextRequest('http://localhost/api/stripe/webhook', {
-    method: 'POST',
-    headers,
-    body,
-  });
-}
-
 describe('POST /api/stripe/webhook', () => {
   beforeEach(() => {
     vi.clearAllMocks();
@@ -41,12 +27,15 @@ describe('POST /api/stripe/webhook', () => {
     const { POST } = await import('../route');
     delete process.env.STRIPE_WEBHOOK_SECRET;
 
-    const response = await POST(makeRequest());
-    const body = await response.json();
+    const request = new Request('http://localhost/api/stripe/webhook', {
+      method: 'POST',
+      body: '{}',
+    });
+
+    const response = await POST(request);
 
     expect(response.status).toBe(400);
-    expect(body.error).toBe('Webhook signature verification failed.');
-    expect(body.code).toBe('VALIDATION_ERROR');
+    await expect(response.json()).resolves.toEqual({ error: 'Webhook signature verification failed.' });
   });
 
   it('syncs tenant after checkout session completion with a subscription id', async () => {
@@ -57,13 +46,16 @@ describe('POST /api/stripe/webhook', () => {
     });
     mockRetrieveSubscription.mockResolvedValue({ id: 'sub_123', metadata: { tenantId: 'tenant_1' } });
 
-    const response = await POST(
-      makeRequest({ 'stripe-signature': 'sig_123' }),
-    );
+    const request = new Request('http://localhost/api/stripe/webhook', {
+      method: 'POST',
+      headers: { 'stripe-signature': 'sig_123' },
+      body: JSON.stringify({}),
+    });
+
+    const response = await POST(request);
 
     expect(response.status).toBe(200);
-    const body = await response.json();
-    expect(body.received).toBe(true);
+    await expect(response.json()).resolves.toEqual({ received: true });
     expect(mockRetrieveSubscription).toHaveBeenCalledWith('sub_123');
     expect(mockSyncTenantFromSubscription).toHaveBeenCalledWith({ id: 'sub_123', metadata: { tenantId: 'tenant_1' } });
   });
@@ -76,9 +68,13 @@ describe('POST /api/stripe/webhook', () => {
       data: { object: deletedSubscription },
     });
 
-    const response = await POST(
-      makeRequest({ 'stripe-signature': 'sig_456' }),
-    );
+    const request = new Request('http://localhost/api/stripe/webhook', {
+      method: 'POST',
+      headers: { 'stripe-signature': 'sig_456' },
+      body: JSON.stringify({}),
+    });
+
+    const response = await POST(request);
 
     expect(response.status).toBe(200);
     expect(mockHandleSubscriptionCanceled).toHaveBeenCalledWith(deletedSubscription);
@@ -90,21 +86,15 @@ describe('POST /api/stripe/webhook', () => {
       throw new Error('Bad signature');
     });
 
-    const response = await POST(
-      makeRequest({ 'stripe-signature': 'sig_invalid' }),
-    );
-    const body = await response.json();
+    const request = new Request('http://localhost/api/stripe/webhook', {
+      method: 'POST',
+      headers: { 'stripe-signature': 'sig_invalid' },
+      body: JSON.stringify({}),
+    });
+
+    const response = await POST(request);
 
     expect(response.status).toBe(400);
-    expect(body.error).toBe('Invalid webhook payload.');
-  });
-
-  it('includes X-Request-Id header on all responses', async () => {
-    const { POST } = await import('../route');
-    delete process.env.STRIPE_WEBHOOK_SECRET;
-
-    const response = await POST(makeRequest());
-
-    expect(response.headers.get('X-Request-Id')).toBeTruthy();
+    await expect(response.json()).resolves.toEqual({ error: 'Invalid webhook payload.' });
   });
 });

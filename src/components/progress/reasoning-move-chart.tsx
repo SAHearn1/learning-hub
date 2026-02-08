@@ -26,12 +26,12 @@ const MOVE_LABELS: Record<string, string> = {
 };
 
 const PROFICIENCY_COLORS = [
-  'bg-neutral-200',    // level 0 (unused)
-  'bg-secondary-400',  // level 1
-  'bg-secondary-300',  // level 2
-  'bg-primary-400',    // level 3
-  'bg-primary-500',    // level 4
-  'bg-primary-600',    // level 5
+  'bg-neutral-200',  // level 0 (unused)
+  'bg-amber-400',    // level 1
+  'bg-yellow-400',   // level 2
+  'bg-lime-500',     // level 3
+  'bg-emerald-500',  // level 4
+  'bg-green-600',    // level 5
 ];
 
 const PROFICIENCY_LABELS = ['', 'Introduced', 'Developing', 'Practicing', 'Proficient', 'Expert'];
@@ -80,13 +80,13 @@ export function ReasoningMoveChart({ moves }: { moves: ReasoningMove[] }) {
               <div className="flex h-2.5 w-full gap-0.5 overflow-hidden rounded-full bg-neutral-100">
                 {/* Prompted usage */}
                 <div
-                  className="h-full rounded-l-full bg-secondary-400 transition-all duration-500"
+                  className="h-full rounded-l-full bg-amber-400 transition-all duration-500"
                   style={{ width: `${(m.promptedUsage / maxUsage) * 100}%` }}
                   title={`Prompted: ${m.promptedUsage}`}
                 />
                 {/* Spontaneous usage */}
                 <div
-                  className="h-full rounded-r-full bg-primary-500 transition-all duration-500"
+                  className="h-full rounded-r-full bg-emerald-500 transition-all duration-500"
                   style={{ width: `${(m.spontaneousUsage / maxUsage) * 100}%` }}
                   title={`Spontaneous: ${m.spontaneousUsage}`}
                 />
@@ -98,10 +98,10 @@ export function ReasoningMoveChart({ moves }: { moves: ReasoningMove[] }) {
 
       <div className="mt-4 flex items-center gap-4 text-[11px] text-neutral-500">
         <span className="flex items-center gap-1">
-          <span className="inline-block h-2 w-4 rounded-full bg-secondary-400" /> Prompted
+          <span className="inline-block h-2 w-4 rounded-full bg-amber-400" /> Prompted
         </span>
         <span className="flex items-center gap-1">
-          <span className="inline-block h-2 w-4 rounded-full bg-primary-500" /> Spontaneous
+          <span className="inline-block h-2 w-4 rounded-full bg-emerald-500" /> Spontaneous
         </span>
       </div>
     </div>

@@ -3,9 +3,9 @@ import { StandardFramework, Subject } from '@prisma/client';
 import * as Tooltip from '@radix-ui/react-tooltip';
 
 const SUBJECT_COLORS = {
-  MATH: 'bg-subject-math-light text-subject-math-dark border-subject-math/20 hover:bg-subject-math-light/80',
-  SCIENCE: 'bg-subject-science-light text-subject-science-dark border-subject-science/20 hover:bg-subject-science-light/80',
-  LANGUAGE_ARTS: 'bg-subject-ela-light text-subject-ela-dark border-subject-ela/20 hover:bg-subject-ela-light/80',
+  MATH: 'bg-blue-50 text-blue-700 border-blue-200 hover:bg-blue-100',
+  SCIENCE: 'bg-green-50 text-green-700 border-green-200 hover:bg-green-100',
+  LANGUAGE_ARTS: 'bg-purple-50 text-purple-700 border-purple-200 hover:bg-purple-100',
 } as const;
 
 interface StandardBadgeProps {

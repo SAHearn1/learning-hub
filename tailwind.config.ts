@@ -11,8 +11,6 @@ const config: Config = {
     extend: {
       colors: {
         primary: {
-          DEFAULT: "var(--color-primary-600)",
-          foreground: "var(--color-primary-foreground)",
           50: "var(--color-primary-50)",
           100: "var(--color-primary-100)",
           200: "var(--color-primary-200)",
@@ -26,8 +24,6 @@ const config: Config = {
           950: "var(--color-primary-950)",
         },
         secondary: {
-          DEFAULT: "var(--color-secondary-500)",
-          foreground: "var(--color-secondary-foreground)",
           50: "var(--color-secondary-50)",
           100: "var(--color-secondary-100)",
           200: "var(--color-secondary-200)",
@@ -38,74 +34,6 @@ const config: Config = {
           700: "var(--color-secondary-700)",
           800: "var(--color-secondary-800)",
           900: "var(--color-secondary-900)",
-        },
-        destructive: {
-          DEFAULT: "var(--color-destructive)",
-          foreground: "var(--color-destructive-foreground)",
-        },
-        muted: {
-          DEFAULT: "var(--color-muted)",
-          foreground: "var(--color-muted-foreground)",
-        },
-        accent: {
-          DEFAULT: "var(--color-accent)",
-          foreground: "var(--color-accent-foreground)",
-        },
-        background: "var(--color-background)",
-        foreground: "var(--color-foreground)",
-        ring: "var(--color-ring)",
-        input: "var(--color-input)",
-        border: "var(--color-border)",
-        error: {
-          DEFAULT: "var(--color-error-500)",
-          50: "var(--color-error-50)",
-          100: "var(--color-error-100)",
-          200: "var(--color-error-200)",
-          500: "var(--color-error-500)",
-          600: "var(--color-error-600)",
-          700: "var(--color-error-700)",
-          800: "var(--color-error-800)",
-          900: "var(--color-error-900)",
-        },
-        info: {
-          DEFAULT: "var(--color-info-500)",
-          50: "var(--color-info-50)",
-          100: "var(--color-info-100)",
-          200: "var(--color-info-200)",
-          500: "var(--color-info-500)",
-          600: "var(--color-info-600)",
-          700: "var(--color-info-700)",
-          800: "var(--color-info-800)",
-          900: "var(--color-info-900)",
-        },
-        subject: {
-          math: {
-            DEFAULT: "var(--color-subject-math)",
-            light: "var(--color-subject-math-light)",
-            dark: "var(--color-subject-math-dark)",
-          },
-          science: {
-            DEFAULT: "var(--color-subject-science)",
-            light: "var(--color-subject-science-light)",
-            dark: "var(--color-subject-science-dark)",
-          },
-          ela: {
-            DEFAULT: "var(--color-subject-ela)",
-            light: "var(--color-subject-ela-light)",
-            dark: "var(--color-subject-ela-dark)",
-          },
-        },
-        neutral: {
-          50: "var(--color-neutral-50)",
-          100: "var(--color-neutral-100)",
-          200: "var(--color-neutral-200)",
-          300: "var(--color-neutral-300)",
-          400: "var(--color-neutral-400)",
-          500: "var(--color-neutral-500)",
-          600: "var(--color-neutral-600)",
-          700: "var(--color-neutral-700)",
-          800: "var(--color-neutral-800)",
-          900: "var(--color-neutral-900)",
         },
         phase: {
           root: "var(--phase-root-color)",

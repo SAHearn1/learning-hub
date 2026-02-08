@@ -1,5 +1,4 @@
 import { ConsentStatus, UserRole } from '@prisma/client';
-import { ForbiddenError } from '@/lib/api-errors';
 
 export const guardianRoles: UserRole[] = ['PARENT', 'SCHOOL_ADMIN', 'DISTRICT_ADMIN', 'PLATFORM_ADMIN'];
 
@@ -60,26 +59,4 @@ export type DataRightsRequestType = 'EXPORT' | 'DELETE';
 
 export function requiresGuardianForDataRequest(isMinor: boolean, role: UserRole): boolean {
   return isMinor && !canManageMinorConsent(role);
-}
-
-export function hasOperationalConsentForLearning(isMinor: boolean, consentStatus: ConsentStatus | null | undefined): boolean {
-  if (!isMinor) {
-    return true;
-  }
-
-  return consentStatus === 'GRANTED';
-}
-
-export function assertMinorConsentForLearning(
-  isMinor: boolean,
-  consentStatus: ConsentStatus | null | undefined,
-  context: { action: string },
-): void {
-  if (hasOperationalConsentForLearning(isMinor, consentStatus)) {
-    return;
-  }
-
-  throw new ForbiddenError(
-    `Parental consent is required before ${context.action}.`,
-  );
 }

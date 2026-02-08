@@ -2,9 +2,6 @@ import { generateEmbedding } from '@/lib/embeddings';
 import { queryVectors, type CurriculumMetadata } from '@/lib/pinecone';
 import { logger } from '@/lib/logger';
 
-const SEARCH_CACHE_TTL_MS = 5 * 60 * 1000;
-const searchCache = new Map<string, { expiresAt: number; value: SearchResult[] }>();
-
 export interface SearchResult {
   text: string;
   score: number;
@@ -23,13 +20,11 @@ export async function searchCurriculum(
   options: {
     subject?: string;
     gradeLevel?: number;
-    course?: string;
-    module?: string;
     topK?: number;
     minScore?: number;
   } = {},
 ): Promise<SearchResult[]> {
-  const { topK = 5, minScore = 0.3, subject, gradeLevel, course, module } = options;
+  const { topK = 5, minScore = 0.3 } = options;
 
   // Check that required services are configured
   if (!process.env.OPENAI_API_KEY || !process.env.PINECONE_API_KEY) {
@@ -38,20 +33,12 @@ export async function searchCurriculum(
   }
 
   try {
-    const cacheKey = JSON.stringify({ query, topK, minScore, subject, gradeLevel, course, module });
-    const cached = searchCache.get(cacheKey);
-    if (cached && cached.expiresAt > Date.now()) {
-      return cached.value;
-    }
-
     const embedding = await generateEmbedding(query);
 
     const results = await queryVectors(embedding, {
       topK,
-      subject,
-      gradeLevel,
-      course,
-      module,
+      subject: options.subject,
+      gradeLevel: options.gradeLevel,
     });
 
     const filtered = results
@@ -69,11 +56,6 @@ export async function searchCurriculum(
       query: query.substring(0, 80),
       resultsFound: results.length,
       afterFilter: filtered.length,
-    });
-
-    searchCache.set(cacheKey, {
-      value: filtered,
-      expiresAt: Date.now() + SEARCH_CACHE_TTL_MS,
     });
 
     return filtered;

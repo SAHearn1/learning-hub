@@ -1,13 +1,11 @@
-import { NextResponse } from 'next/server';
+import { NextRequest, NextResponse } from 'next/server';
 import { auth } from '@clerk/nextjs/server';
 import { db } from '@/lib/db';
-import { withApiHandler } from '@/lib/api-handler';
-import { AuthenticationError, ForbiddenError, NotFoundError, ValidationError } from '@/lib/api-errors';
 
-export const GET = withApiHandler(async (req, _ctx) => {
+export async function GET(req: NextRequest) {
   const { userId: clerkId } = auth();
   if (!clerkId) {
-    throw new AuthenticationError();
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
 
   const user = await db.user.findUnique({
@@ -15,7 +13,7 @@ export const GET = withApiHandler(async (req, _ctx) => {
     include: { student: true },
   });
   if (!user) {
-    throw new NotFoundError('User not found');
+    return NextResponse.json({ error: 'User not found' }, { status: 404 });
   }
 
   // Students see their own progress; educators/admins can specify a studentId
@@ -24,7 +22,7 @@ export const GET = withApiHandler(async (req, _ctx) => {
 
   if (user.role === 'STUDENT') {
     if (!user.student) {
-      throw new NotFoundError('Student profile not found');
+      return NextResponse.json({ error: 'Student profile not found' }, { status: 404 });
     }
     studentId = user.student.id;
   } else if (queriedStudentId) {
@@ -34,11 +32,11 @@ export const GET = withApiHandler(async (req, _ctx) => {
       include: { user: { select: { tenantId: true } } },
     });
     if (!queriedStudent || queriedStudent.user.tenantId !== user.tenantId) {
-      throw new ForbiddenError();
+      return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
     }
     studentId = queriedStudentId;
   } else {
-    throw new ValidationError('studentId required for non-student roles');
+    return NextResponse.json({ error: 'studentId required for non-student roles' }, { status: 400 });
   }
 
   const subject = req.nextUrl.searchParams.get('subject') as string | null;
@@ -88,4 +86,4 @@ export const GET = withApiHandler(async (req, _ctx) => {
       recentSessions,
     },
   });
-}, { rateLimit: { windowMs: 60_000, max: 60 } });
+}

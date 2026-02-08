@@ -34,12 +34,12 @@ interface AssessmentCardProps {
 type AssessmentType = 'DIAGNOSTIC' | 'FORMATIVE' | 'SUMMATIVE' | 'PRACTICE';
 
 const BLOOMS_COLORS: Record<BloomsLevel, string> = {
-  REMEMBER: 'bg-neutral-100 text-neutral-800',
-  UNDERSTAND: 'bg-info-100 text-info-800',
-  APPLY: 'bg-primary-100 text-primary-800',
-  ANALYZE: 'bg-secondary-100 text-secondary-800',
-  EVALUATE: 'bg-error-100 text-error-800',
-  CREATE: 'bg-subject-ela-light text-subject-ela-dark',
+  REMEMBER: 'bg-blue-100 text-blue-800',
+  UNDERSTAND: 'bg-green-100 text-green-800',
+  APPLY: 'bg-yellow-100 text-yellow-800',
+  ANALYZE: 'bg-orange-100 text-orange-800',
+  EVALUATE: 'bg-red-100 text-red-800',
+  CREATE: 'bg-purple-100 text-purple-800',
 };
 
 const DIFFICULTY_STARS = ['⭐', '⭐⭐', '⭐⭐⭐', '⭐⭐⭐⭐', '⭐⭐⭐⭐⭐'];
@@ -121,10 +121,10 @@ export function AssessmentCard({
             )}
 
             {showHints && hintLevel > 0 && (
-              <div className="bg-info-50 border border-info-200 rounded-lg p-4 space-y-2">
-                <p className="font-semibold text-info-900">Hints:</p>
+              <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 space-y-2">
+                <p className="font-semibold text-blue-900">Hints:</p>
                 {scaffoldHints.slice(0, hintLevel).map((hint, index) => (
-                  <p key={index} className="text-sm text-info-800">
+                  <p key={index} className="text-sm text-blue-800">
                     {index + 1}. {hint}
                   </p>
                 ))}
@@ -135,7 +135,7 @@ export function AssessmentCard({
 
         {showFeedback && feedback && (
           <div className={`rounded-lg p-4 ${
-            feedback.isCorrect ? 'bg-primary-50 border border-primary-200' : 'bg-secondary-50 border border-secondary-200'
+            feedback.isCorrect ? 'bg-green-50 border border-green-200' : 'bg-yellow-50 border border-yellow-200'
           }`}>
             <div className="flex items-center gap-2 mb-2">
               <span className="text-2xl">{feedback.isCorrect ? '✓' : '?'}</span>
@@ -152,7 +152,7 @@ export function AssessmentCard({
               <div className="mt-4 space-y-2">
                 <p className="font-semibold text-sm">Try thinking about:</p>
                 {feedback.scaffoldHints.map((hint, index) => (
-                  <p key={index} className="text-sm text-neutral-700">
+                  <p key={index} className="text-sm text-gray-700">
                     • {hint}
                   </p>
                 ))}

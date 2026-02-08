@@ -1,9 +1,7 @@
-import { NextResponse } from 'next/server';
+import { NextRequest, NextResponse } from 'next/server';
 import { auth } from '@clerk/nextjs/server';
 import { db } from '@/lib/db';
 import { z } from 'zod';
-import { withApiHandler } from '@/lib/api-handler';
-import { AuthenticationError, ForbiddenError } from '@/lib/api-errors';
 
 const createClassSchema = z.object({
   schoolId: z.string().min(1),
@@ -13,18 +11,24 @@ const createClassSchema = z.object({
   academicYear: z.string().min(1),
 });
 
-export const POST = withApiHandler(async (req) => {
+export async function POST(req: NextRequest) {
   const { userId: clerkId } = auth();
   if (!clerkId) {
-    throw new AuthenticationError();
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
 
   const user = await db.user.findUnique({ where: { clerkUserId: clerkId } });
   if (!user || !['EDUCATOR', 'SCHOOL_ADMIN', 'DISTRICT_ADMIN'].includes(user.role)) {
-    throw new ForbiddenError();
+    return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
   }
 
-  const body = createClassSchema.parse(await req.json());
+  let body;
+  try {
+    body = createClassSchema.parse(await req.json());
+  } catch (err) {
+    const message = err instanceof z.ZodError ? err.errors.map(e => e.message).join(', ') : 'Invalid request';
+    return NextResponse.json({ error: message }, { status: 400 });
+  }
 
   const newClass = await db.class.create({
     data: {
@@ -39,17 +43,17 @@ export const POST = withApiHandler(async (req) => {
   });
 
   return NextResponse.json({ data: newClass }, { status: 201 });
-}, { rateLimit: { windowMs: 60_000, max: 30 } });
+}
 
-export const GET = withApiHandler(async () => {
+export async function GET(req: NextRequest) {
   const { userId: clerkId } = auth();
   if (!clerkId) {
-    throw new AuthenticationError();
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
 
   const user = await db.user.findUnique({ where: { clerkUserId: clerkId } });
   if (!user || !['EDUCATOR', 'SCHOOL_ADMIN', 'DISTRICT_ADMIN', 'PLATFORM_ADMIN'].includes(user.role)) {
-    throw new ForbiddenError();
+    return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
   }
 
   const where = user.role === 'EDUCATOR'
@@ -66,4 +70,4 @@ export const GET = withApiHandler(async () => {
   });
 
   return NextResponse.json({ data: classes });
-}, { rateLimit: { windowMs: 60_000, max: 60 } });
+}

@@ -2,19 +2,21 @@
 
 import { DiagnosticAssessment } from '@/components/assessments/DiagnosticAssessment';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { useAssessmentContext } from '@/hooks/useAssessmentContext';
+import type { Subject } from '@prisma/client';
 
 export default function DiagnosticPage() {
-  const { context, loading } = useAssessmentContext();
+  // In a real app, these would come from the session/auth context
+  const mockData = {
+    studentId: 'student-123',
+    sessionId: 'session-123',
+    subject: 'MATH' as Subject,
+    gradeLevel: 5,
+  };
 
   const handleComplete = (results: any) => {
     console.log('Diagnostic assessment completed:', results);
     // Navigate to results page or dashboard
   };
-
-  if (loading || !context) {
-    return <div className="container mx-auto max-w-4xl px-4 py-8 text-sm text-muted-foreground">Preparing assessment context...</div>;
-  }
 
   return (
     <div className="container mx-auto py-8 px-4 max-w-4xl">
@@ -52,10 +54,10 @@ export default function DiagnosticPage() {
       </Card>
 
       <DiagnosticAssessment
-        studentId={context.studentId}
-        sessionId={context.sessionId}
-        subject={context.subject}
-        gradeLevel={context.gradeLevel}
+        studentId={mockData.studentId}
+        sessionId={mockData.sessionId}
+        subject={mockData.subject}
+        gradeLevel={mockData.gradeLevel}
         onComplete={handleComplete}
       />
     </div>
