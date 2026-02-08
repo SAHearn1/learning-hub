@@ -16,7 +16,6 @@ const updateSessionSchema = z.object({
   metadata: z.record(z.unknown()).optional(),
   endSession: z.boolean().optional(),
   endedAt: z.string().optional(),
-  metadata: z.record(z.unknown()).optional(),
 });
 
 export const GET = withApiHandler(async (_req, ctx) => {

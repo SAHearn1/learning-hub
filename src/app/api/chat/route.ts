@@ -5,15 +5,8 @@ import { buildMasterSystemPrompt } from '@/lib/ai/prompts/master-system-prompt';
 import { generateEmbedding } from '@/lib/pinecone/embeddings';
 import { queryPinecone } from '@/lib/pinecone/client';
 import { enforceUsageLimits, UsageLimitError } from '@/lib/usage-limits';
-import { withApiHandler } from '@/lib/api-handler';
-import {
-  AuthenticationError,
-  ForbiddenError,
-  NotFoundError,
-  PaymentRequiredError,
-  ValidationError,
-} from '@/lib/api-errors';
-import { logger } from '@/lib/logger';
+import { detectDysregulation, updateRegulationLevel } from '@/lib/regulation/detector';
+import { analyzeThinkingQuality } from '@/lib/trace/tracker';
 import { z } from 'zod';
 
 const chatRequestSchema = z.object({
