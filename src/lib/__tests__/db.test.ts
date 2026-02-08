@@ -11,7 +11,7 @@ describe('db module', () => {
   const originalEnv = process.env.NODE_ENV;
 
   afterEach(() => {
-    process.env.NODE_ENV = originalEnv;
+    (process.env as Record<string, string | undefined>).NODE_ENV = originalEnv;
     // Clean up globalThis to avoid leaking between tests
     const g = globalThis as unknown as { prisma?: PrismaClient };
     delete g.prisma;
@@ -56,9 +56,9 @@ describe('db module', () => {
     // Each model delegate should have standard Prisma CRUD methods
     const crudMethods = ['findUnique', 'findFirst', 'findMany', 'create', 'update', 'delete', 'count'];
     for (const method of crudMethods) {
-      expect(typeof (db.user as Record<string, unknown>)[method]).toBe('function');
-      expect(typeof (db.student as Record<string, unknown>)[method]).toBe('function');
-      expect(typeof (db.session as Record<string, unknown>)[method]).toBe('function');
+      expect(typeof (db.user as unknown as Record<string, unknown>)[method]).toBe('function');
+      expect(typeof (db.student as unknown as Record<string, unknown>)[method]).toBe('function');
+      expect(typeof (db.session as unknown as Record<string, unknown>)[method]).toBe('function');
     }
   });
 
