@@ -1,5 +1,7 @@
 import { NextResponse } from 'next/server';
 import { z } from 'zod';
+import { withApiHandler } from '@/lib/api-handler';
+import { ForbiddenError, NotFoundError } from '@/lib/api-errors';
 import { requireUser } from '@/lib/auth';
 import { db } from '@/lib/db';
 import { canManageMinorConsent, requiresGuardianForDataRequest } from '@/lib/compliance';
@@ -10,96 +12,88 @@ const dataRightsSchema = z.object({
   reason: z.string().max(1000).optional(),
 });
 
-export async function POST(request: Request) {
-  try {
-    const actor = await requireUser();
-    const payload = dataRightsSchema.parse(await request.json());
-    const subjectUserId = payload.subjectUserId ?? actor.id;
+export const POST = withApiHandler(async (req) => {
+  const actor = await requireUser();
+  const payload = dataRightsSchema.parse(await req.json());
+  const subjectUserId = payload.subjectUserId ?? actor.id;
 
-    const subject = await db.user.findUnique({
-      where: { id: subjectUserId },
-      include: {
-        student: {
-          include: {
-            sessions: {
-              include: {
-                messages: true,
-                assessments: true,
-              },
+  const subject = await db.user.findUnique({
+    where: { id: subjectUserId },
+    include: {
+      student: {
+        include: {
+          sessions: {
+            include: {
+              messages: true,
+              assessments: true,
             },
-            progress: true,
           },
+          progress: true,
         },
       },
-    });
+    },
+  });
 
-    if (!subject) {
-      return NextResponse.json({ error: 'Requested user was not found' }, { status: 404 });
-    }
+  if (!subject) {
+    throw new NotFoundError('Requested user was not found');
+  }
 
-    const sameUser = actor.id === subject.id;
-    if (!sameUser && subject.tenantId !== actor.tenantId) {
-      return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
-    }
-    if (!sameUser && !canManageMinorConsent(actor.role)) {
-      return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
-    }
+  const sameUser = actor.id === subject.id;
+  if (!sameUser && subject.tenantId !== actor.tenantId) {
+    throw new ForbiddenError();
+  }
+  if (!sameUser && !canManageMinorConsent(actor.role)) {
+    throw new ForbiddenError();
+  }
 
-    if (requiresGuardianForDataRequest(subject.isMinor, actor.role)) {
-      return NextResponse.json({ error: 'A parent/admin role is required for minor data requests' }, { status: 403 });
-    }
+  if (requiresGuardianForDataRequest(subject.isMinor, actor.role)) {
+    throw new ForbiddenError('A parent/admin role is required for minor data requests');
+  }
 
-    await db.auditLog.create({
-      data: {
-        tenantId: subject.tenantId,
-        userId: actor.id,
-        action: 'DATA_RIGHTS_REQUESTED',
-        resource: 'User',
-        resourceId: subject.id,
-        metadata: {
-          requestType: payload.requestType,
-          reason: payload.reason,
-        },
+  await db.auditLog.create({
+    data: {
+      tenantId: subject.tenantId,
+      userId: actor.id,
+      action: 'DATA_RIGHTS_REQUESTED',
+      resource: 'User',
+      resourceId: subject.id,
+      metadata: {
+        requestType: payload.requestType,
+        reason: payload.reason,
       },
-    });
+    },
+  });
 
-    if (payload.requestType === 'DELETE') {
-      return NextResponse.json({
-        success: true,
-        status: 'QUEUED',
-        message: 'Deletion request logged. Fulfillment requires privacy admin review before irreversible removal.',
-      });
-    }
-
+  if (payload.requestType === 'DELETE') {
     return NextResponse.json({
       success: true,
-      export: {
-        generatedAt: new Date().toISOString(),
-        subject: {
-          id: subject.id,
-          email: subject.email,
-          firstName: subject.firstName,
-          lastName: subject.lastName,
-          role: subject.role,
-          isMinor: subject.isMinor,
-          consentStatus: subject.consentStatus,
-          createdAt: subject.createdAt,
-        },
-        learningDataSummary: {
-          totalSessions: subject.student?.sessions.length ?? 0,
-          totalMessages:
-            subject.student?.sessions.reduce((sum, session) => sum + session.messages.length, 0) ?? 0,
-          totalAssessments:
-            subject.student?.sessions.reduce((sum, session) => sum + session.assessments.length, 0) ?? 0,
-          progressRecords: subject.student?.progress.length ?? 0,
-        },
-      },
+      status: 'QUEUED',
+      message: 'Deletion request logged. Fulfillment requires privacy admin review before irreversible removal.',
     });
-  } catch (error) {
-    if (error instanceof z.ZodError) {
-      return NextResponse.json({ error: 'Invalid request payload' }, { status: 400 });
-    }
-
-    return NextResponse.json({ error: 'Unable to process data-rights request' }, { status: 500 });
   }
-}
+
+  return NextResponse.json({
+    success: true,
+    export: {
+      generatedAt: new Date().toISOString(),
+      subject: {
+        id: subject.id,
+        email: subject.email,
+        firstName: subject.firstName,
+        lastName: subject.lastName,
+        role: subject.role,
+        isMinor: subject.isMinor,
+        consentStatus: subject.consentStatus,
+        createdAt: subject.createdAt,
+      },
+      learningDataSummary: {
+        totalSessions: subject.student?.sessions.length ?? 0,
+        totalMessages:
+          subject.student?.sessions.reduce((sum, session) => sum + session.messages.length, 0) ?? 0,
+        totalAssessments:
+          subject.student?.sessions.reduce((sum, session) => sum + session.assessments.length, 0) ?? 0,
+        progressRecords: subject.student?.progress.length ?? 0,
+      },
+    },
+  });
+}, { rateLimit: { windowMs: 60_000, max: 30 } });

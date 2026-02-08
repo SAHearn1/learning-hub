@@ -3,6 +3,8 @@ import { auth } from '@clerk/nextjs/server';
 import { db } from '@/lib/db';
 import { stripe } from '@/lib/stripe';
 import { z } from 'zod';
+import { withApiHandler } from '@/lib/api-handler';
+import { AuthenticationError, NotFoundError, ValidationError } from '@/lib/api-errors';
 
 const ALLOWED_PRICE_IDS = new Set(
   [
@@ -16,22 +18,16 @@ const checkoutSchema = z.object({
   priceId: z.string().min(1),
 });
 
-export async function POST(req: NextRequest) {
+export const POST = withApiHandler(async (req) => {
   const { userId: clerkId } = auth();
   if (!clerkId) {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    throw new AuthenticationError();
   }
 
-  let body;
-  try {
-    body = checkoutSchema.parse(await req.json());
-  } catch (err) {
-    const message = err instanceof z.ZodError ? err.errors.map(e => e.message).join(', ') : 'Invalid request';
-    return NextResponse.json({ error: message }, { status: 400 });
-  }
+  const body = checkoutSchema.parse(await req.json());
 
   if (!ALLOWED_PRICE_IDS.has(body.priceId)) {
-    return NextResponse.json({ error: 'Invalid price selection' }, { status: 400 });
+    throw new ValidationError('Invalid price selection');
   }
 
   const user = await db.user.findUnique({
@@ -39,7 +35,7 @@ export async function POST(req: NextRequest) {
     include: { tenant: true },
   });
   if (!user) {
-    return NextResponse.json({ error: 'User not found' }, { status: 404 });
+    throw new NotFoundError('User not found');
   }
 
   // Create or retrieve Stripe customer
@@ -68,4 +64,4 @@ export async function POST(req: NextRequest) {
   });
 
   return NextResponse.json({ data: { url: session.url } });
-}
+}, { rateLimit: { windowMs: 60_000, max: 30 } });

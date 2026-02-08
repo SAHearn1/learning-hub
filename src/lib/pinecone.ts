@@ -32,6 +32,9 @@ export interface CurriculumMetadata {
   chunkIndex: number;
   totalChunks: number;
   text: string;
+  course?: string;
+  module?: string;
+  [key: string]: unknown; // Allow additional metadata fields
 }
 
 /**

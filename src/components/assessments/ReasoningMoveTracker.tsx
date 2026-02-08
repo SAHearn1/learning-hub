@@ -38,11 +38,11 @@ interface Profile {
 }
 
 const PROFICIENCY_COLORS: Record<number, string> = {
-  1: 'bg-gray-200 text-gray-700',
-  2: 'bg-blue-200 text-blue-700',
-  3: 'bg-yellow-200 text-yellow-700',
-  4: 'bg-green-200 text-green-700',
-  5: 'bg-purple-200 text-purple-700',
+  1: 'bg-neutral-200 text-neutral-700',
+  2: 'bg-info-200 text-info-700',
+  3: 'bg-secondary-200 text-secondary-700',
+  4: 'bg-primary-200 text-primary-700',
+  5: 'bg-subject-ela-light text-subject-ela-dark',
 };
 
 const PROFICIENCY_LABELS: Record<number, string> = {
@@ -195,7 +195,7 @@ export function ReasoningMoveTracker({ studentId, showSuggestions = true }: Reas
               {suggestions.map((suggestion, index) => (
                 <div
                   key={index}
-                  className="flex items-center gap-3 p-3 bg-blue-50 rounded-lg border border-blue-200"
+                  className="flex items-center gap-3 p-3 bg-info-50 rounded-lg border border-info-200"
                 >
                   <span className="text-2xl">→</span>
                   <div className="flex-1">

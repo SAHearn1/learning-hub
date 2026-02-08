@@ -1,4 +1,3 @@
-import { NextRequest } from 'next/server';
 import { auth } from '@clerk/nextjs/server';
 import { db } from '@/lib/db';
 import { anthropic, AI_MODELS } from '@/lib/ai/client';
@@ -8,8 +7,7 @@ import { queryPinecone } from '@/lib/pinecone/client';
 import { enforceUsageLimits, UsageLimitError } from '@/lib/usage-limits';
 import { detectDysregulation, updateRegulationLevel } from '@/lib/regulation/detector';
 import { analyzeThinkingQuality } from '@/lib/trace/tracker';
-import { incrementMetric, observeLatency } from '@/lib/api/metrics';
-import { logger } from '@/lib/logger';
+import { getRecommendedPhaseTransition } from '@/lib/five-rs/phase-transition';
 import { z } from 'zod';
 
 const chatRequestSchema = z.object({
@@ -20,18 +18,19 @@ const chatRequestSchema = z.object({
 // Minimum message length to trigger TRACE analysis (avoid analyzing very short responses)
 const MIN_MESSAGE_LENGTH_FOR_TRACE = 10;
 
-export async function POST(req: NextRequest) {
-  incrementMetric('api_chat_requests_total');
+export const POST = withApiHandler(async (req, { requestId }) => {
   const { userId: clerkId } = auth();
   if (!clerkId) {
-    return new Response(JSON.stringify({ error: 'Unauthorized' }), { status: 401 });
+    throw new AuthenticationError();
   }
 
   let body;
   try {
     body = chatRequestSchema.parse(await req.json());
-  } catch (err) {
-    const message = err instanceof z.ZodError ? err.errors.map(e => e.message).join(', ') : 'Invalid request';
+  } catch (err: unknown) {
+    const message = err instanceof z.ZodError
+      ? err.errors.map((e: { message: string }) => e.message).join(', ')
+      : 'Invalid request';
     return new Response(JSON.stringify({ error: message }), { status: 400 });
   }
 
@@ -40,7 +39,7 @@ export async function POST(req: NextRequest) {
     include: { student: { include: { iepAccommodations: { where: { active: true } } } } },
   });
   if (!user?.student) {
-    return new Response(JSON.stringify({ error: 'Student profile not found' }), { status: 404 });
+    throw new NotFoundError('Student profile not found');
   }
 
   const session = await db.session.findUnique({
@@ -48,20 +47,20 @@ export async function POST(req: NextRequest) {
     include: { messages: { orderBy: { createdAt: 'asc' }, take: 50 } },
   });
   if (!session) {
-    return new Response(JSON.stringify({ error: 'Session not found' }), { status: 404 });
+    throw new NotFoundError('Session not found');
   }
   if (session.studentId !== user.student.id) {
-    return new Response(JSON.stringify({ error: 'Forbidden' }), { status: 403 });
+    throw new ForbiddenError();
   }
   if (session.endedAt) {
-    return new Response(JSON.stringify({ error: 'Session has ended' }), { status: 400 });
+    throw new ValidationError('Session has ended');
   }
 
   try {
     await enforceUsageLimits(user.tenantId, { additionalTokens: 2048 });
   } catch (error) {
     if (error instanceof UsageLimitError) {
-      return new Response(JSON.stringify({ error: error.message }), { status: 402 });
+      throw new PaymentRequiredError(error.message);
     }
     throw error;
   }
@@ -76,7 +75,7 @@ export async function POST(req: NextRequest) {
   });
 
   // Check for dysregulation signals
-  const messageHistory = session.messages.map((m) => ({
+  const messageHistory = session.messages.map((m: { role: string; content: string; createdAt: Date }) => ({
     role: m.role,
     content: m.content,
     createdAt: m.createdAt,
@@ -101,64 +100,92 @@ export async function POST(req: NextRequest) {
     });
   }
 
+  const phaseTransition = getRecommendedPhaseTransition({
+    currentPhase: session.currentPhase,
+    regulationLevel: newRegulationLevel,
+    hasErrorSignal: regulationCheck.signals.some((signal) =>
+      signal.toLowerCase().includes('frustrat') || signal.toLowerCase().includes('stuck')
+    ),
+    sessionMessageCount: session.messages.length,
+  });
+
+  if (phaseTransition && phaseTransition.nextPhase !== session.currentPhase) {
+    await db.session.update({
+      where: { id: session.id },
+      data: { currentPhase: phaseTransition.nextPhase },
+    });
+
+    await db.message.create({
+      data: {
+        sessionId: session.id,
+        role: 'SYSTEM',
+        content: `Transitioning from ${session.currentPhase} to ${phaseTransition.nextPhase}. ${phaseTransition.reason}`,
+        metadata: {
+          type: 'phase-transition',
+          from: session.currentPhase,
+          to: phaseTransition.nextPhase,
+          reason: phaseTransition.reason,
+        },
+      },
+    });
+  }
+
   // Build context for system prompt
   const regulationState = session.regulationState as { level?: number } | null;
   const learningPrefs = user.student.learningPreferences as { modalities?: string[] } | null;
-  const accommodationTypes = user.student.iepAccommodations.map(a => a.type);
+  const accommodationTypes = user.student.iepAccommodations.map((a: { type: string }) => a.type);
 
   const sessionHistory = session.messages
     .slice(-20)
-    .map(m => `${m.role}: ${m.content}`)
+    .map((m: { role: string; content: string }) => `${m.role}: ${m.content}`)
     .join('\n');
 
   // RAG: Retrieve relevant curriculum context from Pinecone
   let curriculumContext = '';
   let ragMetrics = { retrieved: 0, durationMs: 0 };
-  
+
   try {
     const ragStartTime = Date.now();
-    
+
     // Generate embedding for the user's query
     const queryEmbedding = await generateEmbedding(body.message);
-    
+
     // Query Pinecone for relevant curriculum content
     const filter: Record<string, any> = {
       subject: session.subject,
     };
-    
+
     // Add grade level filter if available
     if (user.student.gradeLevel) {
       filter.gradeLevel = user.student.gradeLevel;
     }
-    
+
     const matches = await queryPinecone(queryEmbedding, 5, filter);
     ragMetrics.retrieved = matches.length;
     ragMetrics.durationMs = Date.now() - ragStartTime;
-    
+
     // Format retrieved context
     if (matches.length > 0) {
       curriculumContext = matches
-        .map((match, idx) => {
-          const metadata = match.metadata as Record<string, any> || {};
+        .map((match: { metadata?: Record<string, unknown>; score?: number }, idx: number) => {
+          const metadata = (match.metadata as Record<string, string>) || {};
           const content = metadata.content || metadata.text || 'No content available';
           const source = metadata.source || metadata.title || 'Unknown source';
           const score = match.score?.toFixed(3) || 'N/A';
-          
+
           return `[Context ${idx + 1}] (Relevance: ${score})\nSource: ${source}\n${content}`;
         })
         .join('\n\n---\n\n');
-      
-      observeLatency('rag_retrieval', ragMetrics.durationMs);
-      incrementMetric('rag_retrieval_total');
-      logger.info('RAG retrieval complete', {
+
+      logger.info('RAG context retrieved', {
+        requestId,
         sessionId: session.id,
-        retrieved: matches.length,
+        matchCount: matches.length,
         durationMs: ragMetrics.durationMs,
       });
     }
   } catch (error) {
-    incrementMetric('rag_retrieval_error_total');
-    logger.error('RAG retrieval error', error, { sessionId: session.id });
+    logger.error('RAG retrieval error', error, { requestId, sessionId: session.id });
     // Continue without RAG context if Pinecone fails
     curriculumContext = '';
   }
@@ -176,7 +203,7 @@ export async function POST(req: NextRequest) {
   });
 
   // Build message history for API call
-  const apiMessages = session.messages.map(m => ({
+  const apiMessages = session.messages.map((m: { role: string; content: string }) => ({
     role: (m.role === 'USER' ? 'user' : 'assistant') as 'user' | 'assistant',
     content: m.content,
   }));
@@ -217,6 +244,26 @@ export async function POST(req: NextRequest) {
             fullText += event.delta.text;
             controller.enqueue(encoder.encode(`data: ${JSON.stringify({ text: event.delta.text })}\n\n`));
           }
+        }
+
+        if (phaseTransition && phaseTransition.nextPhase !== session.currentPhase) {
+          controller.enqueue(encoder.encode(`data: ${JSON.stringify({
+            phaseTransition: {
+              from: session.currentPhase,
+              to: phaseTransition.nextPhase,
+              reason: phaseTransition.reason,
+            },
+          })}\n\n`));
+        }
+
+        if (regulationCheck.recommendation === 'calm-corner') {
+          controller.enqueue(encoder.encode(`data: ${JSON.stringify({
+            dysregulation: {
+              recommendation: regulationCheck.recommendation,
+              severity: regulationCheck.severity,
+              signals: regulationCheck.signals,
+            },
+          })}\n\n`));
         }
 
         // Save assistant message
@@ -282,7 +329,7 @@ export async function POST(req: NextRequest) {
               }
             })
             .catch((error) => {
-              console.error('Error tracking TRACE data:', error);
+              logger.error('Error tracking TRACE data', error, { requestId, sessionId: session.id });
             });
         }
 
@@ -330,4 +377,4 @@ export async function POST(req: NextRequest) {
       Connection: 'keep-alive',
     },
   });
-}
+}, { rateLimit: { windowMs: 60_000, max: 20 } });

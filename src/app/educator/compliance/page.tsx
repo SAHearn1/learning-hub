@@ -33,16 +33,16 @@ export default function EducatorCompliancePage() {
 
       <section className="rounded-xl border border-neutral-200 bg-white p-5 shadow-sm">
         <div className="mb-5 grid gap-3 sm:grid-cols-3">
-          <div className="rounded-lg bg-red-50 p-4">
-            <p className="text-xs uppercase text-red-700">Overdue items</p>
-            <p className="mt-1 text-2xl font-bold text-red-900">{overdue}</p>
+          <div className="rounded-lg bg-error-50 p-4">
+            <p className="text-xs uppercase text-error-700">Overdue items</p>
+            <p className="mt-1 text-2xl font-bold text-error-900">{overdue}</p>
           </div>
-          <div className="rounded-lg bg-violet-50 p-4">
-            <p className="text-xs uppercase text-violet-700">Students with IEPs</p>
-            <p className="mt-1 text-2xl font-bold text-violet-900">{iepStudents}</p>
+          <div className="rounded-lg bg-primary-50 p-4">
+            <p className="text-xs uppercase text-primary-700">Students with IEPs</p>
+            <p className="mt-1 text-2xl font-bold text-primary-900">{iepStudents}</p>
           </div>
-          <div className="rounded-lg bg-blue-50 p-4">
-            <p className="text-sm text-blue-800">Use filters and status updates to prep for audits and service reviews.</p>
+          <div className="rounded-lg bg-secondary-50 p-4">
+            <p className="text-sm text-secondary-800">Use filters and status updates to prep for audits and service reviews.</p>
           </div>
         </div>
 
