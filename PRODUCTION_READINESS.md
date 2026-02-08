@@ -93,7 +93,14 @@ Required implementation:
 
 ### 3.3 Assessment System
 
-Assessment routes/components are present, but calibration and coverage work remains:
+Phase 3.3 now includes a complete assessment workflow with UI + API wiring for all core pathways:
+- Diagnostic placement assessments (`/assessments/diagnostic`)
+- Formative in-session checks (`/assessments/formative`)
+- Summative mastery evaluations (`/assessments/summative`)
+- Thinking quality and creativity scoring (`/assessments/thinking`)
+- Reasoning move tracking (full move taxonomy with profile + suggestions)
+
+Remaining quality work:
 - Validate scoring quality and rubric consistency across diagnostic/formative/summative paths
 - Increase automated tests around edge cases and malformed submissions
 - Add educator-facing review workflows for intervention planning
