@@ -89,7 +89,7 @@ docs/
 
 **Purpose**: Receives curriculum data from n8n workflows and logs ingestion events.
 
-**Authentication**: Bearer token using `N8N_WEBHOOK_SECRET` environment variable.
+**Authentication**: `x-webhook-secret` header (or `Authorization: Bearer` fallback) using `N8N_WEBHOOK_SECRET` environment variable.
 
 **Request Format**:
 ```json
@@ -215,19 +215,34 @@ The chat API (`/api/chat`) has been enhanced with RAG capabilities:
 
 ### 8. n8n Workflow Configuration
 
-**File**: `n8n-workflow-curriculum-ingestion.json`
+**File**: `scripts/n8n-workflow.json`
 
 **Nodes**:
-1. **Webhook**: Receives trigger from GitHub Actions
-2. **GitHub**: Fetches curriculum files from repository
-3. **Transform**: Extracts and processes metadata
-4. **Pinecone**: Stores embeddings in vector database
-5. **HTTP Request**: Notifies learning hub via `/api/ingest`
+1. **GitHub Webhook**: Receives push events from GitHub (Header Auth on `x-webhook-secret`)
+2. **Filter Main Branch**: Only processes pushes to `main`
+3. **Split Commits**: Iterates over each commit in the push
+4. **Extract Changed Files**: Pulls added/modified curriculum files (`.md`, `.json`, `.txt`)
+5. **Fetch File from GitHub**: Downloads file content via GitHub API
+6. **Prepare Ingest Payload**: Infers subject, grade level, standard codes from file path
+7. **POST to /api/ingest**: Sends payload with `x-webhook-secret` header for auth
+
+#### n8n Webhook Node Setup
+
+In n8n, configure the **GitHub Webhook** node:
+
+| Setting         | Value                                                       |
+|-----------------|-------------------------------------------------------------|
+| HTTP Method     | `POST`                                                      |
+| Authentication  | Header Auth                                                 |
+| Header Name     | `x-webhook-secret`                                          |
+| Header Value    | Same value as `N8N_WEBHOOK_SECRET` in Vercel env vars       |
+
+After saving, copy the **Production Webhook URL** from n8n and set it as `N8N_WEBHOOK_URL` in Vercel.
 
 **Required Credentials**:
-- GitHub API credentials
-- Pinecone API key
-- Learning hub webhook authentication
+- **httpHeaderAuth**: Create a Header Auth credential in n8n with name `x-webhook-secret` and the shared secret value
+- **githubApi**: GitHub API token with read access to your repo
+- **Environment variables** in n8n: `N8N_WEBHOOK_SECRET`, `ROOTWORK_APP_URL`
 
 ### 9. Enhanced System Prompt
 
@@ -245,14 +260,16 @@ The master system prompt now includes curriculum-aware instructions:
 Add these to your `.env` file:
 
 ```bash
-# Pinecone Vector Database
+# Embedding generation (OpenAI text-embedding-3-small, 1536 dimensions)
+OPENAI_API_KEY=your_openai_api_key
+
+# Pinecone Vector Database (serverless, aws/us-east-1, cosine)
 PINECONE_API_KEY=your_api_key_here
-PINECONE_ENVIRONMENT=your_environment_here  # e.g., us-west1-gcp
-PINECONE_INDEX_NAME=your_index_name_here
+PINECONE_INDEX=rootwork-curriculum  # default index name
 
 # n8n Workflow Integration
-N8N_WEBHOOK_SECRET=your_secret_here
-N8N_WEBHOOK_URL=your_n8n_webhook_url_here
+N8N_WEBHOOK_SECRET=your_shared_secret_here  # used in both n8n Header Auth and Vercel env
+N8N_WEBHOOK_URL=your_n8n_production_webhook_url
 ```
 
 ## Setup Instructions
@@ -275,18 +292,18 @@ Via Pinecone Dashboard:
 
 ### 2. n8n Workflow Setup
 
-1. Import `n8n-workflow-curriculum-ingestion.json` into n8n
-2. Configure credentials:
-   - GitHub API token with read access to repository
-   - Pinecone API credentials
-   - HTTP header auth for webhook callback
-3. Set environment variables in n8n:
-   - `PINECONE_API_KEY`
-   - `PINECONE_ENVIRONMENT`
-   - `PINECONE_INDEX_NAME`
-   - `NEXT_PUBLIC_APP_URL`
-4. Activate workflow
-5. Copy webhook URL
+1. Import `scripts/n8n-workflow.json` into n8n
+2. Configure the **GitHub Webhook** node:
+   - Set Authentication to **Header Auth**
+   - Create a Header Auth credential: name = `x-webhook-secret`, value = your shared secret
+   - This must match the `N8N_WEBHOOK_SECRET` you set in Vercel
+3. Configure the **Fetch File from GitHub** node:
+   - Add a GitHub API credential with read access to your repository
+4. Set environment variables in n8n:
+   - `N8N_WEBHOOK_SECRET`: Same shared secret
+   - `ROOTWORK_APP_URL`: Your deployed app URL (e.g., `https://your-app.vercel.app`)
+5. Activate the workflow
+6. Copy the **Production Webhook URL** from the GitHub Webhook node
 
 ### 3. GitHub Secrets Setup
 

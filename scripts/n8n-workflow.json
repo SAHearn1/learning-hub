@@ -5,6 +5,7 @@
       "parameters": {
         "httpMethod": "POST",
         "path": "curriculum-ingest",
+        "authentication": "headerAuth",
         "responseMode": "responseNode",
         "options": {}
       },
@@ -13,7 +14,13 @@
       "type": "n8n-nodes-base.webhook",
       "typeVersion": 2,
       "position": [260, 300],
-      "webhookId": "curriculum-ingest"
+      "webhookId": "curriculum-ingest",
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "HEADER_AUTH_CREDENTIAL_ID",
+          "name": "Webhook Header Auth"
+        }
+      }
     },
     {
       "parameters": {

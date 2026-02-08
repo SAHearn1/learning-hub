@@ -29,13 +29,15 @@ const ingestPayloadSchema = z.object({
 export async function POST(req: NextRequest) {
   const startTime = Date.now();
 
-  // Verify webhook secret
+  // Verify webhook secret via x-webhook-secret header (primary)
+  // or Authorization: Bearer <secret> (fallback)
   const webhookSecret = process.env.N8N_WEBHOOK_SECRET;
-  const authHeader = req.headers.get('authorization');
-
   if (webhookSecret) {
-    const expectedAuth = `Bearer ${webhookSecret}`;
-    if (authHeader !== expectedAuth) {
+    const headerSecret = req.headers.get('x-webhook-secret');
+    const bearerToken = req.headers.get('authorization')?.replace('Bearer ', '');
+    const providedSecret = headerSecret || bearerToken;
+
+    if (providedSecret !== webhookSecret) {
       return NextResponse.json(
         { error: 'Unauthorized', message: 'Invalid webhook secret' },
         { status: 401 }
