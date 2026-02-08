@@ -55,7 +55,7 @@ export function MessageBubble({ role, content, timestamp, className }: MessageBu
         <div
           className={cn(
             'rounded-lg px-4 py-3',
-            isAssistant && 'bg-blue-50 text-neutral-900',
+            isAssistant && 'bg-primary-50 text-neutral-900',
             isUser && 'bg-neutral-200 text-neutral-900'
           )}
         >

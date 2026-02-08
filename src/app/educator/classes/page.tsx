@@ -61,12 +61,12 @@ export default function EducatorClassesPage() {
                   <button
                     key={item.id}
                     onClick={() => setSelectedClassId(item.id)}
-                    className={`rounded-lg border p-4 text-left ${selectedClassId === item.id ? 'border-blue-500 bg-blue-50' : 'border-neutral-200'}`}
+                    className={`rounded-lg border p-4 text-left ${selectedClassId === item.id ? 'border-primary-500 bg-primary-50' : 'border-neutral-200'}`}
                   >
                     <p className="font-semibold text-neutral-900">{item.name}</p>
                     <p className="mt-1 text-sm text-neutral-600">{item.subject} · {item.period}</p>
                     <p className="mt-2 text-sm text-neutral-700">Enrollment: {count}/{item.capacity}</p>
-                    {full && <p className="mt-1 text-xs font-medium text-amber-700">At capacity</p>}
+                    {full && <p className="mt-1 text-xs font-medium text-secondary-700">At capacity</p>}
                   </button>
                 );
               })}

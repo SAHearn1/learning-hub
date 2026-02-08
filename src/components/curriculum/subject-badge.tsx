@@ -2,9 +2,9 @@ import { Badge } from '@/components/ui/badge';
 import { Subject } from '@prisma/client';
 
 const SUBJECT_COLORS = {
-  MATH: 'bg-blue-100 text-blue-800 border-blue-200',
-  SCIENCE: 'bg-green-100 text-green-800 border-green-200',
-  LANGUAGE_ARTS: 'bg-purple-100 text-purple-800 border-purple-200',
+  MATH: 'bg-subject-math-light text-subject-math-dark border-subject-math/20',
+  SCIENCE: 'bg-subject-science-light text-subject-science-dark border-subject-science/20',
+  LANGUAGE_ARTS: 'bg-subject-ela-light text-subject-ela-dark border-subject-ela/20',
 } as const;
 
 const SUBJECT_LABELS = {

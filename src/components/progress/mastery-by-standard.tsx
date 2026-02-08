@@ -1,9 +1,9 @@
 'use client';
 
 const SUBJECT_COLORS: Record<string, string> = {
-  MATH: '#3B82F6',
-  SCIENCE: '#10B981',
-  LANGUAGE_ARTS: '#8B5CF6',
+  MATH: 'var(--color-subject-math)',
+  SCIENCE: 'var(--color-subject-science)',
+  LANGUAGE_ARTS: 'var(--color-subject-ela)',
 };
 
 const SUBJECT_LABELS: Record<string, string> = {
@@ -19,7 +19,7 @@ interface MasteryBarProps {
   assessmentCount?: number;
 }
 
-function MasteryBar({ label, value, color = '#3B82F6', assessmentCount }: MasteryBarProps) {
+function MasteryBar({ label, value, color = 'var(--color-subject-math)', assessmentCount }: MasteryBarProps) {
   const clamped = Math.min(100, Math.max(0, value));
   const tier =
     clamped >= 80 ? 'Mastered' :
@@ -83,7 +83,7 @@ export function MasteryByStandard({ standards }: { standards: Standard[] }) {
           <div className="mb-3 flex items-center gap-2">
             <span
               className="inline-block h-3 w-3 rounded-full"
-              style={{ backgroundColor: SUBJECT_COLORS[subject] || '#6B7280' }}
+              style={{ backgroundColor: SUBJECT_COLORS[subject] || 'var(--color-neutral-500)' }}
             />
             <span className="text-sm font-semibold text-neutral-700">
               {SUBJECT_LABELS[subject] || subject}
