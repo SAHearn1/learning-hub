@@ -1,5 +1,6 @@
 import { describe, expect, it, vi, beforeEach } from 'vitest';
 import { EngagementMode } from '@prisma/client';
+import { NextRequest } from 'next/server';
 
 // Mock dependencies
 vi.mock('@clerk/nextjs/server', () => ({
@@ -11,9 +12,8 @@ vi.mock('@/lib/db', () => ({
     session: {
       findUnique: vi.fn(),
     },
-    message: {
-      findUnique: vi.fn(),
-      update: vi.fn(),
+    thinkingAssessment: {
+      create: vi.fn(),
     },
   },
 }));
@@ -21,10 +21,25 @@ vi.mock('@/lib/db', () => ({
 vi.mock('@/lib/assessments/thinking-evaluator', () => ({
   generateThinkingPrompt: vi.fn(async () => 'Generated thinking prompt'),
   evaluateThinkingQuality: vi.fn(async () => ({
-    quality: 'high',
-    bloomsLevel: 'ANALYZE',
-    reasoningDepth: 4,
-    feedback: 'Good reasoning',
+    thinkingQuality: {
+      reasoningArticulation: 4,
+      assumptionAwareness: 3,
+      evidenceEvaluation: 4,
+      alternativePerspectives: 3,
+      conclusionJustification: 4,
+      metacognitiveAwareness: 3,
+    },
+    creativity: {
+      fluency: 4,
+      flexibility: 3,
+      originality: 4,
+      elaboration: 3,
+      riskTaking: 2,
+    },
+    reasoningMovesUsed: ['DECOMPOSE', 'JUSTIFY'],
+    aiAnalysis: 'Student demonstrated strong analytical skills',
+    strengths: ['Clear reasoning', 'Good structure'],
+    areasForGrowth: ['Could explore alternatives'],
   })),
 }));
 
@@ -42,8 +57,9 @@ describe('POST /api/assessments/thinking', () => {
     vi.mocked(auth).mockReturnValueOnce({ userId: null } as any);
 
     const { POST } = await import('@/app/api/assessments/thinking/route');
-    const request = new Request('http://localhost/api/assessments/thinking', {
+    const request = new NextRequest('http://localhost/api/assessments/thinking', {
       method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         sessionId: 'session-1',
         problemContext: 'Solve 2x + 5 = 15',
@@ -56,8 +72,9 @@ describe('POST /api/assessments/thinking', () => {
 
   it('returns 400 when missing required fields', async () => {
     const { POST } = await import('@/app/api/assessments/thinking/route');
-    const request = new Request('http://localhost/api/assessments/thinking', {
+    const request = new NextRequest('http://localhost/api/assessments/thinking', {
       method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         sessionId: 'session-1',
       }),
@@ -69,8 +86,9 @@ describe('POST /api/assessments/thinking', () => {
 
   it('returns 400 for invalid engagement mode', async () => {
     const { POST } = await import('@/app/api/assessments/thinking/route');
-    const request = new Request('http://localhost/api/assessments/thinking', {
+    const request = new NextRequest('http://localhost/api/assessments/thinking', {
       method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         sessionId: 'session-1',
         problemContext: 'Solve 2x + 5 = 15',
@@ -86,13 +104,14 @@ describe('POST /api/assessments/thinking', () => {
     const { generateThinkingPrompt } = await import('@/lib/assessments/thinking-evaluator');
 
     const { POST } = await import('@/app/api/assessments/thinking/route');
-    const request = new Request('http://localhost/api/assessments/thinking', {
+    const request = new NextRequest('http://localhost/api/assessments/thinking', {
       method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         sessionId: 'session-1',
         problemContext: 'Solve 2x + 5 = 15',
         engagementMode: 'FORWARD',
-        targetReasoningMoves: ['ANALYZE_STRUCTURE'],
+        targetReasoningMoves: ['DECOMPOSE'],
       }),
     });
 
@@ -106,14 +125,15 @@ describe('POST /api/assessments/thinking', () => {
     expect(generateThinkingPrompt).toHaveBeenCalledWith(
       'FORWARD',
       'Solve 2x + 5 = 15',
-      ['ANALYZE_STRUCTURE']
+      ['DECOMPOSE']
     );
   });
 
   it('uses default engagement mode when not provided', async () => {
     const { POST } = await import('@/app/api/assessments/thinking/route');
-    const request = new Request('http://localhost/api/assessments/thinking', {
+    const request = new NextRequest('http://localhost/api/assessments/thinking', {
       method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         sessionId: 'session-1',
         problemContext: 'Solve 2x + 5 = 15',
@@ -138,8 +158,9 @@ describe('PUT /api/assessments/thinking', () => {
     vi.mocked(auth).mockReturnValueOnce({ userId: null } as any);
 
     const { PUT } = await import('@/app/api/assessments/thinking/route');
-    const request = new Request('http://localhost/api/assessments/thinking', {
+    const request = new NextRequest('http://localhost/api/assessments/thinking', {
       method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         messageId: 'message-1',
         studentResponse: 'My answer is...',
@@ -154,23 +175,23 @@ describe('PUT /api/assessments/thinking', () => {
     const { db } = await import('@/lib/db');
     const { evaluateThinkingQuality } = await import('@/lib/assessments/thinking-evaluator');
 
-    vi.mocked(db.message.findUnique).mockResolvedValueOnce({
-      id: 'message-1',
-      content: 'Solve this problem',
-      role: 'assistant',
+    vi.mocked(db.session.findUnique).mockResolvedValueOnce({
+      id: 'session-1',
+      student: { id: 'student-1' },
     } as any);
 
-    vi.mocked(db.message.update).mockResolvedValueOnce({
-      id: 'message-1',
-      thinkingQuality: 'high',
+    vi.mocked(db.thinkingAssessment.create).mockResolvedValueOnce({
+      id: 'assessment-1',
     } as any);
 
     const { PUT } = await import('@/app/api/assessments/thinking/route');
-    const request = new Request('http://localhost/api/assessments/thinking', {
+    const request = new NextRequest('http://localhost/api/assessments/thinking', {
       method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        messageId: 'message-1',
+        sessionId: 'session-1',
         studentResponse: 'First, I notice that 2x + 5 = 15. I need to isolate x.',
+        problemContext: 'Solve 2x + 5 = 15',
       }),
     });
 

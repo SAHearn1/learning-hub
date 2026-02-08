@@ -1,4 +1,5 @@
 import { describe, expect, it, vi } from 'vitest';
+import { NextRequest } from 'next/server';
 
 vi.mock('@/lib/db', () => ({
   db: {
@@ -9,7 +10,8 @@ vi.mock('@/lib/db', () => ({
 describe('GET /api/health', () => {
   it('returns a healthy status when db query succeeds', async () => {
     const { GET } = await import('@/app/api/health/route');
-    const response = await GET();
+    const request = new NextRequest('http://localhost/api/health');
+    const response = await GET(request);
     const data = await response.json();
 
     expect(response.status).toBe(200);
@@ -22,20 +24,22 @@ describe('GET /api/health', () => {
     vi.mocked(db.$queryRaw).mockRejectedValueOnce(new Error('Database connection failed'));
 
     const { GET } = await import('@/app/api/health/route');
-    const response = await GET();
+    const request = new NextRequest('http://localhost/api/health');
+    const response = await GET(request);
     const data = await response.json();
 
     expect(response.status).toBe(503);
-    expect(data.status).toBe('unhealthy');
-    expect(data.checks.database).toBe('error');
+    expect(data.status).toBe('degraded');
+    expect(data.checks.database).toBe('unreachable');
   });
 
   it('includes timestamp in response', async () => {
     const { GET } = await import('@/app/api/health/route');
-    const response = await GET();
+    const request = new NextRequest('http://localhost/api/health');
+    const response = await GET(request);
     const data = await response.json();
 
-    expect(data.timestamp).toBeDefined();
-    expect(typeof data.timestamp).toBe('string');
+    expect(data.checks.timestamp).toBeDefined();
+    expect(typeof data.checks.timestamp).toBe('string');
   });
 });

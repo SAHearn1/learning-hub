@@ -1,5 +1,6 @@
 import { describe, expect, it, vi, beforeEach } from 'vitest';
 import { ReasoningMove } from '@prisma/client';
+import { NextRequest } from 'next/server';
 
 // Mock dependencies
 vi.mock('@clerk/nextjs/server', () => ({
@@ -43,11 +44,12 @@ describe('POST /api/assessments/reasoning-moves', () => {
     vi.mocked(auth).mockReturnValueOnce({ userId: null } as any);
 
     const { POST } = await import('@/app/api/assessments/reasoning-moves/route');
-    const request = new Request('http://localhost/api/assessments/reasoning-moves', {
+    const request = new NextRequest('http://localhost/api/assessments/reasoning-moves', {
       method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         studentId: 'student-1',
-        move: 'ANALYZE_STRUCTURE',
+        move: 'DECOMPOSE',
       }),
     });
 
@@ -57,10 +59,11 @@ describe('POST /api/assessments/reasoning-moves', () => {
 
   it('returns 400 when missing required fields', async () => {
     const { POST } = await import('@/app/api/assessments/reasoning-moves/route');
-    const request = new Request('http://localhost/api/assessments/reasoning-moves', {
+    const request = new NextRequest('http://localhost/api/assessments/reasoning-moves', {
       method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        move: 'ANALYZE_STRUCTURE',
+        move: 'DECOMPOSE',
       }),
     });
 
@@ -70,8 +73,9 @@ describe('POST /api/assessments/reasoning-moves', () => {
 
   it('returns 400 for invalid reasoning move', async () => {
     const { POST } = await import('@/app/api/assessments/reasoning-moves/route');
-    const request = new Request('http://localhost/api/assessments/reasoning-moves', {
+    const request = new NextRequest('http://localhost/api/assessments/reasoning-moves', {
       method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         studentId: 'student-1',
         move: 'INVALID_MOVE',
@@ -86,11 +90,12 @@ describe('POST /api/assessments/reasoning-moves', () => {
     const { trackReasoningMove } = await import('@/lib/assessments/reasoning-move-tracker');
 
     const { POST } = await import('@/app/api/assessments/reasoning-moves/route');
-    const request = new Request('http://localhost/api/assessments/reasoning-moves', {
+    const request = new NextRequest('http://localhost/api/assessments/reasoning-moves', {
       method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         studentId: 'student-1',
-        move: 'ANALYZE_STRUCTURE',
+        move: 'DECOMPOSE',
         wasPrompted: false,
       }),
     });
@@ -102,7 +107,7 @@ describe('POST /api/assessments/reasoning-moves', () => {
     expect(data.success).toBe(true);
     expect(trackReasoningMove).toHaveBeenCalledWith({
       studentId: 'student-1',
-      move: 'ANALYZE_STRUCTURE',
+      move: 'DECOMPOSE',
       wasPrompted: false,
     });
   });
@@ -118,7 +123,9 @@ describe('GET /api/assessments/reasoning-moves', () => {
     vi.mocked(auth).mockReturnValueOnce({ userId: null } as any);
 
     const { GET } = await import('@/app/api/assessments/reasoning-moves/route');
-    const request = new Request('http://localhost/api/assessments/reasoning-moves?studentId=student-1');
+    const request = new NextRequest('http://localhost/api/assessments/reasoning-moves?studentId=student-1', {
+      method: 'GET',
+    });
 
     const response = await GET(request);
     expect(response.status).toBe(401);
@@ -138,7 +145,9 @@ describe('GET /api/assessments/reasoning-moves', () => {
     vi.mocked(getStudentReasoningProfile).mockResolvedValueOnce(mockProfile);
 
     const { GET } = await import('@/app/api/assessments/reasoning-moves/route');
-    const request = new Request('http://localhost/api/assessments/reasoning-moves?studentId=student-1');
+    const request = new NextRequest('http://localhost/api/assessments/reasoning-moves?studentId=student-1', {
+      method: 'GET',
+    });
 
     const response = await GET(request);
     const data = await response.json();

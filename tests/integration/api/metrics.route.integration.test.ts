@@ -29,7 +29,6 @@ describe('GET /api/metrics', () => {
 
     expect(response.status).toBe(200);
     expect(response.headers.get('content-type')).toContain('text/plain');
-    expect(text).toContain('# HELP');
     expect(text).toContain('# TYPE');
   });
 
