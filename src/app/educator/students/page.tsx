@@ -1,13 +1,18 @@
 'use client';
 
 import { FormEvent, useMemo, useState } from 'react';
-import { accommodationCatalog, initialStudents, Student, SupportTier } from '@/app/educator/mock-data';
+import { accommodationCatalog, SupportTier } from '@/app/educator/mock-data';
+import { useEducatorPortalStore } from '@/app/educator/portal-store';
 
 export default function EducatorStudentsPage() {
-  const [students, setStudents] = useState<Student[]>(initialStudents);
+  const students = useEducatorPortalStore((state) => state.students);
+  const addStudent = useEducatorPortalStore((state) => state.addStudent);
+  const setStudentTier = useEducatorPortalStore((state) => state.setStudentTier);
+  const toggleStudentAccommodation = useEducatorPortalStore((state) => state.toggleStudentAccommodation);
+
   const [query, setQuery] = useState('');
   const [tierFilter, setTierFilter] = useState<SupportTier | 'All'>('All');
-  const [selectedId, setSelectedId] = useState(initialStudents[0]?.id ?? '');
+  const [selectedId, setSelectedId] = useState(students[0]?.id ?? '');
 
   const selectedStudent = students.find((student) => student.id === selectedId) ?? null;
 
@@ -23,55 +28,33 @@ export default function EducatorStudentsPage() {
 
   const iepCount = students.filter((student) => student.iep).length;
 
-  const addStudent = (event: FormEvent<HTMLFormElement>) => {
+  const handleAddStudent = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     const formData = new FormData(event.currentTarget);
-    const name = `${formData.get('firstName') ?? ''} ${formData.get('lastName') ?? ''}`.trim();
-    const grade = String(formData.get('grade') ?? 'Grade 4');
-    const supportTier = String(formData.get('supportTier') ?? 'Tier 1') as SupportTier;
-    if (!name) return;
 
-    const newStudent: Student = {
-      id: `stu-${Date.now()}`,
-      name,
-      grade,
-      supportTier,
-      classIds: [],
-      iep: false,
-      accommodations: [],
-      progress: 0,
-      attendance: 100,
-    };
+    const id = addStudent({
+      firstName: String(formData.get('firstName') ?? ''),
+      lastName: String(formData.get('lastName') ?? ''),
+      grade: String(formData.get('grade') ?? 'Grade 4'),
+      supportTier: String(formData.get('supportTier') ?? 'Tier 1') as SupportTier,
+    });
 
-    setStudents((prev) => [newStudent, ...prev]);
-    setSelectedId(newStudent.id);
+    if (!id) return;
+    setSelectedId(id);
     event.currentTarget.reset();
-  };
-
-  const toggleAccommodation = (accommodation: string) => {
-    if (!selectedStudent) return;
-
-    setStudents((prev) =>
-      prev.map((student) => {
-        if (student.id !== selectedStudent.id) return student;
-
-        const accommodations = student.accommodations.includes(accommodation)
-          ? student.accommodations.filter((item) => item !== accommodation)
-          : [...student.accommodations, accommodation];
-
-        return { ...student, accommodations, iep: accommodations.length > 0 || student.iep };
-      }),
-    );
   };
 
   return (
     <main className="mx-auto max-w-6xl space-y-8 px-6 py-12">
       <section>
         <h1 className="text-3xl font-bold text-neutral-900">Student roster management</h1>
-        <p className="mt-2 text-neutral-700">Track enrollment, support tiers, and IEP accommodations from one workspace.</p>
+        <p className="mt-2 text-neutral-700">Track enrollment, support tiers, attendance, and IEP accommodations from one workspace.</p>
         <div className="mt-4 flex flex-wrap gap-3 text-sm">
           <span className="rounded-full bg-blue-50 px-4 py-2 text-blue-700">Total students: {students.length}</span>
           <span className="rounded-full bg-violet-50 px-4 py-2 text-violet-700">Students with IEPs: {iepCount}</span>
+          <span className="rounded-full bg-emerald-50 px-4 py-2 text-emerald-700">
+            Avg attendance: {Math.round(students.reduce((sum, s) => sum + s.attendance, 0) / (students.length || 1))}%
+          </span>
         </div>
       </section>
 
@@ -103,6 +86,7 @@ export default function EducatorStudentsPage() {
                   <th className="pb-2">Student</th>
                   <th className="pb-2">Grade</th>
                   <th className="pb-2">Support tier</th>
+                  <th className="pb-2">Classes</th>
                   <th className="pb-2">IEP</th>
                   <th className="pb-2">Progress</th>
                 </tr>
@@ -117,6 +101,7 @@ export default function EducatorStudentsPage() {
                     <td className="py-3 font-medium text-neutral-800">{student.name}</td>
                     <td className="py-3 text-neutral-700">{student.grade}</td>
                     <td className="py-3 text-neutral-700">{student.supportTier}</td>
+                    <td className="py-3 text-neutral-700">{student.classIds.length}</td>
                     <td className="py-3 text-neutral-700">{student.iep ? 'Yes' : 'No'}</td>
                     <td className="py-3 text-neutral-700">{student.progress}%</td>
                   </tr>
@@ -127,7 +112,7 @@ export default function EducatorStudentsPage() {
         </div>
 
         <div className="space-y-6">
-          <form onSubmit={addStudent} className="rounded-xl border border-neutral-200 bg-white p-5 shadow-sm">
+          <form onSubmit={handleAddStudent} className="rounded-xl border border-neutral-200 bg-white p-5 shadow-sm">
             <h2 className="text-lg font-semibold text-neutral-900">Add student</h2>
             <div className="mt-3 space-y-2 text-sm">
               <input name="firstName" placeholder="First name" className="w-full rounded-lg border border-neutral-300 px-3 py-2" />
@@ -155,6 +140,18 @@ export default function EducatorStudentsPage() {
             ) : (
               <>
                 <p className="mt-2 text-sm text-neutral-600">{selectedStudent.name}</p>
+                <label className="mt-3 block text-sm text-neutral-700">
+                  Support tier
+                  <select
+                    value={selectedStudent.supportTier}
+                    onChange={(event) => setStudentTier(selectedStudent.id, event.target.value as SupportTier)}
+                    className="mt-1 w-full rounded-lg border border-neutral-300 px-3 py-2"
+                  >
+                    <option value="Tier 1">Tier 1</option>
+                    <option value="Tier 2">Tier 2</option>
+                    <option value="Tier 3">Tier 3</option>
+                  </select>
+                </label>
                 <div className="mt-3 space-y-2 text-sm">
                   {accommodationCatalog.map((accommodation) => {
                     const checked = selectedStudent.accommodations.includes(accommodation);
@@ -163,7 +160,7 @@ export default function EducatorStudentsPage() {
                         <input
                           type="checkbox"
                           checked={checked}
-                          onChange={() => toggleAccommodation(accommodation)}
+                          onChange={() => toggleStudentAccommodation(selectedStudent.id, accommodation)}
                           className="h-4 w-4"
                         />
                         {accommodation}
