@@ -198,9 +198,9 @@ export function ChatInterface({
   };
 
   return (
-    <div className={cn('flex h-full flex-col', className)}>
+    <div className={cn('flex h-full flex-col', className)} role="main" aria-label="Chat interface">
       {/* Messages container */}
-      <div className="flex-1 overflow-y-auto px-4 py-6">
+      <div className="flex-1 overflow-y-auto px-4 py-6" role="log" aria-label="Chat messages" aria-live="polite">
         {messages.length === 0 ? (
           <div className="flex h-full items-center justify-center text-center">
             <div className="max-w-md space-y-2">
@@ -237,13 +237,13 @@ export function ChatInterface({
 
       {/* Error display */}
       {error && (
-        <div className="border-t bg-red-50 px-4 py-3 text-sm text-red-700">
+        <div className="border-t bg-red-50 px-4 py-3 text-sm text-red-700" role="alert" aria-live="assertive">
           {error}
         </div>
       )}
 
       {/* Input area */}
-      <div className="border-t bg-white p-4">
+      <div className="border-t bg-white p-4" role="form" aria-label="Message input">
         <MessageInput
           onSend={handleSendMessage}
           disabled={isStreaming}

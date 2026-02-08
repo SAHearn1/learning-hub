@@ -37,7 +37,7 @@ export function MessageInput({
   };
 
   return (
-    <form onSubmit={handleSubmit} className={cn('flex gap-2', className)}>
+    <form onSubmit={handleSubmit} className={cn('flex gap-2', className)} aria-label="Send message">
       <Textarea
         value={input}
         onChange={(e) => setInput(e.target.value)}
@@ -46,12 +46,14 @@ export function MessageInput({
         disabled={disabled}
         className="min-h-[60px] flex-1 resize-none"
         rows={2}
+        aria-label="Message text"
       />
       <Button
         type="submit"
         disabled={disabled || !input.trim()}
         size="icon"
         className="h-[60px] w-[60px]"
+        aria-label="Send message"
       >
         <Send className="h-5 w-5" />
         <span className="sr-only">Send message</span>

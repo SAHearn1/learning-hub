@@ -14,6 +14,9 @@ const chatRequestSchema = z.object({
   message: z.string().min(1).max(5000),
 });
 
+// Minimum message length to trigger TRACE analysis (avoid analyzing very short responses)
+const MIN_MESSAGE_LENGTH_FOR_TRACE = 10;
+
 export async function POST(req: NextRequest) {
   const { userId: clerkId } = auth();
   if (!clerkId) {
@@ -206,7 +209,7 @@ export async function POST(req: NextRequest) {
         });
 
         // Track thinking quality with TRACE protocol (async, don't block response)
-        if (body.message.length > 10) {
+        if (body.message.length > MIN_MESSAGE_LENGTH_FOR_TRACE) {
           analyzeThinkingQuality(body.message, fullText)
             .then(async (traceData) => {
               if (!traceData) return;
