@@ -26,6 +26,14 @@ export async function GET(req: NextRequest) {
     }
     studentId = user.student.id;
   } else if (queriedStudentId) {
+    // Verify the queried student belongs to the same tenant
+    const queriedStudent = await db.student.findUnique({
+      where: { id: queriedStudentId },
+      include: { user: { select: { tenantId: true } } },
+    });
+    if (!queriedStudent || queriedStudent.user.tenantId !== user.tenantId) {
+      return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+    }
     studentId = queriedStudentId;
   } else {
     return NextResponse.json({ error: 'studentId required for non-student roles' }, { status: 400 });

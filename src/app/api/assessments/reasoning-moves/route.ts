@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { auth } from '@clerk/nextjs/server';
 import { db } from '@/lib/db';
 import {
   trackReasoningMove,
@@ -10,6 +11,11 @@ import { ReasoningMove } from '@prisma/client';
 
 export async function POST(request: NextRequest) {
   try {
+    const { userId: clerkId } = auth();
+    if (!clerkId) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
     const body = await request.json();
     const { studentId, move, wasPrompted } = body;
 
@@ -45,7 +51,7 @@ export async function POST(request: NextRequest) {
     return NextResponse.json(
       {
         error: 'Failed to track reasoning move',
-        details: error instanceof Error ? error.message : 'Unknown error',
+        details: undefined,
       },
       { status: 500 }
     );
@@ -54,6 +60,11 @@ export async function POST(request: NextRequest) {
 
 export async function GET(request: NextRequest) {
   try {
+    const { userId: clerkId } = auth();
+    if (!clerkId) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
     const { searchParams } = new URL(request.url);
     const studentId = searchParams.get('studentId');
     const includeSuggestions = searchParams.get('includeSuggestions') === 'true';
@@ -89,7 +100,7 @@ export async function GET(request: NextRequest) {
     return NextResponse.json(
       {
         error: 'Failed to fetch reasoning moves',
-        details: error instanceof Error ? error.message : 'Unknown error',
+        details: undefined,
       },
       { status: 500 }
     );
@@ -98,6 +109,11 @@ export async function GET(request: NextRequest) {
 
 export async function PUT(request: NextRequest) {
   try {
+    const { userId: clerkId } = auth();
+    if (!clerkId) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
     const body = await request.json();
     const { studentId, moves } = body;
 
@@ -133,7 +149,7 @@ export async function PUT(request: NextRequest) {
     return NextResponse.json(
       {
         error: 'Failed to track reasoning moves',
-        details: error instanceof Error ? error.message : 'Unknown error',
+        details: undefined,
       },
       { status: 500 }
     );

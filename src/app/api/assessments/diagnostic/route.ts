@@ -59,6 +59,9 @@ export async function POST(request: NextRequest) {
     if (user.role === 'STUDENT' && session.student.userId !== user.id) {
       return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
     }
+    if (user.role !== 'STUDENT' && session.tenantId !== user.tenantId) {
+      return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+    }
 
     // Generate diagnostic questions using AI
     const questions = await generateDiagnosticQuestions({
@@ -98,7 +101,7 @@ export async function POST(request: NextRequest) {
     return NextResponse.json(
       {
         error: 'Failed to create diagnostic assessment',
-        details: error instanceof Error ? error.message : 'Unknown error',
+        details: undefined,
       },
       { status: 500 }
     );
@@ -190,7 +193,7 @@ export async function GET(request: NextRequest) {
     return NextResponse.json(
       {
         error: 'Failed to fetch diagnostic assessments',
-        details: error instanceof Error ? error.message : 'Unknown error',
+        details: undefined,
       },
       { status: 500 }
     );

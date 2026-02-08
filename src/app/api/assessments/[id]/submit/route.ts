@@ -74,6 +74,9 @@ export async function POST(
     if (user.role === 'STUDENT' && assessment.session.student.userId !== user.id) {
       return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
     }
+    if (user.role !== 'STUDENT' && assessment.session.student.user.tenantId !== user.tenantId) {
+      return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+    }
 
     // Extract metadata
     const metadata = assessment.metadata as any;
@@ -135,10 +138,7 @@ export async function POST(
   } catch (error) {
     console.error('Error submitting assessment:', error);
     return NextResponse.json(
-      {
-        error: 'Failed to submit assessment',
-        details: error instanceof Error ? error.message : 'Unknown error',
-      },
+      { error: 'Failed to submit assessment' },
       { status: 500 }
     );
   }

@@ -18,6 +18,12 @@ export async function GET(req: NextRequest) {
 
   // Class-level report
   if (classId) {
+    // Verify the class belongs to the educator's tenant
+    const targetClass = await db.class.findUnique({ where: { id: classId } });
+    if (!targetClass || targetClass.tenantId !== user.tenantId) {
+      return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+    }
+
     const enrollments = await db.classEnrollment.findMany({
       where: { classId, status: 'ACTIVE' },
       include: {
@@ -60,7 +66,7 @@ export async function GET(req: NextRequest) {
     const student = await db.student.findUnique({
       where: { id: studentId },
       include: {
-        user: { select: { firstName: true, lastName: true, email: true } },
+        user: { select: { firstName: true, lastName: true, email: true, tenantId: true } },
         progress: { include: { standard: true }, orderBy: { updatedAt: 'desc' } },
         iepAccommodations: { where: { active: true } },
         thinkingProgress: { orderBy: { proficiencyLevel: 'desc' } },
@@ -74,6 +80,10 @@ export async function GET(req: NextRequest) {
 
     if (!student) {
       return NextResponse.json({ error: 'Student not found' }, { status: 404 });
+    }
+
+    if (student.user.tenantId !== user.tenantId) {
+      return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
     }
 
     return NextResponse.json({ data: student });

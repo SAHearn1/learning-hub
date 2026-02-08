@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { Webhook } from 'svix';
 import { db } from '@/lib/db';
 
 interface ClerkWebhookEvent {
@@ -15,26 +16,43 @@ interface ClerkWebhookEvent {
 /**
  * POST /api/webhooks/clerk
  * Handles Clerk webhook events for user lifecycle management
- * 
+ *
+ * Uses Svix signature verification as required by Clerk's webhook security.
+ *
  * Supported events:
  * - user.created: Creates User and role-specific profile in database
  * - user.updated: Updates User record with latest data
  * - user.deleted: Soft deletes user for FERPA compliance
- * 
+ *
  * @returns 200 OK for all cases to prevent retries
  */
 export async function POST(req: NextRequest) {
-  const headerSecret = req.headers.get('x-clerk-secret');
-  if (headerSecret !== process.env.CLERK_WEBHOOK_SECRET) {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  const webhookSecret = process.env.CLERK_WEBHOOK_SECRET;
+  if (!webhookSecret) {
+    console.error('CLERK_WEBHOOK_SECRET is not configured');
+    return NextResponse.json({ error: 'Webhook not configured' }, { status: 500 });
+  }
+
+  const svixId = req.headers.get('svix-id');
+  const svixTimestamp = req.headers.get('svix-timestamp');
+  const svixSignature = req.headers.get('svix-signature');
+
+  if (!svixId || !svixTimestamp || !svixSignature) {
+    return NextResponse.json({ error: 'Missing webhook signature headers' }, { status: 401 });
   }
 
   let event: ClerkWebhookEvent;
   try {
-    event = await req.json();
+    const body = await req.text();
+    const wh = new Webhook(webhookSecret);
+    event = wh.verify(body, {
+      'svix-id': svixId,
+      'svix-timestamp': svixTimestamp,
+      'svix-signature': svixSignature,
+    }) as ClerkWebhookEvent;
   } catch (error) {
-    console.error('Invalid webhook payload:', error);
-    return NextResponse.json({ error: 'Invalid payload' }, { status: 400 });
+    console.error('Webhook signature verification failed:', error);
+    return NextResponse.json({ error: 'Invalid webhook signature' }, { status: 401 });
   }
 
   const { type, data } = event;

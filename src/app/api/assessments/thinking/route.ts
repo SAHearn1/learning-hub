@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { auth } from '@clerk/nextjs/server';
 import { db } from '@/lib/db';
 import { evaluateThinkingQuality, generateThinkingPrompt } from '@/lib/assessments/thinking-evaluator';
 import { trackReasoningMove } from '@/lib/assessments/reasoning-move-tracker';
@@ -6,6 +7,11 @@ import { EngagementMode, ReasoningMove } from '@prisma/client';
 
 export async function POST(request: NextRequest) {
   try {
+    const { userId: clerkId } = auth();
+    if (!clerkId) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
     const body = await request.json();
     const { sessionId, problemContext, engagementMode, targetReasoningMoves } = body;
 
@@ -40,7 +46,7 @@ export async function POST(request: NextRequest) {
     return NextResponse.json(
       {
         error: 'Failed to generate thinking assessment',
-        details: error instanceof Error ? error.message : 'Unknown error',
+        details: undefined,
       },
       { status: 500 }
     );
@@ -49,6 +55,11 @@ export async function POST(request: NextRequest) {
 
 export async function PUT(request: NextRequest) {
   try {
+    const { userId: clerkId } = auth();
+    if (!clerkId) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
     const body = await request.json();
     const { sessionId, studentResponse, problemContext, engagementMode } = body;
 
@@ -125,7 +136,7 @@ export async function PUT(request: NextRequest) {
     return NextResponse.json(
       {
         error: 'Failed to evaluate thinking assessment',
-        details: error instanceof Error ? error.message : 'Unknown error',
+        details: undefined,
       },
       { status: 500 }
     );
@@ -134,6 +145,11 @@ export async function PUT(request: NextRequest) {
 
 export async function GET(request: NextRequest) {
   try {
+    const { userId: clerkId } = auth();
+    if (!clerkId) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
     const { searchParams } = new URL(request.url);
     const sessionId = searchParams.get('sessionId');
     const studentId = searchParams.get('studentId');
@@ -188,7 +204,7 @@ export async function GET(request: NextRequest) {
     return NextResponse.json(
       {
         error: 'Failed to fetch thinking assessments',
-        details: error instanceof Error ? error.message : 'Unknown error',
+        details: undefined,
       },
       { status: 500 }
     );
