@@ -1,0 +1,68 @@
+name: Extract FG2G Curriculum
+
+on:
+  workflow_dispatch:
+    inputs:
+      overwrite_existing:
+        description: 'Overwrite existing files'
+        required: false
+        default: 'true'
+        type: boolean
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  extract-curriculum:
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          token: ${{ secrets.GITHUB_TOKEN }}
+      
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+      
+      - name: Install dependencies
+        run: |
+          npm install adm-zip@^0.5.16 fs-extra@^11.2.0
+      
+      - name: Run extraction script
+        run: |
+          node scripts/extract-curriculum.js
+      
+      - name: Check for changes
+        id: check_changes
+        run: |
+          git diff --quiet || echo "has_changes=true" >> $GITHUB_OUTPUT
+      
+      - name: Configure git
+        if: steps.check_changes.outputs.has_changes == 'true'
+        run: |
+          git config --local user.email "github-actions[bot]@users.noreply.github.com"
+          git config --local user.name "github-actions[bot]"
+      
+      - name: Commit and push changes
+        if: steps.check_changes.outputs.has_changes == 'true'
+        run: |
+          git add -A
+          git commit -m "Extract and organize FG2G curriculum content"
+          git push
+      
+      - name: Report completion
+        if: steps.check_changes.outputs.has_changes == 'true'
+        run: |
+          echo "✅ Curriculum extracted and committed successfully!"
+          echo "📊 Changes pushed to branch: ${{ github.ref_name }}"
+      
+      - name: Report no changes
+        if: steps.check_changes.outputs.has_changes != 'true'
+        run: |
+          echo "ℹ️ No changes detected - curriculum may already be extracted"
