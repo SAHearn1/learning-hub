@@ -77,7 +77,7 @@ export async function POST(req: NextRequest) {
           lastName: data.last_name ?? '',
           role: role as 'STUDENT' | 'EDUCATOR' | 'PARENT' | 'SCHOOL_ADMIN' | 'DISTRICT_ADMIN' | 'PLATFORM_ADMIN',
           // Calculate if user is a minor (under 13) based on metadata
-          isMinor: data.public_metadata?.isMinor as boolean ?? false,
+          isMinor: (data.public_metadata?.isMinor ?? false) as boolean,
         },
       });
 
