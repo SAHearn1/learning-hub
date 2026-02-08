@@ -1,9 +1,10 @@
-import { BookOpen, Compass, GraduationCap, ShieldCheck, Sprout, Users } from 'lucide-react';
+import { BookOpen, Compass, GraduationCap, Library, ShieldCheck, Sprout, Users } from 'lucide-react';
 
 const iconClass = 'h-5 w-5';
 
 const iconMap: Record<string, JSX.Element> = {
   learn: <BookOpen className={iconClass} aria-hidden />,
+  curriculum: <Library className={iconClass} aria-hidden />,
   progress: <Compass className={iconClass} aria-hidden />,
   regulate: <ShieldCheck className={iconClass} aria-hidden />,
   methodology: <Sprout className={iconClass} aria-hidden />,

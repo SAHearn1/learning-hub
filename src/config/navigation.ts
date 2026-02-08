@@ -1,5 +1,6 @@
 export const studentNavItems = [
   { label: 'Learn', href: '/learn', icon: 'book-open' },
+  { label: 'Browse Curriculum', href: '/curriculum', icon: 'library' },
   { label: 'Calm Corner', href: '/regulate', icon: 'heart' },
   { label: 'My Progress', href: '/progress', icon: 'bar-chart' },
   { label: 'Community', href: '/community', icon: 'users' },
