@@ -15,9 +15,9 @@ export function initDatadog(): void {
   if (!process.env.DD_API_KEY) return;
 
   try {
-    // dd-trace must be require()'d — it patches Node globals at import time
-    // eslint-disable-next-line @typescript-eslint/no-require-imports
-    const tracer = require('dd-trace');
+    // Load lazily in Node runtime only. Using eval avoids static bundling into edge/client builds.
+    const runtimeRequire = eval('require') as NodeRequire;
+    const tracer = runtimeRequire('dd-trace');
     tracer.init({
       service: process.env.DD_SERVICE || 'rootwork-tutor',
       env: process.env.DD_ENV || process.env.NODE_ENV || 'development',

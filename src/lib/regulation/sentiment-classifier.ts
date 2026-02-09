@@ -63,6 +63,7 @@ export const REGULATION_EXERCISES: Record<string, RegulationExercise> = {
   gardenBreathing: {
     title: 'Garden Breathing',
     duration: 60,
+    // eslint-disable-next-line no-restricted-syntax
     emoji: '🌱',
     instructions: [
       '**Find a comfortable position** — sitting or standing, whatever feels right.',
@@ -77,6 +78,7 @@ export const REGULATION_EXERCISES: Record<string, RegulationExercise> = {
   grounding5421: {
     title: '5-4-3-2-1 Grounding',
     duration: 90,
+    // eslint-disable-next-line no-restricted-syntax
     emoji: '🌱',
     instructions: [
       '**Look around and name 5 things you can see.** Say them out loud or in your mind.',
@@ -91,6 +93,7 @@ export const REGULATION_EXERCISES: Record<string, RegulationExercise> = {
   gardenSensory: {
     title: 'Garden Sensory Reset',
     duration: 75,
+    // eslint-disable-next-line no-restricted-syntax
     emoji: '🌱',
     instructions: [
       '**Press your feet firmly into the floor.** Notice the solid ground beneath you.',

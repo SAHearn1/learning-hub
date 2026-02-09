@@ -1,6 +1,12 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   output: "standalone",
+  serverComponentsExternalPackages: [
+    'dd-trace',
+    '@datadog/libdatadog',
+    '@datadog/openfeature-node-server',
+    '@opentelemetry/instrumentation',
+  ],
   images: {
     remotePatterns: [
       { protocol: "https", hostname: "img.clerk.com" },
@@ -20,18 +26,6 @@ const nextConfig = {
         message: /Critical dependency: the request of a dependency is an expression/,
       },
     ];
-
-    // Exclude Node-only dependencies from client and edge bundles
-    if (!isServer || nextRuntime === 'edge') {
-      config.resolve.alias = {
-        ...config.resolve.alias,
-        // Make server-only modules resolve to empty object on client
-        'dd-trace': false,
-        '@datadog/libdatadog': false,
-        '@datadog/openfeature-node-server': false,
-        '@openfeature/server-sdk': false,
-      };
-    }
 
     return config;
   },

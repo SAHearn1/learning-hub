@@ -5,6 +5,8 @@ import { cn } from '@/lib/utils';
 import { formatDistanceToNow } from 'date-fns';
 import ReactMarkdown from 'react-markdown';
 import { useState } from 'react';
+import { SourceCitationPanel } from './source-citation-panel';
+import type { ChatMessageMetadata } from '@/types/chat';
 
 interface MessageBubbleProps {
   role: MessageRole;

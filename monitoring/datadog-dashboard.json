@@ -1,0 +1,124 @@
+{
+  "title": "Learning Hub - Production Dashboard",
+  "description": "MVP monitoring dashboard for Learning Hub (100 concurrent students)",
+  "widgets": [
+    {
+      "id": 1,
+      "definition": {
+        "type": "timeseries",
+        "title": "Concurrent Users",
+        "requests": [
+          {
+            "q": "avg:learninghub.users.concurrent.count{*}",
+            "display_type": "line",
+            "style": {
+              "palette": "dog_classic",
+              "line_type": "solid",
+              "line_width": "normal"
+            }
+          }
+        ],
+        "markers": [
+          {
+            "value": "y = 100",
+            "display_type": "error dashed",
+            "label": "Max Capacity (100 users)"
+          },
+          {
+            "value": "y = 90",
+            "display_type": "warning dashed",
+            "label": "Warning Threshold (90 users)"
+          }
+        ]
+      },
+      "layout": {
+        "x": 0,
+        "y": 0,
+        "width": 4,
+        "height": 2
+      }
+    },
+    {
+      "id": 2,
+      "definition": {
+        "type": "query_value",
+        "title": "HTTP Error Rate (5m)",
+        "requests": [
+          {
+            "q": "avg:learninghub.http.request.error_rate{*}",
+            "aggregator": "avg"
+          }
+        ],
+        "autoscale": false,
+        "precision": 2,
+        "custom_unit": "%"
+      },
+      "layout": {
+        "x": 4,
+        "y": 0,
+        "width": 2,
+        "height": 2
+      }
+    },
+    {
+      "id": 3,
+      "definition": {
+        "type": "query_value",
+        "title": "p95 Response Time",
+        "requests": [
+          {
+            "q": "p95:learninghub.http.request.duration{*}",
+            "aggregator": "avg"
+          }
+        ],
+        "autoscale": false,
+        "precision": 0,
+        "custom_unit": "ms"
+      },
+      "layout": {
+        "x": 6,
+        "y": 0,
+        "width": 2,
+        "height": 2
+      }
+    },
+    {
+      "id": 4,
+      "definition": {
+        "type": "query_value",
+        "title": "AI Cost (Hourly)",
+        "requests": [
+          {
+            "q": "sum:learninghub.ai.usage.cost_per_hour{*}",
+            "aggregator": "avg"
+          }
+        ],
+        "autoscale": false,
+        "precision": 2,
+        "custom_unit": "$"
+      },
+      "layout": {
+        "x": 8,
+        "y": 0,
+        "width": 2,
+        "height": 2
+      }
+    }
+  ],
+  "template_variables": [
+    {
+      "name": "env",
+      "default": "production",
+      "prefix": "env"
+    },
+    {
+      "name": "tenant",
+      "default": "*",
+      "prefix": "tenant"
+    }
+  ],
+  "layout_type": "ordered",
+  "is_read_only": false,
+  "notify_list": [],
+  "reflow_type": "fixed"
+}

@@ -34,6 +34,19 @@ export function useChat(): UseChatReturn {
   const addSignal = useRegulationStore((s) => s.addSignal);
   const triggerIntervention = useRegulationStore((s) => s.triggerIntervention);
 
+  const updatePhaseInternal = useCallback(async (sid: string, phase: string) => {
+    setPhase(phase as Parameters<typeof setPhase>[0]);
+    try {
+      await fetch(`/api/sessions/${sid}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ currentPhase: phase }),
+      });
+    } catch {
+      // Silently fail phase persistence -- local state is updated
+    }
+  }, [setPhase]);
+
   const sendMessage = useCallback(async (content: string) => {
     if (!sessionId || !content.trim()) return;
 
@@ -158,6 +171,7 @@ export function useChat(): UseChatReturn {
     sessionId, messages, currentPhase, regulationLevel,
     addMessage, startStreamingMessage, appendToStreamingMessage,
     finishStreamingMessage, setLoading, addSignal, triggerIntervention,
+    updatePhaseInternal,
   ]);
 
   const createSession = useCallback(async (
@@ -186,19 +200,6 @@ export function useChat(): UseChatReturn {
       return null;
     }
   }, [setLoading, startSession, setEngagementMode]);
-
-  const updatePhaseInternal = useCallback(async (sid: string, phase: string) => {
-    setPhase(phase as Parameters<typeof setPhase>[0]);
-    try {
-      await fetch(`/api/sessions/${sid}`, {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ currentPhase: phase }),
-      });
-    } catch {
-      // Silently fail phase persistence -- local state is updated
-    }
-  }, [setPhase]);
 
   const updatePhase = useCallback(async (phase: string) => {
     if (!sessionId) return;

@@ -170,6 +170,7 @@ describe('Sentiment Classifier', () => {
       const formatted = formatInterventionMessage(exercise);
 
       expect(formatted).toContain('Garden Breathing');
+      // eslint-disable-next-line no-restricted-syntax
       expect(formatted).toContain('🌱');
       expect(formatted).toContain('feeling overwhelmed');
       expect(formatted).toContain('1.');
