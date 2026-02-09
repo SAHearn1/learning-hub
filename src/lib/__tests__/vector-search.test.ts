@@ -2,6 +2,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { searchCurriculum, formatCurriculumContext } from '@/lib/vector-search';
 import * as embeddings from '@/lib/embeddings';
 import * as pinecone from '@/lib/pinecone';
+import * as hybridSearch from '@/lib/hybrid-search';
 
 vi.mock('@/lib/embeddings', () => ({
   generateEmbedding: vi.fn(),
@@ -11,10 +12,16 @@ vi.mock('@/lib/pinecone', () => ({
   queryVectors: vi.fn(),
 }));
 
+vi.mock('@/lib/hybrid-search', () => ({
+  searchCurriculumHybrid: vi.fn(),
+}));
+
 describe('vector-search', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     process.env.OPENAI_API_KEY = 'test-key';
+    delete process.env.SUPABASE_URL;
+    delete process.env.SUPABASE_SERVICE_ROLE_KEY;
     process.env.PINECONE_API_KEY = 'test-key';
   });
 
@@ -64,6 +71,36 @@ describe('vector-search', () => {
     const context = formatCurriculumContext(results);
     expect(context).toContain('Relevant Curriculum Content');
     expect(context).toContain('CCSS.MATH.CONTENT.4.NF.A.1');
+  });
+
+  it('uses hybrid retrieval and reranking when supabase is configured', async () => {
+    process.env.SUPABASE_URL = 'https://example.supabase.co';
+    process.env.SUPABASE_SERVICE_ROLE_KEY = 'service-role';
+
+    vi.mocked(embeddings.generateEmbedding).mockResolvedValue([0.11, 0.22]);
+    vi.mocked(hybridSearch.searchCurriculumHybrid).mockResolvedValue([
+      {
+        id: 'h1',
+        text: 'Mitochondria is the powerhouse of the cell.',
+        filename: 'biology/chapter-2.md',
+        subject: 'SCIENCE',
+        gradeLevel: 7,
+        standardCodes: ['NGSS.MS-LS1-2'],
+        vectorScore: 0.71,
+        keywordScore: 0.95,
+        hybridScore: 0.9,
+      },
+    ]);
+
+    const results = await searchCurriculum('Define mitochondria', { subject: 'SCIENCE', gradeLevel: 7, topK: 5 });
+
+    expect(hybridSearch.searchCurriculumHybrid).toHaveBeenCalledWith('Define mitochondria', [0.11, 0.22], {
+      topK: 5,
+      subject: 'SCIENCE',
+      gradeLevel: 7,
+    });
+    expect(pinecone.queryVectors).not.toHaveBeenCalled();
+    expect(results[0].score).toBeGreaterThan(0.5);
   });
 
   it('uses cache for repeated retrieval on same query/filter set', async () => {

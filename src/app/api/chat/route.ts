@@ -3,8 +3,7 @@ import { auth } from '@clerk/nextjs/server';
 import { db } from '@/lib/db';
 import { anthropic, AI_MODELS } from '@/lib/ai/client';
 import { buildMasterSystemPrompt } from '@/lib/ai/prompts/master-system-prompt';
-import { generateEmbedding } from '@/lib/pinecone/embeddings';
-import { queryPinecone } from '@/lib/pinecone/client';
+import { searchCurriculum, formatCurriculumContext } from '@/lib/vector-search';
 import { enforceUsageLimits, UsageLimitError } from '@/lib/usage-limits';
 import { detectDysregulation, updateRegulationLevel } from '@/lib/regulation/detector';
 import { analyzeThinkingQuality } from '@/lib/trace/tracker';
@@ -124,45 +123,24 @@ export async function POST(req: NextRequest) {
       ragMetrics.durationMs = Date.now() - ragStartTime;
       ragMetrics.retrieved = -1; // indicates cache hit
     } else {
-      // Generate embedding for the user's query
-      const queryEmbedding = await generateEmbedding(body.message);
-
-      // Query Pinecone for relevant curriculum content
-      const filter: Record<string, any> = {
+      const results = await searchCurriculum(body.message, {
         subject: session.subject,
-      };
+        gradeLevel: user.student.gradeLevel ?? undefined,
+        topK: 5,
+        minScore: 0.3,
+      });
 
-      // Add grade level filter if available
-      if (user.student.gradeLevel) {
-        filter.gradeLevel = user.student.gradeLevel;
-      }
-
-      const matches = await queryPinecone(queryEmbedding, 5, filter);
-      ragMetrics.retrieved = matches.length;
+      ragMetrics.retrieved = results.length;
       ragMetrics.durationMs = Date.now() - ragStartTime;
 
-      // Format retrieved context
-      if (matches.length > 0) {
-        curriculumContext = matches
-          .map((match, idx) => {
-            const metadata = match.metadata as Record<string, any> || {};
-            const content = metadata.content || metadata.text || 'No content available';
-            const source = metadata.source || metadata.title || 'Unknown source';
-            const score = match.score?.toFixed(3) || 'N/A';
-
-            return `[Context ${idx + 1}] (Relevance: ${score})\nSource: ${source}\n${content}`;
-          })
-          .join('\n\n---\n\n');
-
-        // Cache the formatted RAG context
+      if (results.length > 0) {
+        curriculumContext = formatCurriculumContext(results);
         await cacheSet(ragCacheKey, curriculumContext, CACHE_TTL.CURRICULUM);
-
-        console.log(`RAG: Retrieved ${matches.length} curriculum contexts in ${ragMetrics.durationMs}ms for session ${session.id}`);
+        console.log(`RAG: Retrieved ${results.length} curriculum contexts in ${ragMetrics.durationMs}ms for session ${session.id}`);
       }
     }
   } catch (error) {
     console.error(`RAG retrieval error for session ${session.id}:`, error);
-    // Continue without RAG context if Pinecone fails
     curriculumContext = '';
   }
 
