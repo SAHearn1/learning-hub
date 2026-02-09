@@ -17,7 +17,7 @@ const reviewSchema = z.object({
  */
 export async function GET(
   req: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   const { userId: clerkId } = auth();
 
@@ -34,9 +34,11 @@ export async function GET(
     return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
   }
 
+  const { id } = await params;
+
   try {
     const evaluation = await db.nVCQualityEvaluation.findUnique({
-      where: { id: params.id },
+      where: { id },
       include: {
         message: {
           select: {
@@ -71,7 +73,7 @@ export async function GET(
  */
 export async function PATCH(
   req: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   const { userId: clerkId } = auth();
 
@@ -88,12 +90,14 @@ export async function PATCH(
     return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
   }
 
+  const { id } = await params;
+
   try {
     const body = reviewSchema.parse(await req.json());
 
     // Verify the evaluation belongs to the user's tenant
     const evaluation = await db.nVCQualityEvaluation.findUnique({
-      where: { id: params.id },
+      where: { id },
     });
 
     if (!evaluation) {
@@ -105,7 +109,7 @@ export async function PATCH(
     }
 
     // Update the evaluation
-    const success = await updateNVCEvaluationReview(params.id, {
+    const success = await updateNVCEvaluationReview(id, {
       reviewStatus: body.reviewStatus as ReviewStatus,
       reviewedBy: user.id,
       reviewNotes: body.reviewNotes,
@@ -118,7 +122,7 @@ export async function PATCH(
 
     // Fetch and return the updated evaluation
     const updatedEvaluation = await db.nVCQualityEvaluation.findUnique({
-      where: { id: params.id },
+      where: { id },
       include: {
         message: {
           select: {
