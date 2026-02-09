@@ -118,19 +118,43 @@ export async function POST(req: NextRequest) {
   }));
 
   const regulationCheck = detectDysregulation(body.message, messageHistory);
+  const sentiment = analyzeSentiment(body.message, regulationCheck);
   const currentRegulationState = session.regulationState as { level?: number; signals?: string[]; interventionCount?: number } | null;
   const currentLevel = currentRegulationState?.level ?? 70;
   const newRegulationLevel = updateRegulationLevel(currentLevel, regulationCheck);
+  const nextPhase = computePhaseTransition(session.currentPhase, {
+    regulationLevel: newRegulationLevel,
+    sentiment,
+  });
+  const previousStateMachine = (session.metadata as { fiveRState?: { phaseHistory?: Array<{ phase: 'ROOT' | 'REGULATE' | 'REFLECT' | 'RESTORE' | 'RECONNECT'; timestamp: string; reason: string }> } } | null)?.fiveRState;
+  const nextFiveRState = buildFiveRStateSnapshot({
+    currentPhase: session.currentPhase,
+    nextPhase,
+    previousHistory: previousStateMachine?.phaseHistory ?? [],
+    sentiment,
+    regulationLevel: newRegulationLevel,
+  });
 
-  // Update regulation state if changed
-  if (newRegulationLevel !== currentLevel || regulationCheck.signals.length > 0) {
+  // Persist regulation updates and enforce the 5Rs FSM progression.
+  if (
+    newRegulationLevel !== currentLevel ||
+    regulationCheck.signals.length > 0 ||
+    session.currentPhase !== nextPhase
+  ) {
     await db.session.update({
       where: { id: session.id },
       data: {
+        currentPhase: nextPhase,
         regulationState: {
           level: newRegulationLevel,
           signals: regulationCheck.signals,
           interventionCount: (currentRegulationState?.interventionCount ?? 0) + (regulationCheck.severity === 'high' ? 1 : 0),
+          sentiment,
+          regulationPassed: nextFiveRState.regulationPassed,
+        },
+        metadata: {
+          ...(session.metadata as Record<string, unknown> ?? {}),
+          fiveRState: nextFiveRState,
         },
       },
     });
@@ -228,7 +252,7 @@ export async function POST(req: NextRequest) {
   // ═══════════════════════════════════════════════════════════════
 
   // Build context for system prompt
-  const regulationState = session.regulationState as { level?: number } | null;
+  const regulationState = { level: newRegulationLevel };
   const learningPrefs = user.student.learningPreferences as { modalities?: string[] } | null;
   const accommodationTypes = user.student.iepAccommodations.map(a => a.type);
 
@@ -305,7 +329,7 @@ export async function POST(req: NextRequest) {
   }
 
   const systemPrompt = buildMasterSystemPrompt({
-    currentPhase: session.currentPhase,
+    currentPhase: nextPhase,
     gradeLevel: user.student.gradeLevel,
     subject: session.subject,
     regulationBaseline: regulationState?.level ?? 70,
