@@ -3,15 +3,18 @@
 import type { MessageRole } from '@prisma/client';
 import { cn } from '@/lib/utils';
 import { formatDistanceToNow } from 'date-fns';
+import { SourceCitationPanel } from './source-citation-panel';
+import type { ChatMessageMetadata } from '@/types/chat';
 
 interface MessageBubbleProps {
   role: MessageRole;
   content: string;
   timestamp: Date;
+  metadata?: ChatMessageMetadata | null;
   className?: string;
 }
 
-export function MessageBubble({ role, content, timestamp, className }: MessageBubbleProps) {
+export function MessageBubble({ role, content, timestamp, metadata, className }: MessageBubbleProps) {
   const isSystem = role === 'SYSTEM';
   const isAssistant = role === 'ASSISTANT';
   const isUser = role === 'USER';
@@ -56,6 +59,17 @@ export function MessageBubble({ role, content, timestamp, className }: MessageBu
         >
           <p className="whitespace-pre-wrap text-sm">{content}</p>
         </div>
+        
+        {/* Source citations for assistant messages */}
+        {isAssistant && metadata?.citations && metadata.citations.length > 0 && (
+          <div className="mt-2 w-full">
+            <p className="mb-2 px-1 text-xs font-medium text-neutral-600">
+              📚 Sources used to generate this response:
+            </p>
+            <SourceCitationPanel citations={metadata.citations} />
+          </div>
+        )}
+        
         <span className="px-1 text-xs text-neutral-500">
           {formatDistanceToNow(timestamp, { addSuffix: true })}
         </span>
