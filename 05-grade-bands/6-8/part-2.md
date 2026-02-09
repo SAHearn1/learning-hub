@@ -4,6 +4,9 @@ section: "Grade Bands"
 source_path: "05-grade-bands/6-8/part-2.md"
 document_type: "curriculum"
 subsection: "6-8"
+phase: "Regulate"
+framework_question: "Can I return to my window of tolerance?"
+duration: "5-10 minutes"
 ---
 # 6-8 Regulate Phase: Independent Regulation Skills
 

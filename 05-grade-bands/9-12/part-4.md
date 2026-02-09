@@ -4,6 +4,9 @@ section: "Grade Bands"
 subsection: "9-12"
 source_path: "05-grade-bands/9-12/part-4.md"
 document_type: "curriculum"
+phase: "Restore"
+framework_question: "What can I learn from this mistake?"
+duration: "15-25 minutes"
 ---
 # Grade Band 9-12: Restore Phase — Metacognitive Error Mastery
 

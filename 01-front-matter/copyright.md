@@ -3,6 +3,7 @@ title: "Copyright"
 section: "Front Matter"
 source_path: "01-front-matter/copyright.md"
 document_type: "curriculum"
+subsection: "copyright"
 ---
 # Copyright
 

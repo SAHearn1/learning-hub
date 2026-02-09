@@ -4,6 +4,9 @@ section: "Grade Bands"
 subsection: "9-12"
 source_path: "05-grade-bands/9-12/part-5.md"
 document_type: "curriculum"
+phase: "Reconnect"
+framework_question: "How does this connect to my world?"
+duration: "variable"
 ---
 # Grade Band 9-12: Reconnect Phase — Real-World Enterprise and Leadership
 
