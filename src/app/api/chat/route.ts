@@ -5,7 +5,7 @@ import { anthropic, AI_MODELS } from '@/lib/ai/client';
 import { buildMasterSystemPrompt } from '@/lib/ai/prompts/master-system-prompt';
 import { generateEmbedding } from '@/lib/pinecone/embeddings';
 import { queryPinecone } from '@/lib/pinecone/client';
-import { enforceUsageLimits, UsageLimitError } from '@/lib/usage-limits';
+import { enforceUsageLimits, evaluateOrganizationTokenUsage, UsageLimitError } from '@/lib/usage-limits';
 import { detectDysregulation, updateRegulationLevel } from '@/lib/regulation/detector';
 import { analyzeThinkingQuality } from '@/lib/trace/tracker';
 import { createNVCEvaluation } from '@/lib/nvc/evaluation-service';
@@ -14,7 +14,7 @@ import { anonymizeForLlmWithMap, reattachPii } from '@/lib/privacy';
 import { appendImmutableAuditLog } from '@/lib/audit';
 import { getCachedUserProfile, getCachedSession, invalidateSessionCache } from '@/lib/redis/cached-queries';
 import { cacheGet, cacheSet, contentHash, CACHE_TTL, CACHE_KEY } from '@/lib/redis/cache';
-import { captureException, recordMetric } from '@/lib/monitoring';
+import { captureException, recordMetric, trackEvent } from '@/lib/monitoring';
 
 const chatRequestSchema = z.object({
   sessionId: z.string().min(1),
@@ -61,6 +61,17 @@ export async function POST(req: NextRequest) {
       return new Response(JSON.stringify({ error: error.message }), { status: 402 });
     }
     throw error;
+  }
+
+  const usageGuardrail = await evaluateOrganizationTokenUsage(user.tenantId, { additionalTokens: 2048 });
+  if (usageGuardrail.spikeDetected) {
+    trackEvent('organization.token_usage_spike_detected', {
+      organizationId: usageGuardrail.organizationId,
+      projectedDailyTokens: usageGuardrail.projectedDailyTokens,
+      baselineDailyTokens: usageGuardrail.baselineDailyTokens,
+      spikeRatio: Number(usageGuardrail.spikeRatio.toFixed(2)),
+      dailyHardLimitTokens: usageGuardrail.dailyHardLimitTokens,
+    });
   }
 
   // Save user message and invalidate session cache
@@ -348,6 +359,18 @@ export async function POST(req: NextRequest) {
           model: AI_MODELS.primary,
           subject: session.subject,
         });
+
+        await recordMetric('chat.organization_tokens_projected_daily', usageGuardrail.projectedDailyTokens, {
+          tenantId: usageGuardrail.organizationId,
+          subject: session.subject,
+        });
+
+        if (usageGuardrail.spikeDetected) {
+          await recordMetric('chat.organization_token_spike_ratio', usageGuardrail.spikeRatio, {
+            tenantId: usageGuardrail.organizationId,
+            subject: session.subject,
+          });
+        }
 
 
         await appendImmutableAuditLog({
