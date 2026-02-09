@@ -12,7 +12,7 @@ const nextConfig = {
       bodySizeLimit: "2mb",
     },
   },
-  webpack: (config) => {
+  webpack: (config, { isServer }) => {
     config.ignoreWarnings = [
       ...(config.ignoreWarnings ?? []),
       {
@@ -20,6 +20,18 @@ const nextConfig = {
         message: /Critical dependency: the request of a dependency is an expression/,
       },
     ];
+
+    // Exclude server-only dependencies from client bundle
+    if (!isServer) {
+      config.resolve.alias = {
+        ...config.resolve.alias,
+        // Make server-only modules resolve to empty object on client
+        'dd-trace': false,
+        '@datadog/libdatadog': false,
+        '@datadog/openfeature-node-server': false,
+        '@openfeature/server-sdk': false,
+      };
+    }
 
     return config;
   },
