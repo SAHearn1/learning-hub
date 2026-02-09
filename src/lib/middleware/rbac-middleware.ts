@@ -30,14 +30,24 @@ export interface AuthenticatedUser {
 
 export type RouteHandler = (
   req: NextRequest,
-  context?: { params: Record<string, string> }
+  context?: { params: Promise<Record<string, string>> }
 ) => Promise<Response>;
 
 export type AuthenticatedRouteHandler = (
   req: NextRequest,
   user: AuthenticatedUser,
-  context?: { params: Record<string, string> }
+  context?: { params: Promise<Record<string, string>> }
 ) => Promise<Response>;
+
+async function resolveParams(context?: {
+  params: Promise<Record<string, string>>;
+}): Promise<Record<string, string> | undefined> {
+  if (!context?.params) {
+    return undefined;
+  }
+
+  return context.params;
+}
 
 // ============================================================================
 // Core Middleware Functions
@@ -70,7 +80,7 @@ async function getAuthenticatedUser(): Promise<AuthenticatedUser> {
  * Basic authentication middleware - ensures user is logged in
  */
 export function withAuth(handler: AuthenticatedRouteHandler): RouteHandler {
-  return async (req: NextRequest, context?: { params: Record<string, string> }) => {
+  return async (req: NextRequest, context?: { params: Promise<Record<string, string>> }) => {
     try {
       const user = await getAuthenticatedUser();
       return await handler(req, user, context);
@@ -85,7 +95,7 @@ export function withAuth(handler: AuthenticatedRouteHandler): RouteHandler {
  * Permission-based middleware - ensures user has required permission
  */
 export function withPermission(permission: PermissionKey, handler: AuthenticatedRouteHandler): RouteHandler {
-  return async (req: NextRequest, context?: { params: Record<string, string> }) => {
+  return async (req: NextRequest, context?: { params: Promise<Record<string, string>> }) => {
     try {
       const user = await getAuthenticatedUser();
 
@@ -109,7 +119,7 @@ export function withPermission(permission: PermissionKey, handler: Authenticated
  * Role-based middleware - ensures user has one of the required roles
  */
 export function withRole(roles: UserRole[], handler: AuthenticatedRouteHandler): RouteHandler {
-  return async (req: NextRequest, context?: { params: Record<string, string> }) => {
+  return async (req: NextRequest, context?: { params: Promise<Record<string, string>> }) => {
     try {
       const user = await getAuthenticatedUser();
 
@@ -138,7 +148,7 @@ export function withRole(roles: UserRole[], handler: AuthenticatedRouteHandler):
  * Only PLATFORM_ADMIN can access these routes
  */
 export function withGlobalCurriculumAccess(handler: AuthenticatedRouteHandler): RouteHandler {
-  return async (req: NextRequest, context?: { params: Record<string, string> }) => {
+  return async (req: NextRequest, context?: { params: Promise<Record<string, string>> }) => {
     try {
       const user = await getAuthenticatedUser();
 
@@ -158,7 +168,7 @@ export function withGlobalCurriculumAccess(handler: AuthenticatedRouteHandler): 
  * SCHOOL_ADMIN, DISTRICT_ADMIN, PLATFORM_ADMIN can access
  */
 export function withSchoolCurriculumAccess(handler: AuthenticatedRouteHandler): RouteHandler {
-  return async (req: NextRequest, context?: { params: Record<string, string> }) => {
+  return async (req: NextRequest, context?: { params: Promise<Record<string, string>> }) => {
     try {
       const user = await getAuthenticatedUser();
 
@@ -170,7 +180,8 @@ export function withSchoolCurriculumAccess(handler: AuthenticatedRouteHandler): 
       }
 
       // If school ID is provided in context, validate school access
-      const schoolId = context?.params?.schoolId;
+      const params = await resolveParams(context);
+      const schoolId = params?.schoolId;
       if (schoolId && user.role === 'SCHOOL_ADMIN') {
         assertSchoolAccess(user.role, user.schoolId, schoolId);
       }
@@ -190,7 +201,7 @@ export function withSchoolCurriculumAccess(handler: AuthenticatedRouteHandler): 
  * SCHOOL_ADMIN, DISTRICT_ADMIN, PLATFORM_ADMIN can access all classrooms in their scope
  */
 export function withClassroomAccess(handler: AuthenticatedRouteHandler): RouteHandler {
-  return async (req: NextRequest, context?: { params: Record<string, string> }) => {
+  return async (req: NextRequest, context?: { params: Promise<Record<string, string>> }) => {
     try {
       const user = await getAuthenticatedUser();
 
@@ -202,7 +213,8 @@ export function withClassroomAccess(handler: AuthenticatedRouteHandler): RouteHa
       }
 
       // If class ID is provided in context, validate classroom access
-      const classId = context?.params?.classId || context?.params?.id;
+      const params = await resolveParams(context);
+      const classId = params?.classId || params?.id;
       if (classId) {
         await assertCanManageClassroomLearningPath(user.id, user.role, classId);
       }
@@ -225,7 +237,7 @@ export function withClassroomAccess(handler: AuthenticatedRouteHandler): RouteHa
  * Prevents cross-tenant data access
  */
 export function withTenantScope(handler: AuthenticatedRouteHandler): RouteHandler {
-  return async (req: NextRequest, context?: { params: Record<string, string> }) => {
+  return async (req: NextRequest, context?: { params: Promise<Record<string, string>> }) => {
     try {
       const user = await getAuthenticatedUser();
 

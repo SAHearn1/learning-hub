@@ -53,3 +53,26 @@ export async function appendImmutableAuditLog(input: AuditWriteInput) {
     },
   });
 }
+
+
+export type CreateAuditLogInput = {
+  tenantId: string;
+  userId: string;
+  action: string;
+  resource: string;
+  resourceId?: string | null;
+  details?: unknown;
+  ipAddress?: string | null;
+};
+
+export async function createAuditLog(input: CreateAuditLogInput) {
+  return appendImmutableAuditLog({
+    tenantId: input.tenantId,
+    userId: input.userId,
+    action: input.action,
+    resource: input.resource,
+    resourceId: input.resourceId,
+    metadata: input.details,
+    ipAddress: input.ipAddress,
+  });
+}
