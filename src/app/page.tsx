@@ -5,9 +5,9 @@ import { siteConfig } from '@/config/site';
 import { studentNavItems } from '@/config/navigation';
 
 const rolePortals = [
-  { label: 'Educator Dashboard', href: '/educator/dashboard' },
-  { label: 'Parent Dashboard', href: '/parent/dashboard' },
-  { label: 'Admin Dashboard', href: '/admin/dashboard' },
+  { label: 'Educator Dashboard', href: '/educator/students' },
+  { label: 'Parent Dashboard', href: '/students/demo-student/assessments' },
+  { label: 'Admin Dashboard', href: '/admin/ingest' },
 ] as const;
 
 const authEnabled = Boolean(process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY);

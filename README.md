@@ -140,15 +140,6 @@ npm run test
 
 # Run end-to-end tests
 npm run test:e2e
-
-# Launch parallel task agents (lint + typecheck + unit + integration + build)
-npm run ops:parallel
-
-# Launch only selected task agents
-npm run ops:parallel -- lint build
-
-# Run operational diagnostics (env, toolchain, Prisma)
-npm run ops:doctor
 ```
 
 ## Project Structure

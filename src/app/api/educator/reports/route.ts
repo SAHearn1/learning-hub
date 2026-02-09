@@ -1,18 +1,16 @@
-import { NextResponse } from 'next/server';
+import { NextRequest, NextResponse } from 'next/server';
 import { auth } from '@clerk/nextjs/server';
 import { db } from '@/lib/db';
-import { withApiHandler } from '@/lib/api-handler';
-import { AuthenticationError, ForbiddenError, NotFoundError, ValidationError } from '@/lib/api-errors';
 
-export const GET = withApiHandler(async (req) => {
+export async function GET(req: NextRequest) {
   const { userId: clerkId } = auth();
   if (!clerkId) {
-    throw new AuthenticationError();
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
 
   const user = await db.user.findUnique({ where: { clerkUserId: clerkId } });
   if (!user || !['EDUCATOR', 'SCHOOL_ADMIN', 'DISTRICT_ADMIN', 'PLATFORM_ADMIN'].includes(user.role)) {
-    throw new ForbiddenError();
+    return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
   }
 
   const classId = req.nextUrl.searchParams.get('classId');
@@ -23,7 +21,7 @@ export const GET = withApiHandler(async (req) => {
     // Verify the class belongs to the educator's tenant
     const targetClass = await db.class.findUnique({ where: { id: classId } });
     if (!targetClass || targetClass.tenantId !== user.tenantId) {
-      throw new ForbiddenError();
+      return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
     }
 
     const enrollments = await db.classEnrollment.findMany({
@@ -81,15 +79,15 @@ export const GET = withApiHandler(async (req) => {
     });
 
     if (!student) {
-      throw new NotFoundError('Student not found');
+      return NextResponse.json({ error: 'Student not found' }, { status: 404 });
     }
 
     if (student.user.tenantId !== user.tenantId) {
-      throw new ForbiddenError();
+      return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
     }
 
     return NextResponse.json({ data: student });
   }
 
-  throw new ValidationError('Provide classId or studentId');
-}, { rateLimit: { windowMs: 60_000, max: 60 } });
+  return NextResponse.json({ error: 'Provide classId or studentId' }, { status: 400 });
+}

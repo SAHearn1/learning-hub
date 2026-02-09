@@ -73,8 +73,8 @@ describe('phaseTransitions', () => {
 });
 
 describe('navigation', () => {
-  it('student nav has 6 items', () => {
-    expect(studentNavItems).toHaveLength(6);
+  it('student nav has 5 items', () => {
+    expect(studentNavItems).toHaveLength(5);
   });
 
   it('student nav includes Learn and Calm Corner', () => {

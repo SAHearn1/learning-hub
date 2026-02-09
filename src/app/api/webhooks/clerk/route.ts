@@ -1,9 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createHmac, timingSafeEqual } from 'crypto';
 import { db } from '@/lib/db';
-import { withApiHandler } from '@/lib/api-handler';
-import { AuthenticationError, ValidationError } from '@/lib/api-errors';
-import { logger } from '@/lib/logger';
 
 interface ClerkWebhookEvent {
   type: string;
@@ -66,10 +63,11 @@ function verifySvixSignature(params: {
  *
  * @returns 200 OK for all cases to prevent retries
  */
-export const POST = withApiHandler(async (req, { requestId }) => {
+export async function POST(req: NextRequest) {
   const webhookSecret = process.env.CLERK_WEBHOOK_SECRET;
   if (!webhookSecret) {
-    throw new Error('CLERK_WEBHOOK_SECRET is not configured');
+    console.error('CLERK_WEBHOOK_SECRET is not configured');
+    return NextResponse.json({ error: 'Webhook not configured' }, { status: 500 });
   }
 
   const svixId = req.headers.get('svix-id');
@@ -77,7 +75,7 @@ export const POST = withApiHandler(async (req, { requestId }) => {
   const svixSignature = req.headers.get('svix-signature');
 
   if (!svixId || !svixTimestamp || !svixSignature) {
-    throw new AuthenticationError('Missing webhook signature headers');
+    return NextResponse.json({ error: 'Missing webhook signature headers' }, { status: 401 });
   }
 
   let event: ClerkWebhookEvent;
@@ -85,7 +83,7 @@ export const POST = withApiHandler(async (req, { requestId }) => {
     const body = await req.text();
     const timestampAge = Math.abs(Date.now() / 1000 - Number(svixTimestamp));
     if (!Number.isFinite(timestampAge) || timestampAge > 300) {
-      throw new AuthenticationError('Invalid webhook timestamp');
+      return NextResponse.json({ error: 'Invalid webhook timestamp' }, { status: 401 });
     }
 
     const isValid = verifySvixSignature({
@@ -97,13 +95,13 @@ export const POST = withApiHandler(async (req, { requestId }) => {
     });
 
     if (!isValid) {
-      throw new AuthenticationError('Invalid webhook signature');
+      return NextResponse.json({ error: 'Invalid webhook signature' }, { status: 401 });
     }
 
     event = JSON.parse(body) as ClerkWebhookEvent;
   } catch (error) {
-    logger.error('Webhook signature verification failed', error, { requestId });
-    throw new AuthenticationError('Invalid webhook signature');
+    console.error('Webhook signature verification failed:', error);
+    return NextResponse.json({ error: 'Invalid webhook signature' }, { status: 401 });
   }
 
   const { type, data } = event;
@@ -112,7 +110,7 @@ export const POST = withApiHandler(async (req, { requestId }) => {
     try {
       const email = data.email_addresses?.[0]?.email_address;
       if (!email) {
-        throw new ValidationError('No email found');
+        return NextResponse.json({ error: 'No email found' }, { status: 400 });
       }
 
       const role = (data.public_metadata?.role as string) || 'STUDENT';
@@ -145,6 +143,7 @@ export const POST = withApiHandler(async (req, { requestId }) => {
           firstName: data.first_name ?? '',
           lastName: data.last_name ?? '',
           role: role as 'STUDENT' | 'EDUCATOR' | 'PARENT' | 'SCHOOL_ADMIN' | 'DISTRICT_ADMIN' | 'PLATFORM_ADMIN',
+          // Calculate if user is a minor (under 13) based on metadata
           isMinor: (data.public_metadata?.isMinor ?? false) as boolean,
         },
       });
@@ -188,17 +187,13 @@ export const POST = withApiHandler(async (req, { requestId }) => {
 
       return NextResponse.json({ data: { userId: user.id } });
     } catch (error) {
-      // For webhook processing errors (not signature verification), return 200
-      // to prevent retries but log the error for investigation.
-      if (error instanceof AuthenticationError || error instanceof ValidationError) {
-        throw error;
-      }
-      logger.error(`Error handling ${type}`, error, { requestId });
-      return NextResponse.json({
-        data: {
+      console.error(`Error handling ${type}:`, error);
+      // Return 200 to prevent retries, but log the error
+      return NextResponse.json({ 
+        data: { 
           error: `Failed to ${type === 'user.created' ? 'create' : 'update'} user`,
-          logged: true,
-        },
+          logged: true 
+        } 
       });
     }
   }
@@ -214,25 +209,27 @@ export const POST = withApiHandler(async (req, { requestId }) => {
           email: `deleted_${data.id}@deleted.local`,
           firstName: 'Deleted',
           lastName: 'User',
+          // Note: For full FERPA compliance, consider adding an 'isActive' field
+          // to the User model and set it to false instead
         },
       });
-      return NextResponse.json({
-        data: {
+      return NextResponse.json({ 
+        data: { 
           deactivated: true,
-          message: 'User deactivated for FERPA compliance',
-        },
+          message: 'User deactivated for FERPA compliance' 
+        } 
       });
     } catch (error) {
-      logger.error('Error deactivating user', error, { requestId });
+      console.error('Error deactivating user:', error);
       // Return 200 to prevent webhook retries
-      return NextResponse.json({
-        data: {
+      return NextResponse.json({ 
+        data: { 
           error: 'Failed to deactivate user',
-          logged: true,
-        },
+          logged: true 
+        } 
       });
     }
   }
 
   return NextResponse.json({ data: { ignored: true } });
-});
+}

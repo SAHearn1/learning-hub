@@ -4,16 +4,6 @@ import { useCallback, useRef } from 'react';
 import { useSessionStore } from '@/stores/session-store';
 import { useRegulationStore } from '@/stores/regulation-store';
 import { detectDysregulation, detectTRACEStep, type TRACEStep } from '@/lib/regulation/detect-dysregulation';
-import { BRAND } from '@/brand/brand';
-
-export interface SessionSummary {
-  messageCount: number;
-  userMessageCount: number;
-  assistantMessageCount: number;
-  subject: string;
-  duration: string;
-  phasesVisited: string[];
-}
 
 interface UseChatReturn {
   sendMessage: (content: string) => Promise<void>;
@@ -22,7 +12,6 @@ interface UseChatReturn {
   updatePhase: (phase: string) => Promise<void>;
   updateEngagementMode: (mode: string) => Promise<void>;
   detectTraceStep: () => TRACEStep;
-  getSessionSummary: () => SessionSummary | null;
 }
 
 export function useChat(): UseChatReturn {
@@ -44,20 +33,6 @@ export function useChat(): UseChatReturn {
   const regulationLevel = useRegulationStore((s) => s.level);
   const addSignal = useRegulationStore((s) => s.addSignal);
   const triggerIntervention = useRegulationStore((s) => s.triggerIntervention);
-  const setRegulationLevel = useRegulationStore((s) => s.setLevel);
-
-  const updatePhaseInternal = useCallback(async (sid: string, phase: string) => {
-    setPhase(phase as Parameters<typeof setPhase>[0]);
-    try {
-      await fetch(`/api/sessions/${sid}`, {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ currentPhase: phase }),
-      });
-    } catch {
-      // Silently fail phase persistence -- local state is updated
-    }
-  }, [setPhase]);
 
   const sendMessage = useCallback(async (content: string) => {
     if (!sessionId || !content.trim()) return;
@@ -153,22 +128,6 @@ export function useChat(): UseChatReturn {
             if (data.done) {
               finishStreamingMessage();
             }
-            if (data.phaseTransition?.to) {
-              setPhase(data.phaseTransition.to as Parameters<typeof setPhase>[0]);
-              addMessage({
-                id: `msg-${Date.now()}-phase`,
-                role: 'SYSTEM',
-                content: `5Rs transition: ${data.phaseTransition.from} → ${data.phaseTransition.to}. ${data.phaseTransition.reason || ''}`.trim(),
-                timestamp: new Date(),
-              });
-            }
-            if (data.dysregulation) {
-              if (typeof data.dysregulation.severity === 'string' && data.dysregulation.severity === 'high') {
-                triggerIntervention();
-              }
-              const nextLevel = Math.max(0, regulationLevel - 15);
-              setRegulationLevel(nextLevel);
-            }
             if (data.error) {
               finishStreamingMessage();
               console.error('Stream error:', data.error);
@@ -199,7 +158,6 @@ export function useChat(): UseChatReturn {
     sessionId, messages, currentPhase, regulationLevel,
     addMessage, startStreamingMessage, appendToStreamingMessage,
     finishStreamingMessage, setLoading, addSignal, triggerIntervention,
-    updatePhaseInternal, setPhase, setRegulationLevel,
   ]);
 
   const createSession = useCallback(async (
@@ -221,28 +179,31 @@ export function useChat(): UseChatReturn {
       const { data } = await response.json();
       startSession(data.id, subject);
       setEngagementMode(mode as Parameters<typeof setEngagementMode>[0]);
-
-      const subjectName = BRAND.subjects[subject].name;
-      const modeName = BRAND.engagementModes[mode as keyof typeof BRAND.engagementModes]?.name ?? mode;
-      addMessage({
-        id: `msg-${Date.now()}-welcome`,
-        role: 'ASSISTANT',
-        content: `Welcome to your ${subjectName} session! We'll be working in **${modeName}** mode today.\n\nBefore we dive in, let's check in: how are you feeling right now? Ready to grow some thinking together?`,
-        timestamp: new Date(),
-      });
-
       setLoading(false);
       return data.id;
     } catch {
       setLoading(false);
       return null;
     }
-  }, [setLoading, startSession, setEngagementMode, addMessage]);
+  }, [setLoading, startSession, setEngagementMode]);
+
+  async function updatePhaseInternal(sid: string, phase: string) {
+    setPhase(phase as Parameters<typeof setPhase>[0]);
+    try {
+      await fetch(`/api/sessions/${sid}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ currentPhase: phase }),
+      });
+    } catch {
+      // Silently fail phase persistence -- local state is updated
+    }
+  }
 
   const updatePhase = useCallback(async (phase: string) => {
     if (!sessionId) return;
     await updatePhaseInternal(sessionId, phase);
-  }, [sessionId, updatePhaseInternal]);
+  }, [sessionId, setPhase]);
 
   const updateEngagementMode = useCallback(async (mode: string) => {
     if (!sessionId) return;
@@ -282,38 +243,6 @@ export function useChat(): UseChatReturn {
     return detectTRACEStep(lastAssistant.content);
   }, [messages]);
 
-  const getSessionSummary = useCallback((): SessionSummary | null => {
-    if (!sessionId || messages.length === 0) return null;
-
-    const userMsgs = messages.filter((m) => m.role === 'USER');
-    const assistantMsgs = messages.filter((m) => m.role === 'ASSISTANT');
-    const systemMsgs = messages.filter((m) => m.role === 'SYSTEM');
-
-    const phasesVisited = new Set<string>();
-    for (const msg of systemMsgs) {
-      const match = msg.content.match(/5Rs transition:.*?→\s*(\w+)/);
-      if (match) phasesVisited.add(match[1]);
-    }
-    phasesVisited.add(currentPhase);
-
-    const firstMsg = messages[0];
-    const lastMsg = messages[messages.length - 1];
-    const durationMs = new Date(lastMsg.timestamp).getTime() - new Date(firstMsg.timestamp).getTime();
-    const minutes = Math.max(1, Math.round(durationMs / 60000));
-    const duration = minutes < 60 ? `${minutes} min` : `${Math.floor(minutes / 60)}h ${minutes % 60}m`;
-
-    const subjectName = useSessionStore.getState().subject;
-
-    return {
-      messageCount: messages.length,
-      userMessageCount: userMsgs.length,
-      assistantMessageCount: assistantMsgs.length,
-      subject: subjectName ? BRAND.subjects[subjectName].name : 'Unknown',
-      duration,
-      phasesVisited: Array.from(phasesVisited),
-    };
-  }, [sessionId, messages, currentPhase]);
-
   return {
     sendMessage,
     createSession,
@@ -321,6 +250,5 @@ export function useChat(): UseChatReturn {
     updatePhase,
     updateEngagementMode,
     detectTraceStep,
-    getSessionSummary,
   };
 }

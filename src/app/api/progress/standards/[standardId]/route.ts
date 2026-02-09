@@ -1,13 +1,11 @@
-import { NextResponse } from 'next/server';
+import { NextRequest, NextResponse } from 'next/server';
 import { auth } from '@clerk/nextjs/server';
 import { db } from '@/lib/db';
-import { withApiHandler } from '@/lib/api-handler';
-import { AuthenticationError, ForbiddenError, NotFoundError, ValidationError } from '@/lib/api-errors';
 
 /**
  * GET /api/progress/standards/[standardId]
  * Retrieves detailed progress for a specific standard
- *
+ * 
  * @param standardId - Standard ID
  * @query studentId (optional for educators/admins)
  * @returns Detailed progress data for the standard
@@ -15,12 +13,15 @@ import { AuthenticationError, ForbiddenError, NotFoundError, ValidationError } f
  * @throws 403 if not authorized
  * @throws 404 if standard not found
  */
-export const GET = withApiHandler(async (req, ctx) => {
-  const { standardId } = ctx.params;
+export async function GET(
+  req: NextRequest,
+  { params }: { params: Promise<{ standardId: string }> }
+) {
+  const { standardId } = await params;
   const { userId: clerkId } = auth();
-
+  
   if (!clerkId) {
-    throw new AuthenticationError();
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
 
   const user = await db.user.findUnique({
@@ -29,7 +30,7 @@ export const GET = withApiHandler(async (req, ctx) => {
   });
 
   if (!user) {
-    throw new NotFoundError('User not found');
+    return NextResponse.json({ error: 'User not found' }, { status: 404 });
   }
 
   // Determine which student's progress to view
@@ -38,29 +39,29 @@ export const GET = withApiHandler(async (req, ctx) => {
 
   if (user.role === 'STUDENT') {
     if (!user.student) {
-      throw new NotFoundError('Student profile not found');
+      return NextResponse.json({ error: 'Student profile not found' }, { status: 404 });
     }
     studentId = user.student.id;
   } else if (user.role === 'PARENT') {
     if (!user.parent) {
-      throw new NotFoundError('Parent profile not found');
+      return NextResponse.json({ error: 'Parent profile not found' }, { status: 404 });
     }
     if (!queriedStudentId) {
-      throw new ValidationError('studentId required for parent role');
+      return NextResponse.json({ error: 'studentId required for parent role' }, { status: 400 });
     }
     // Verify parent-child relationship
     const student = await db.student.findUnique({
       where: { id: queriedStudentId },
     });
     if (!student || !user.parent.childrenIds.includes(student.userId)) {
-      throw new ForbiddenError('Not authorized to view this student\'s progress');
+      return NextResponse.json({ error: 'Not authorized to view this student\'s progress' }, { status: 403 });
     }
     studentId = queriedStudentId;
   } else if (queriedStudentId) {
     // Educators/admins can view any student in their tenant
     studentId = queriedStudentId;
   } else {
-    throw new ValidationError('studentId required for non-student roles');
+    return NextResponse.json({ error: 'studentId required for non-student roles' }, { status: 400 });
   }
 
   // Get the standard
@@ -76,7 +77,7 @@ export const GET = withApiHandler(async (req, ctx) => {
   });
 
   if (!standard) {
-    throw new NotFoundError('Standard not found');
+    return NextResponse.json({ error: 'Standard not found' }, { status: 404 });
   }
 
   // Get progress for this standard
@@ -162,4 +163,4 @@ export const GET = withApiHandler(async (req, ctx) => {
       relatedStandards,
     },
   });
-}, { rateLimit: { windowMs: 60_000, max: 60 } });
+}

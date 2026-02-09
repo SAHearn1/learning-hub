@@ -1,21 +1,18 @@
-import { NextResponse } from 'next/server';
+import { NextRequest, NextResponse } from 'next/server';
 import { auth } from '@clerk/nextjs/server';
 import { db } from '@/lib/db';
 import { enforceUsageLimits, UsageLimitError } from '@/lib/usage-limits';
 import { z } from 'zod';
-import { withApiHandler } from '@/lib/api-handler';
-import { AuthenticationError, NotFoundError, PaymentRequiredError } from '@/lib/api-errors';
-import { assertMinorConsentForLearning } from '@/lib/compliance';
 
 const createSessionSchema = z.object({
   subject: z.enum(['MATH', 'SCIENCE', 'LANGUAGE_ARTS']),
   engagementMode: z.enum(['FORWARD', 'REVERSE', 'ERROR_ANALYSIS', 'MULTIPLE_PATHWAYS', 'PROBLEM_POSING']).default('FORWARD'),
 });
 
-export const POST = withApiHandler(async (req, _ctx) => {
+export async function POST(req: NextRequest) {
   const { userId: clerkId } = auth();
   if (!clerkId) {
-    throw new AuthenticationError();
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
 
   const user = await db.user.findUnique({
@@ -23,20 +20,22 @@ export const POST = withApiHandler(async (req, _ctx) => {
     include: { student: true },
   });
   if (!user?.student) {
-    throw new NotFoundError('Student profile not found');
+    return NextResponse.json({ error: 'Student profile not found' }, { status: 404 });
   }
 
-  assertMinorConsentForLearning(user.isMinor, user.consentStatus, {
-    action: 'starting a learning session',
-  });
-
-  const body = createSessionSchema.parse(await req.json());
+  let body;
+  try {
+    body = createSessionSchema.parse(await req.json());
+  } catch (err) {
+    const message = err instanceof z.ZodError ? err.errors.map(e => e.message).join(', ') : 'Invalid request';
+    return NextResponse.json({ error: message }, { status: 400 });
+  }
 
   try {
     await enforceUsageLimits(user.tenantId);
   } catch (error) {
     if (error instanceof UsageLimitError) {
-      throw new PaymentRequiredError(error.message);
+      return NextResponse.json({ error: error.message }, { status: 402 });
     }
     throw error;
   }
@@ -54,12 +53,12 @@ export const POST = withApiHandler(async (req, _ctx) => {
   });
 
   return NextResponse.json({ data: session }, { status: 201 });
-}, { rateLimit: { windowMs: 60_000, max: 30 } });
+}
 
-export const GET = withApiHandler(async (req, _ctx) => {
+export async function GET(req: NextRequest) {
   const { userId: clerkId } = auth();
   if (!clerkId) {
-    throw new AuthenticationError();
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
 
   const user = await db.user.findUnique({
@@ -67,7 +66,7 @@ export const GET = withApiHandler(async (req, _ctx) => {
     include: { student: true },
   });
   if (!user) {
-    throw new NotFoundError('User not found');
+    return NextResponse.json({ error: 'User not found' }, { status: 404 });
   }
 
   const page = parseInt(req.nextUrl.searchParams.get('page') ?? '1', 10);
@@ -96,4 +95,4 @@ export const GET = withApiHandler(async (req, _ctx) => {
     pageSize,
     hasMore: skip + pageSize < total,
   });
-}, { rateLimit: { windowMs: 60_000, max: 60 } });
+}

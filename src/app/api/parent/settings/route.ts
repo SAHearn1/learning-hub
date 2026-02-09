@@ -1,7 +1,5 @@
-import { NextResponse } from 'next/server';
-import { withApiHandler } from '@/lib/api-handler';
-import { ForbiddenError } from '@/lib/api-errors';
-import { requireUser } from '@/lib/auth';
+import { NextRequest, NextResponse } from 'next/server';
+import { auth } from '@clerk/nextjs/server';
 import { db } from '@/lib/db';
 import { z } from 'zod';
 
@@ -14,11 +12,18 @@ const updatePrefsSchema = z.object({
   }),
 });
 
-export const GET = withApiHandler(async () => {
-  const user = await requireUser();
+export async function GET() {
+  const { userId: clerkId } = auth();
+  if (!clerkId) {
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  }
 
-  if (user.role !== 'PARENT' || !user.parent) {
-    throw new ForbiddenError('Parent profile not found');
+  const user = await db.user.findUnique({
+    where: { clerkUserId: clerkId },
+    include: { parent: true },
+  });
+  if (!user || user.role !== 'PARENT' || !user.parent) {
+    return NextResponse.json({ error: 'Parent profile not found' }, { status: 403 });
   }
 
   return NextResponse.json({
@@ -27,16 +32,29 @@ export const GET = withApiHandler(async () => {
       communicationPrefs: user.parent.communicationPrefs,
     },
   });
-}, { rateLimit: { windowMs: 60_000, max: 60 } });
+}
 
-export const PATCH = withApiHandler(async (req) => {
-  const user = await requireUser();
-
-  if (user.role !== 'PARENT' || !user.parent) {
-    throw new ForbiddenError('Parent profile not found');
+export async function PATCH(req: NextRequest) {
+  const { userId: clerkId } = auth();
+  if (!clerkId) {
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
 
-  const body = updatePrefsSchema.parse(await req.json());
+  const user = await db.user.findUnique({
+    where: { clerkUserId: clerkId },
+    include: { parent: true },
+  });
+  if (!user || user.role !== 'PARENT' || !user.parent) {
+    return NextResponse.json({ error: 'Parent profile not found' }, { status: 403 });
+  }
+
+  let body;
+  try {
+    body = updatePrefsSchema.parse(await req.json());
+  } catch (err) {
+    const message = err instanceof z.ZodError ? err.errors.map(e => e.message).join(', ') : 'Invalid request';
+    return NextResponse.json({ error: message }, { status: 400 });
+  }
 
   const updated = await db.parent.update({
     where: { id: user.parent.id },
@@ -44,4 +62,4 @@ export const PATCH = withApiHandler(async (req) => {
   });
 
   return NextResponse.json({ data: updated });
-}, { rateLimit: { windowMs: 60_000, max: 30 } });
+}

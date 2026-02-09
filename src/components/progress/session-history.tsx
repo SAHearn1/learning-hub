@@ -16,9 +16,9 @@ const SUBJECT_LABELS: Record<string, string> = {
 };
 
 const SUBJECT_DOT_COLORS: Record<string, string> = {
-  MATH: 'bg-subject-math',
-  SCIENCE: 'bg-subject-science',
-  LANGUAGE_ARTS: 'bg-subject-ela',
+  MATH: 'bg-blue-500',
+  SCIENCE: 'bg-emerald-500',
+  LANGUAGE_ARTS: 'bg-violet-500',
 };
 
 const PHASE_LABELS: Record<string, string> = {

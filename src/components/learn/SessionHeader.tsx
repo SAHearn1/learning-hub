@@ -64,10 +64,10 @@ export function SessionHeader({
               <div
                 className={`h-full rounded-full transition-all duration-500 ${
                   regulationLevel > 60
-                    ? 'bg-primary-500'
+                    ? 'bg-green-500'
                     : regulationLevel > 40
-                      ? 'bg-secondary-500'
-                      : 'bg-error-500'
+                      ? 'bg-yellow-500'
+                      : 'bg-red-500'
                 }`}
                 style={{ width: `${regulationLevel}%` }}
               />

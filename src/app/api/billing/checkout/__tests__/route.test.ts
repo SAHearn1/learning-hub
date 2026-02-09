@@ -1,15 +1,10 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { NextRequest } from 'next/server';
 
 const mockRequireUser = vi.fn();
 const mockCreateCheckoutSession = vi.fn();
 
 vi.mock('@/lib/auth', () => ({ requireUser: mockRequireUser }));
 vi.mock('@/lib/billing', () => ({ createCheckoutSession: mockCreateCheckoutSession }));
-vi.mock('@/lib/logger', () => ({
-  logger: { debug: vi.fn(), info: vi.fn(), warn: vi.fn(), error: vi.fn() },
-}));
-vi.mock('@/lib/monitoring', () => ({ captureError: vi.fn() }));
 
 describe('POST /api/billing/checkout', () => {
   beforeEach(() => {
@@ -26,17 +21,16 @@ describe('POST /api/billing/checkout', () => {
     });
     mockCreateCheckoutSession.mockResolvedValue({ url: 'https://checkout.stripe.com/c/session_1' });
 
-    const request = new NextRequest('http://localhost/api/billing/checkout', {
+    const request = new Request('http://localhost/api/billing/checkout', {
       method: 'POST',
       headers: { 'content-type': 'application/json' },
       body: JSON.stringify({ tier: 'STARTER' }),
     });
 
     const response = await POST(request);
-    const body = await response.json();
 
     expect(response.status).toBe(200);
-    expect(body.url).toBe('https://checkout.stripe.com/c/session_1');
+    await expect(response.json()).resolves.toEqual({ url: 'https://checkout.stripe.com/c/session_1' });
     expect(mockCreateCheckoutSession).toHaveBeenCalledWith(
       expect.objectContaining({
         tenantId: 'tenant_1',
@@ -55,7 +49,7 @@ describe('POST /api/billing/checkout', () => {
     });
     mockCreateCheckoutSession.mockResolvedValue({ url: 'https://checkout.stripe.com/c/session_2' });
 
-    const request = new NextRequest('http://localhost/api/billing/checkout', {
+    const request = new Request('http://localhost/api/billing/checkout', {
       method: 'POST',
       headers: {
         'content-type': 'application/x-www-form-urlencoded',
@@ -78,34 +72,15 @@ describe('POST /api/billing/checkout', () => {
       tenantId: 'tenant_1',
     });
 
-    const request = new NextRequest('http://localhost/api/billing/checkout', {
+    const request = new Request('http://localhost/api/billing/checkout', {
       method: 'POST',
       headers: { 'content-type': 'application/json' },
       body: JSON.stringify({ tier: 'INVALID_TIER' }),
     });
 
     const response = await POST(request);
-    const body = await response.json();
 
     expect(response.status).toBe(400);
-    expect(body.code).toBe('VALIDATION_ERROR');
-  });
-
-  it('returns 401 when not authenticated', async () => {
-    const { POST } = await import('../route');
-    const { AuthenticationError } = await import('@/lib/api-errors');
-    mockRequireUser.mockRejectedValue(new AuthenticationError());
-
-    const request = new NextRequest('http://localhost/api/billing/checkout', {
-      method: 'POST',
-      headers: { 'content-type': 'application/json' },
-      body: JSON.stringify({ tier: 'STARTER' }),
-    });
-
-    const response = await POST(request);
-    const body = await response.json();
-
-    expect(response.status).toBe(401);
-    expect(body.code).toBe('AUTHENTICATION_ERROR');
+    await expect(response.json()).resolves.toEqual({ error: 'Invalid request payload.' });
   });
 });

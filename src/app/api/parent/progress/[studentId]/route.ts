@@ -1,40 +1,50 @@
-import { NextResponse } from 'next/server';
-import { withApiHandler } from '@/lib/api-handler';
-import { ForbiddenError, NotFoundError } from '@/lib/api-errors';
-import { requireUser } from '@/lib/auth';
+import { NextRequest, NextResponse } from 'next/server';
+import { auth } from '@clerk/nextjs/server';
 import { db } from '@/lib/db';
 
 /**
  * GET /api/parent/progress/[studentId]
  * Retrieves a child's progress for a parent user
- *
+ * 
  * @param studentId - Student ID to view progress for
  * @returns Progress data including standards, reasoning moves, and recent sessions
- * @throws AuthenticationError if not authenticated
- * @throws ForbiddenError if not authorized (must be parent of this student)
- * @throws NotFoundError if student not found
+ * @throws 401 if not authenticated
+ * @throws 403 if not authorized (must be parent of this student)
+ * @throws 404 if student or parent not found
  */
-export const GET = withApiHandler(async (req, ctx) => {
-  const { studentId } = ctx.params;
-  const user = await requireUser();
-
-  if (user.role !== 'PARENT' || !user.parent) {
-    throw new ForbiddenError('Parent profile not found');
+export async function GET(
+  req: NextRequest,
+  { params }: { params: Promise<{ studentId: string }> }
+) {
+  const { studentId } = await params;
+  const { userId: clerkId } = auth();
+  
+  if (!clerkId) {
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
 
-  // Verify student exists
+  // Get parent user
+  const user = await db.user.findUnique({
+    where: { clerkUserId: clerkId },
+    include: { parent: true },
+  });
+
+  if (!user || user.role !== 'PARENT' || !user.parent) {
+    return NextResponse.json({ error: 'Parent profile not found' }, { status: 403 });
+  }
+
+  // Verify student is a child of this parent
   const student = await db.student.findUnique({
     where: { id: studentId },
     include: { user: true },
   });
 
   if (!student) {
-    throw new NotFoundError('Student not found');
+    return NextResponse.json({ error: 'Student not found' }, { status: 404 });
   }
 
-  // Verify student is a child of this parent
   if (!user.parent.childrenIds.includes(student.userId)) {
-    throw new ForbiddenError('Not authorized to view this student\'s progress');
+    return NextResponse.json({ error: 'Not authorized to view this student\'s progress' }, { status: 403 });
   }
 
   // Get subject filter if provided
@@ -69,13 +79,13 @@ export const GET = withApiHandler(async (req, ctx) => {
     where: { studentId },
     orderBy: { startedAt: 'desc' },
     take: 10,
-    include: {
-      _count: {
-        select: {
-          messages: true,
-          assessments: true,
-        },
-      },
+    include: { 
+      _count: { 
+        select: { 
+          messages: true, 
+          assessments: true 
+        } 
+      } 
     },
   });
 
@@ -98,4 +108,4 @@ export const GET = withApiHandler(async (req, ctx) => {
       recentSessions,
     },
   });
-}, { rateLimit: { windowMs: 60_000, max: 60 } });
+}
