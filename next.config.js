@@ -21,16 +21,24 @@ const nextConfig = {
       },
     ];
 
-    // Exclude server-only dependencies from client bundle
+    // Exclude server-only files and dependencies from client bundle
     if (!isServer) {
-      config.resolve.alias = {
-        ...config.resolve.alias,
-        // Make server-only modules resolve to empty object on client
-        'dd-trace': false,
-        '@datadog/libdatadog': false,
-        '@datadog/openfeature-node-server': false,
-        '@openfeature/server-sdk': false,
-      };
+      // Ignore server-only modules during client build
+      config.plugins.push(
+        new (require('webpack').IgnorePlugin)({
+          resourceRegExp: /^dd-trace$/,
+        })
+      );
+      config.plugins.push(
+        new (require('webpack').IgnorePlugin)({
+          resourceRegExp: /^@datadog\//,
+        })
+      );
+      config.plugins.push(
+        new (require('webpack').IgnorePlugin)({
+          resourceRegExp: /^@openfeature\/server-sdk$/,
+        })
+      );
     }
 
     return config;
