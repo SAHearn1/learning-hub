@@ -8,13 +8,14 @@ const requestSchema = z.object({
   reason: z.string().min(3).max(280).optional(),
 });
 
-export async function PATCH(request: Request, { params }: { params: { tenantId: string } }) {
+export async function PATCH(request: Request, { params }: { params: Promise<{ tenantId: string }> }) {
   try {
     const actor = await requireRole(['PLATFORM_ADMIN']);
     const body = requestSchema.parse(await request.json());
+    const { tenantId } = await params;
 
     const tenant = await setTenantSuspension({
-      tenantId: params.tenantId,
+      tenantId,
       actorUserId: actor.id,
       suspend: body.suspend,
       reason: body.reason,
