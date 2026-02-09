@@ -165,6 +165,8 @@ model Student {
   progress            Progress[]
   enrollments         ClassEnrollment[]
   thinkingProgress    ReasoningMoveProgress[]
+  abilityEstimates    StudentAbility[]
+  reviewSchedules     ReviewSchedule[]
   createdAt           DateTime                @default(now())
   updatedAt           DateTime                @updatedAt
 }
@@ -223,6 +225,157 @@ enum AccommodationType {
 }
 
 // ═══════════════════════════════════════════════════════════════
+// ITEM RESPONSE THEORY (IRT) MODELS
+// ═══════════════════════════════════════════════════════════════
+
+model ItemCalibration {
+  id                String      @id @default(cuid())
+  assessmentId      String?     @unique
+  assessment        Assessment? @relation(fields: [assessmentId], references: [id])
+  problemId         String?     @unique
+  problem           Problem?    @relation(fields: [problemId], references: [id])
+  itemType          ItemType    @default(ASSESSMENT)
+  irtDifficulty     Float // b parameter (-3 to +3 logit scale)
+  irtDiscrimination Float       @default(1.0) // a parameter (0 to 2.5+)
+  irtGuessing       Float       @default(0.0) // c parameter for 3PL (0 to 0.5)
+  calibrationModel  IRTModel    @default(TWO_PL)
+  sampleSize        Int         @default(0) // responses used for calibration
+  standardError     Float?
+  itemInformation   Float? // peak information value
+  reliabilityIndex  Float? // 0 to 1
+  lastCalibratedAt  DateTime?
+  createdAt         DateTime    @default(now())
+  updatedAt         DateTime    @updatedAt
+
+  @@index([irtDifficulty])
+  @@index([itemType])
+}
+
+enum ItemType {
+  ASSESSMENT
+  PROBLEM
+}
+
+enum IRTModel {
+  ONE_PL // Rasch model
+  TWO_PL // 2-parameter logistic
+  THREE_PL // 3-parameter logistic
+}
+
+model StudentAbility {
+  id                      String   @id @default(cuid())
+  studentId               String
+  student                 Student  @relation(fields: [studentId], references: [id])
+  subject                 Subject
+  currentTheta            Float // ability estimate (-3 to +3 logit scale)
+  standardError           Float
+  confidenceIntervalLower Float
+  confidenceIntervalUpper Float
+  reliabilityIndex        Float // 0 to 1
+  assessmentCount         Int      @default(0)
+  lastEstimatedAt         DateTime @default(now())
+  createdAt               DateTime @default(now())
+  updatedAt               DateTime @updatedAt
+
+  @@unique([studentId, subject])
+  @@index([studentId])
+  @@index([subject])
+}
+
+model ResponseData {
+  id                   String     @id @default(cuid())
+  assessmentId         String
+  assessment           Assessment @relation(fields: [assessmentId], references: [id])
+  studentId            String
+  itemCalibrationId    String?
+  isCorrect            Boolean
+  responseTime         Int? // milliseconds
+  probabilityPredicted Float? // from ICC
+  residual             Float? // observed - predicted
+  studentTheta         Float? // theta at time of response
+  createdAt            DateTime   @default(now())
+
+  @@index([assessmentId])
+  @@index([studentId])
+  @@index([itemCalibrationId])
+}
+
+// ═══════════════════════════════════════════════════════════════
+// SPACED REPETITION SYSTEM (SRS) MODELS - FSRS Algorithm
+// ═══════════════════════════════════════════════════════════════
+
+model ReviewSchedule {
+  id             String          @id @default(cuid())
+  studentId      String
+  student        Student         @relation(fields: [studentId], references: [id])
+  conceptType    ConceptType
+  standardId     String?
+  standard       Standard?       @relation(fields: [standardId], references: [id])
+  topicId        String?
+  topic          Topic?          @relation(fields: [topicId], references: [id])
+  problemId      String?
+  problem        Problem?        @relation(fields: [problemId], references: [id])
+  state          ReviewState     @default(NEW)
+  stability      Float           @default(0.0) // FSRS: memory stability (days)
+  difficulty     Float           @default(5.0) // FSRS: item difficulty (0-10)
+  elapsedDays    Int             @default(0)
+  scheduledDays  Int             @default(0)
+  dueDate        DateTime
+  lastReviewDate DateTime?
+  lapses         Int             @default(0) // times forgotten
+  reps           Int             @default(0) // total reviews
+  createdAt      DateTime        @default(now())
+  updatedAt      DateTime        @updatedAt
+  reviewHistory  ReviewHistory[]
+
+  @@unique([studentId, conceptType, standardId, topicId, problemId])
+  @@index([studentId])
+  @@index([studentId, dueDate])
+  @@index([dueDate])
+  @@index([state])
+}
+
+enum ConceptType {
+  STANDARD
+  TOPIC
+  PROBLEM
+}
+
+enum ReviewState {
+  NEW // Never reviewed
+  LEARNING // In initial learning phase
+  REVIEW // In review phase
+  RELEARNING // Forgotten, being relearned
+}
+
+model ReviewHistory {
+  id                 String         @id @default(cuid())
+  scheduleId         String
+  schedule           ReviewSchedule @relation(fields: [scheduleId], references: [id], onDelete: Cascade)
+  rating             ReviewRating
+  state              ReviewState
+  reviewedAt         DateTime       @default(now())
+  elapsedDays        Int
+  scheduledDays      Int
+  previousStability  Float
+  newStability       Float
+  previousDifficulty Float
+  newDifficulty      Float
+  responseTime       Int? // milliseconds
+  createdAt          DateTime       @default(now())
+
+  @@index([scheduleId])
+  @@index([reviewedAt])
+}
+
+enum ReviewRating {
+  AGAIN // Completely forgot (1)
+  HARD // Remembered with difficulty (2)
+  GOOD // Remembered correctly (3)
+  EASY // Remembered easily (4)
+}
+
+// ═══════════════════════════════════════════════════════════════
 // SESSION & MESSAGE MODELS
 // ═══════════════════════════════════════════════════════════════
 
@@ -247,13 +400,13 @@ model Session {
 }
 
 model Message {
-  id                   String                 @id @default(cuid())
-  sessionId            String
-  session              Session                @relation(fields: [sessionId], references: [id])
-  role                 MessageRole
-  content              String                 @db.Text
-  metadata             Json?
-  createdAt            DateTime               @default(now())
+  id                    String                 @id @default(cuid())
+  sessionId             String
+  session               Session                @relation(fields: [sessionId], references: [id])
+  role                  MessageRole
+  content               String                 @db.Text
+  metadata              Json?
+  createdAt             DateTime               @default(now())
   nvcQualityEvaluations NVCQualityEvaluation[]
 }
 
@@ -282,21 +435,23 @@ enum FiveRPhase {
 // ═══════════════════════════════════════════════════════════════
 
 model Assessment {
-  id              String         @id @default(cuid())
+  id              String           @id @default(cuid())
   sessionId       String
-  session         Session        @relation(fields: [sessionId], references: [id])
+  session         Session          @relation(fields: [sessionId], references: [id])
   standardId      String?
-  standard        Standard?      @relation(fields: [standardId], references: [id])
+  standard        Standard?        @relation(fields: [standardId], references: [id])
   type            AssessmentType
   bloomsLevel     BloomsLevel
   difficulty      Int
-  question        String         @db.Text
-  studentResponse String?        @db.Text
+  question        String           @db.Text
+  studentResponse String?          @db.Text
   isCorrect       Boolean?
   score           Float?
-  feedback        String?        @db.Text
+  feedback        String?          @db.Text
   metadata        Json?
-  createdAt       DateTime       @default(now())
+  itemCalibration ItemCalibration?
+  responseData    ResponseData[]
+  createdAt       DateTime         @default(now())
 }
 
 enum AssessmentType {
@@ -422,23 +577,24 @@ enum ReasoningMove {
 // ═══════════════════════════════════════════════════════════════
 
 model Standard {
-  id            String            @id @default(cuid())
-  code          String            @unique
-  framework     StandardFramework
-  subject       Subject
-  gradeLevel    Int[]
-  domain        String
-  cluster       String
-  description   String            @db.Text
-  fullText      String            @db.Text
-  prerequisites Standard[]        @relation("Prerequisites")
-  dependents    Standard[]        @relation("Prerequisites")
-  topics        Topic[]
-  assessments   Assessment[]
-  progress      Progress[]
-  embedding     Bytes?
-  createdAt     DateTime          @default(now())
-  updatedAt     DateTime          @updatedAt
+  id              String            @id @default(cuid())
+  code            String            @unique
+  framework       StandardFramework
+  subject         Subject
+  gradeLevel      Int[]
+  domain          String
+  cluster         String
+  description     String            @db.Text
+  fullText        String            @db.Text
+  prerequisites   Standard[]        @relation("Prerequisites")
+  dependents      Standard[]        @relation("Prerequisites")
+  topics          Topic[]
+  assessments     Assessment[]
+  progress        Progress[]
+  reviewSchedules ReviewSchedule[]
+  embedding       Bytes?
+  createdAt       DateTime          @default(now())
+  updatedAt       DateTime          @updatedAt
 }
 
 enum StandardFramework {
@@ -458,6 +614,7 @@ model Topic {
   dependents              Topic[]             @relation("TopicPrerequisites")
   learningObjectives      LearningObjective[]
   problems                Problem[]
+  reviewSchedules         ReviewSchedule[]
   conceptualUnderstanding String              @db.Text
   commonMisconceptions    String[]
   realWorldConnections    String[]
@@ -478,22 +635,24 @@ model LearningObjective {
 }
 
 model Problem {
-  id            String      @id @default(cuid())
-  topicId       String
-  topic         Topic       @relation(fields: [topicId], references: [id])
-  stem          String      @db.Text
-  scaffold      Json
-  solutionPaths Json
-  commonErrors  Json
-  rubric        Json
-  gardenContext String?     @db.Text
-  difficulty    Int
-  bloomsLevel   BloomsLevel
-  type          ProblemType
-  validated     Boolean     @default(false)
-  embedding     Bytes?
-  createdAt     DateTime    @default(now())
-  updatedAt     DateTime    @updatedAt
+  id              String           @id @default(cuid())
+  topicId         String
+  topic           Topic            @relation(fields: [topicId], references: [id])
+  stem            String           @db.Text
+  scaffold        Json
+  solutionPaths   Json
+  commonErrors    Json
+  rubric          Json
+  gardenContext   String?          @db.Text
+  difficulty      Int
+  bloomsLevel     BloomsLevel
+  type            ProblemType
+  validated       Boolean          @default(false)
+  itemCalibration ItemCalibration?
+  reviewSchedules ReviewSchedule[]
+  embedding       Bytes?
+  createdAt       DateTime         @default(now())
+  updatedAt       DateTime         @updatedAt
 }
 
 enum ProblemType {
@@ -580,17 +739,17 @@ model AuditLog {
 // ═══════════════════════════════════════════════════════════════
 
 model IngestLog {
-  id               String       @id @default(cuid())
-  timestamp        DateTime     @default(now())
-  status           IngestStatus
-  source           IngestSource
-  payload          Json?
-  errorMessage     String?      @db.Text
-  processedFiles   Int          @default(0)
-  durationMs       Int?
-  metadata         Json?
-  createdAt        DateTime     @default(now())
-  updatedAt        DateTime     @updatedAt
+  id             String       @id @default(cuid())
+  timestamp      DateTime     @default(now())
+  status         IngestStatus
+  source         IngestSource
+  payload        Json?
+  errorMessage   String?      @db.Text
+  processedFiles Int          @default(0)
+  durationMs     Int?
+  metadata       Json?
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
 
   @@index([timestamp])
   @@index([status])
@@ -616,38 +775,38 @@ enum IngestSource {
 // ═══════════════════════════════════════════════════════════════
 
 model NVCQualityEvaluation {
-  id                 String         @id @default(cuid())
-  messageId          String
-  message            Message        @relation(fields: [messageId], references: [id])
-  sessionId          String
-  tenantId           String
-  evaluatedAt        DateTime       @default(now())
+  id          String   @id @default(cuid())
+  messageId   String
+  message     Message  @relation(fields: [messageId], references: [id])
+  sessionId   String
+  tenantId    String
+  evaluatedAt DateTime @default(now())
 
   // Evaluation results
-  isCompliant        Boolean
-  nvcScore           Float          // 0-100 score
-  concerns           NVCConcern[]
+  isCompliant Boolean
+  nvcScore    Float // 0-100 score
+  concerns    NVCConcern[]
 
   // Detailed analysis
   judgmentalPhrases  String[]
   dismissivePhrases  String[]
-  suggestedRevisions String[]       @db.Text
+  suggestedRevisions String[] @db.Text
 
   // LLM analysis metadata
-  rawAnalysis        String         @db.Text
-  llmModel           String
-  llmTokens          Int
-  llmLatencyMs       Int
+  rawAnalysis  String @db.Text
+  llmModel     String
+  llmTokens    Int
+  llmLatencyMs Int
 
   // Review status
-  reviewStatus       ReviewStatus   @default(PENDING)
-  reviewedBy         String?
-  reviewedAt         DateTime?
-  reviewNotes        String?        @db.Text
+  reviewStatus ReviewStatus @default(PENDING)
+  reviewedBy   String?
+  reviewedAt   DateTime?
+  reviewNotes  String?      @db.Text
 
   // Admin actions
-  adminAction        AdminAction?
-  actionTakenAt      DateTime?
+  adminAction   AdminAction?
+  actionTakenAt DateTime?
 
   @@index([messageId])
   @@index([sessionId])

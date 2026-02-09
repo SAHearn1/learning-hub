@@ -4,6 +4,9 @@ section: "Grade Bands"
 source_path: "05-grade-bands/6-8/part-3.md"
 document_type: "curriculum"
 subsection: "6-8"
+phase: "Reflect"
+framework_question: "What am I thinking, and why?"
+duration: "20-35 minutes"
 ---
 # 6-8 Reflect Phase: Full TRACE Implementation
 

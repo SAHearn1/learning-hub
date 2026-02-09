@@ -48,7 +48,21 @@ export async function POST(req: NextRequest) {
       currentPhase: 'ROOT',
       engagementMode: body.engagementMode,
       regulationState: { level: 70, signals: [], interventionCount: 0 },
-      metadata: {},
+      metadata: {
+        fiveRState: {
+          currentPhase: 'ROOT',
+          phaseHistory: [
+            {
+              phase: 'ROOT',
+              timestamp: new Date().toISOString(),
+              reason: 'Session initialized at Root phase.',
+            },
+          ],
+          sentiment: { label: 'neutral', score: 0 },
+          regulationPassed: true,
+          updatedAt: new Date().toISOString(),
+        },
+      },
     },
   });
 

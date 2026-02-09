@@ -18,9 +18,21 @@ export async function GET(req: NextRequest) {
   const pageSize = Math.min(parseInt(req.nextUrl.searchParams.get('pageSize') ?? '30', 10), 100);
   const skip = (page - 1) * pageSize;
 
-  const whereClause = classId
-    ? { enrollments: { some: { classId } } }
-    : { user: { tenantId: user.tenantId } };
+  if (classId) {
+    const targetClass = await db.class.findUnique({
+      where: { id: classId },
+      select: { tenantId: true },
+    });
+
+    if (!targetClass || targetClass.tenantId !== user.tenantId) {
+      return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+    }
+  }
+
+  const whereClause = {
+    user: { tenantId: user.tenantId },
+    ...(classId ? { enrollments: { some: { classId } } } : {}),
+  };
 
   const [students, total] = await Promise.all([
     db.student.findMany({

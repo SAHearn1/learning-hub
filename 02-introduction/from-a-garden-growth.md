@@ -3,6 +3,7 @@ title: "Introduction: From a Garden to Growth"
 section: "Introduction"
 source_path: "02-introduction/from-a-garden-growth.md"
 document_type: "curriculum"
+subsection: "origin-story"
 ---
 # Introduction: From a Garden to Growth
 

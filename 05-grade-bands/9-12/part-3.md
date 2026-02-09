@@ -4,6 +4,9 @@ section: "Grade Bands"
 source_path: "05-grade-bands/9-12/part-3.md"
 document_type: "curriculum"
 subsection: "9-12"
+phase: "Reflect"
+framework_question: "What am I thinking, and why?"
+duration: "15-25 minutes"
 ---
 # 9-12 Reflect Phase: Advanced Reasoning and Problem Posing
 

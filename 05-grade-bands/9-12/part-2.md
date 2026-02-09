@@ -4,6 +4,9 @@ section: "Grade Bands"
 source_path: "05-grade-bands/9-12/part-2.md"
 document_type: "curriculum"
 subsection: "9-12"
+phase: "Regulate"
+framework_question: "Can I return to my window of tolerance?"
+duration: "2-5 minutes"
 ---
 # 9-12 Regulate Phase: Proactive Self-Regulation
 
