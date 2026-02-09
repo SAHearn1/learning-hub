@@ -251,8 +251,7 @@ async function main() {
     update: {},
     create: {
       userId: parentUser.id,
-      relationshipType: 'PARENT',
-      communicationPreferences: {
+      communicationPrefs: {
         email: true,
         sms: false,
         weeklyReports: true,
