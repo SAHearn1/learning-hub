@@ -18,7 +18,7 @@ const nextConfig = {
       bodySizeLimit: "2mb",
     },
   },
-  webpack: (config, { isServer }) => {
+  webpack: (config, { isServer, nextRuntime }) => {
     config.ignoreWarnings = [
       ...(config.ignoreWarnings ?? []),
       {

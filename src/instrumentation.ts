@@ -11,8 +11,8 @@ export async function register() {
     return;
   }
 
-  // Datadog APM — must initialise before other imports
-  if (process.env.DD_API_KEY) {
+  // Datadog APM only works in the Node.js runtime.
+  if (process.env.DD_API_KEY && process.env.NEXT_RUNTIME === 'nodejs') {
     const { initDatadog } = await import('@/lib/datadog');
     initDatadog();
   }
