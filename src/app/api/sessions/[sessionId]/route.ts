@@ -1,9 +1,7 @@
-import { NextResponse } from 'next/server';
+import { NextRequest, NextResponse } from 'next/server';
 import { auth } from '@clerk/nextjs/server';
 import { db } from '@/lib/db';
 import { z } from 'zod';
-import { withApiHandler } from '@/lib/api-handler';
-import { AuthenticationError, ForbiddenError, NotFoundError } from '@/lib/api-errors';
 
 const updateSessionSchema = z.object({
   currentPhase: z.enum(['ROOT', 'REGULATE', 'REFLECT', 'RESTORE', 'RECONNECT']).optional(),
@@ -18,11 +16,14 @@ const updateSessionSchema = z.object({
   endedAt: z.string().optional(),
 });
 
-export const GET = withApiHandler(async (_req, ctx) => {
-  const { sessionId } = ctx.params;
+export async function GET(
+  _req: NextRequest,
+  { params }: { params: Promise<{ sessionId: string }> },
+) {
+  const { sessionId } = await params;
   const { userId: clerkId } = auth();
   if (!clerkId) {
-    throw new AuthenticationError();
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
 
   const session = await db.session.findUnique({
@@ -35,49 +36,58 @@ export const GET = withApiHandler(async (_req, ctx) => {
   });
 
   if (!session) {
-    throw new NotFoundError('Session not found');
+    return NextResponse.json({ error: 'Session not found' }, { status: 404 });
   }
 
   const user = await db.user.findUnique({ where: { clerkUserId: clerkId } });
   if (!user) {
-    throw new ForbiddenError();
+    return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
   }
   if (user.role === 'STUDENT' && session.student.userId !== user.id) {
-    throw new ForbiddenError();
+    return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
   }
   if (user.role !== 'STUDENT' && session.tenantId !== user.tenantId) {
-    throw new ForbiddenError();
+    return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
   }
 
   return NextResponse.json({ data: session });
-}, { rateLimit: { windowMs: 60_000, max: 60 } });
+}
 
-export const PATCH = withApiHandler(async (req, ctx) => {
-  const { sessionId } = ctx.params;
+export async function PATCH(
+  req: NextRequest,
+  { params }: { params: Promise<{ sessionId: string }> },
+) {
+  const { sessionId } = await params;
   const { userId: clerkId } = auth();
   if (!clerkId) {
-    throw new AuthenticationError();
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
 
-  const body = updateSessionSchema.parse(await req.json());
+  let body;
+  try {
+    body = updateSessionSchema.parse(await req.json());
+  } catch (err) {
+    const message = err instanceof z.ZodError ? err.errors.map(e => e.message).join(', ') : 'Invalid request';
+    return NextResponse.json({ error: message }, { status: 400 });
+  }
 
   const session = await db.session.findUnique({
     where: { id: sessionId },
     include: { student: true },
   });
   if (!session) {
-    throw new NotFoundError('Session not found');
+    return NextResponse.json({ error: 'Session not found' }, { status: 404 });
   }
 
   const user = await db.user.findUnique({ where: { clerkUserId: clerkId } });
   if (!user) {
-    throw new ForbiddenError();
+    return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
   }
   if (user.role === 'STUDENT' && session.student.userId !== user.id) {
-    throw new ForbiddenError();
+    return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
   }
   if (user.role !== 'STUDENT' && session.tenantId !== user.tenantId) {
-    throw new ForbiddenError();
+    return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
   }
 
   const updateData: Record<string, unknown> = {};
@@ -94,23 +104,26 @@ export const PATCH = withApiHandler(async (req, ctx) => {
   });
 
   return NextResponse.json({ data: updated });
-}, { rateLimit: { windowMs: 60_000, max: 30 } });
+}
 
 /**
  * DELETE /api/sessions/[sessionId]
  * Ends a tutoring session (soft delete via endedAt timestamp)
- *
+ * 
  * @param sessionId - Session ID
  * @returns Confirmation with updated session
  * @throws 401 if not authenticated
  * @throws 403 if not authorized to end session
  * @throws 404 if session not found
  */
-export const DELETE = withApiHandler(async (_req, ctx) => {
-  const { sessionId } = ctx.params;
+export async function DELETE(
+  _req: NextRequest,
+  { params }: { params: Promise<{ sessionId: string }> },
+) {
+  const { sessionId } = await params;
   const { userId: clerkId } = auth();
   if (!clerkId) {
-    throw new AuthenticationError();
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
 
   const session = await db.session.findUnique({
@@ -118,18 +131,18 @@ export const DELETE = withApiHandler(async (_req, ctx) => {
     include: { student: true },
   });
   if (!session) {
-    throw new NotFoundError('Session not found');
+    return NextResponse.json({ error: 'Session not found' }, { status: 404 });
   }
 
   const user = await db.user.findUnique({ where: { clerkUserId: clerkId } });
   if (!user) {
-    throw new ForbiddenError();
+    return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
   }
   if (user.role === 'STUDENT' && session.student.userId !== user.id) {
-    throw new ForbiddenError();
+    return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
   }
   if (user.role !== 'STUDENT' && session.tenantId !== user.tenantId) {
-    throw new ForbiddenError();
+    return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
   }
 
   // Soft delete: set endedAt timestamp
@@ -138,8 +151,8 @@ export const DELETE = withApiHandler(async (_req, ctx) => {
     data: { endedAt: new Date() },
   });
 
-  return NextResponse.json({
+  return NextResponse.json({ 
     data: updated,
     message: 'Session ended successfully',
   });
-}, { rateLimit: { windowMs: 60_000, max: 30 } });
+}

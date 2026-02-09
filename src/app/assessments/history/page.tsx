@@ -1,26 +1,19 @@
-'use client';
-
 import { AssessmentHistory } from '@/components/assessments/AssessmentHistory';
-import { EducatorReviewQueue } from '@/components/assessments/EducatorReviewQueue';
-import { useAssessmentContext } from '@/hooks/useAssessmentContext';
 
 export default function AssessmentHistoryPage() {
-  const { context, loading } = useAssessmentContext();
+  // In a real app, this would come from the session/auth context
+  const mockStudentId = 'student-123';
 
   return (
-    <div className="container mx-auto max-w-6xl px-4 py-8">
+    <div className="container mx-auto py-8 px-4 max-w-6xl">
       <div className="mb-8">
-        <h1 className="mb-2 text-3xl font-bold">Assessment History</h1>
+        <h1 className="text-3xl font-bold mb-2">Assessment History</h1>
         <p className="text-muted-foreground">
-          Review past assessments, scoring rubrics, and educator feedback workflows.
+          Review your past assessments and track your learning progress over time.
         </p>
       </div>
 
-      {loading ? <p className="text-sm text-muted-foreground">Loading assessment records...</p> : null}
-      {context?.studentId ? <AssessmentHistory studentId={context.studentId} /> : null}
-      <div className="mt-6">
-        <EducatorReviewQueue />
-      </div>
+      <AssessmentHistory studentId={mockStudentId} />
     </div>
   );
 }

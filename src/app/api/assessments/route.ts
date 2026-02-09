@@ -1,14 +1,7 @@
-import { NextResponse } from 'next/server';
+import { NextRequest, NextResponse } from 'next/server';
 import { auth } from '@clerk/nextjs/server';
 import { db } from '@/lib/db';
 import { z } from 'zod';
-import { withApiHandler } from '@/lib/api-handler';
-import {
-  AuthenticationError,
-  ForbiddenError,
-  NotFoundError,
-  ValidationError,
-} from '@/lib/api-errors';
 
 const submitAssessmentSchema = z.object({
   sessionId: z.string().min(1),
@@ -23,31 +16,37 @@ const submitAssessmentSchema = z.object({
   feedback: z.string().optional(),
 });
 
-export const POST = withApiHandler(async (req) => {
+export async function POST(req: NextRequest) {
   const { userId: clerkId } = auth();
   if (!clerkId) {
-    throw new AuthenticationError();
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
 
-  const body = submitAssessmentSchema.parse(await req.json());
+  let body;
+  try {
+    body = submitAssessmentSchema.parse(await req.json());
+  } catch (err) {
+    const message = err instanceof z.ZodError ? err.errors.map(e => e.message).join(', ') : 'Invalid request';
+    return NextResponse.json({ error: message }, { status: 400 });
+  }
 
   const session = await db.session.findUnique({
     where: { id: body.sessionId },
     include: { student: true },
   });
   if (!session) {
-    throw new NotFoundError('Session not found');
+    return NextResponse.json({ error: 'Session not found' }, { status: 404 });
   }
 
   const user = await db.user.findUnique({ where: { clerkUserId: clerkId } });
   if (!user) {
-    throw new ForbiddenError();
+    return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
   }
   if (user.role === 'STUDENT' && session.student.userId !== user.id) {
-    throw new ForbiddenError();
+    return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
   }
   if (user.role !== 'STUDENT' && session.tenantId !== user.tenantId) {
-    throw new ForbiddenError();
+    return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
   }
 
   const assessment = await db.assessment.create({
@@ -98,17 +97,17 @@ export const POST = withApiHandler(async (req) => {
   }
 
   return NextResponse.json({ data: assessment }, { status: 201 });
-}, { rateLimit: { windowMs: 60_000, max: 30 } });
+}
 
-export const GET = withApiHandler(async (req) => {
+export async function GET(req: NextRequest) {
   const { userId: clerkId } = auth();
   if (!clerkId) {
-    throw new AuthenticationError();
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
 
   const sessionId = req.nextUrl.searchParams.get('sessionId');
   if (!sessionId) {
-    throw new ValidationError('sessionId required');
+    return NextResponse.json({ error: 'sessionId required' }, { status: 400 });
   }
 
   const session = await db.session.findUnique({
@@ -116,18 +115,18 @@ export const GET = withApiHandler(async (req) => {
     include: { student: true },
   });
   if (!session) {
-    throw new NotFoundError('Session not found');
+    return NextResponse.json({ error: 'Session not found' }, { status: 404 });
   }
 
   const user = await db.user.findUnique({ where: { clerkUserId: clerkId } });
   if (!user) {
-    throw new ForbiddenError();
+    return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
   }
   if (user.role === 'STUDENT' && session.student.userId !== user.id) {
-    throw new ForbiddenError();
+    return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
   }
   if (user.role !== 'STUDENT' && session.tenantId !== user.tenantId) {
-    throw new ForbiddenError();
+    return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
   }
 
   const assessments = await db.assessment.findMany({
@@ -136,4 +135,4 @@ export const GET = withApiHandler(async (req) => {
   });
 
   return NextResponse.json({ data: assessments });
-}, { rateLimit: { windowMs: 60_000, max: 60 } });
+}

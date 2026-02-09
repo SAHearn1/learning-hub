@@ -1,7 +1,8 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { Button } from '@/components/ui/button';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { BRAND } from '@/brand/brand';
 
 type Subject = 'MATH' | 'SCIENCE' | 'LANGUAGE_ARTS';
@@ -12,14 +13,6 @@ interface SessionSetupProps {
   isLoading: boolean;
   startError?: string | null;
   onClearError?: () => void;
-}
-
-interface RecentSession {
-  id: string;
-  subject: Subject;
-  engagementMode: EngagementMode;
-  startedAt: string;
-  endedAt: string | null;
 }
 
 const SUBJECT_DETAILS: Record<Subject, { name: string; color: string; description: string }> = {
@@ -80,31 +73,6 @@ function formatRelativeTime(dateStr: string): string {
 export function SessionSetup({ onStart, isLoading, startError, onClearError }: SessionSetupProps) {
   const [selectedSubject, setSelectedSubject] = useState<Subject | null>(null);
   const [selectedMode, setSelectedMode] = useState<EngagementMode>('FORWARD');
-  const [recentSessions, setRecentSessions] = useState<RecentSession[]>([]);
-  const [historyLoading, setHistoryLoading] = useState(true);
-
-  useEffect(() => {
-    let cancelled = false;
-    async function fetchHistory() {
-      try {
-        const response = await fetch('/api/sessions?page=1&pageSize=5');
-        if (response.ok) {
-          const { data } = await response.json();
-          if (!cancelled && Array.isArray(data)) {
-            setRecentSessions(
-              data.filter((s: RecentSession) => s.endedAt !== null).slice(0, 5)
-            );
-          }
-        }
-      } catch {
-        // Silently handle fetch failure
-      } finally {
-        if (!cancelled) setHistoryLoading(false);
-      }
-    }
-    fetchHistory();
-    return () => { cancelled = true; };
-  }, []);
 
   return (
     <div className="mx-auto max-w-3xl space-y-8">

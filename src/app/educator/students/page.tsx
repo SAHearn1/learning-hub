@@ -50,9 +50,9 @@ export default function EducatorStudentsPage() {
         <h1 className="text-3xl font-bold text-neutral-900">Student roster management</h1>
         <p className="mt-2 text-neutral-700">Track enrollment, support tiers, attendance, and IEP accommodations from one workspace.</p>
         <div className="mt-4 flex flex-wrap gap-3 text-sm">
-          <span className="rounded-full bg-primary-50 px-4 py-2 text-primary-700">Total students: {students.length}</span>
-          <span className="rounded-full bg-secondary-50 px-4 py-2 text-secondary-700">Students with IEPs: {iepCount}</span>
-          <span className="rounded-full bg-primary-50 px-4 py-2 text-primary-700">
+          <span className="rounded-full bg-blue-50 px-4 py-2 text-blue-700">Total students: {students.length}</span>
+          <span className="rounded-full bg-violet-50 px-4 py-2 text-violet-700">Students with IEPs: {iepCount}</span>
+          <span className="rounded-full bg-emerald-50 px-4 py-2 text-emerald-700">
             Avg attendance: {Math.round(students.reduce((sum, s) => sum + s.attendance, 0) / (students.length || 1))}%
           </span>
         </div>
@@ -95,7 +95,7 @@ export default function EducatorStudentsPage() {
                 {visibleStudents.map((student) => (
                   <tr
                     key={student.id}
-                    className={`cursor-pointer border-t border-neutral-100 ${selectedId === student.id ? 'bg-primary-50/60' : ''}`}
+                    className={`cursor-pointer border-t border-neutral-100 ${selectedId === student.id ? 'bg-blue-50/60' : ''}`}
                     onClick={() => setSelectedId(student.id)}
                   >
                     <td className="py-3 font-medium text-neutral-800">{student.name}</td>

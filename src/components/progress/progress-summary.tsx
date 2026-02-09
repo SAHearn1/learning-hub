@@ -6,7 +6,6 @@ interface SummaryStats {
   masteredCount: number;
   inProgressCount: number;
   totalSessions: number;
-  streak: number;
 }
 
 function StatCard({ label, value, detail }: { label: string; value: string | number; detail?: string }) {
@@ -28,7 +27,7 @@ export function ProgressSummary({ summary }: { summary: SummaryStats }) {
     'Not started';
 
   return (
-    <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
+    <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
       <StatCard
         label="Average Mastery"
         value={`${summary.averageMastery}%`}
@@ -47,11 +46,6 @@ export function ProgressSummary({ summary }: { summary: SummaryStats }) {
       <StatCard
         label="Total Sessions"
         value={summary.totalSessions}
-      />
-      <StatCard
-        label="Current Streak"
-        value={`${summary.streak} day${summary.streak !== 1 ? 's' : ''}`}
-        detail={summary.streak > 0 ? 'consecutive days active' : 'start a session today!'}
       />
     </div>
   );

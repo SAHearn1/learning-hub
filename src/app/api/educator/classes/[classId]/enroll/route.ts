@@ -1,36 +1,43 @@
-import { NextResponse } from 'next/server';
+import { NextRequest, NextResponse } from 'next/server';
 import { auth } from '@clerk/nextjs/server';
 import { db } from '@/lib/db';
 import { z } from 'zod';
-import { withApiHandler } from '@/lib/api-handler';
-import { AuthenticationError, ForbiddenError, NotFoundError } from '@/lib/api-errors';
 
 const enrollSchema = z.object({
   studentId: z.string().min(1),
 });
 
-export const POST = withApiHandler(async (req, ctx) => {
-  const { classId } = ctx.params;
+export async function POST(
+  req: NextRequest,
+  { params }: { params: Promise<{ classId: string }> },
+) {
+  const { classId } = await params;
   const { userId: clerkId } = auth();
   if (!clerkId) {
-    throw new AuthenticationError();
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
 
   const user = await db.user.findUnique({ where: { clerkUserId: clerkId } });
   if (!user || !['EDUCATOR', 'SCHOOL_ADMIN', 'DISTRICT_ADMIN'].includes(user.role)) {
-    throw new ForbiddenError();
+    return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
   }
 
-  const body = enrollSchema.parse(await req.json());
+  let body;
+  try {
+    body = enrollSchema.parse(await req.json());
+  } catch (err) {
+    const message = err instanceof z.ZodError ? err.errors.map(e => e.message).join(', ') : 'Invalid request';
+    return NextResponse.json({ error: message }, { status: 400 });
+  }
 
   const targetClass = await db.class.findUnique({ where: { id: classId } });
   if (!targetClass) {
-    throw new NotFoundError('Class not found');
+    return NextResponse.json({ error: 'Class not found' }, { status: 404 });
   }
 
   // Verify the class belongs to the educator's tenant
   if (targetClass.tenantId !== user.tenantId) {
-    throw new ForbiddenError();
+    return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
   }
 
   const student = await db.student.findUnique({
@@ -38,12 +45,12 @@ export const POST = withApiHandler(async (req, ctx) => {
     include: { user: { select: { tenantId: true } } },
   });
   if (!student) {
-    throw new NotFoundError('Student not found');
+    return NextResponse.json({ error: 'Student not found' }, { status: 404 });
   }
 
   // Verify the student belongs to the same tenant
   if (student.user.tenantId !== user.tenantId) {
-    throw new ForbiddenError();
+    return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
   }
 
   const enrollment = await db.classEnrollment.upsert({
@@ -57,4 +64,4 @@ export const POST = withApiHandler(async (req, ctx) => {
   });
 
   return NextResponse.json({ data: enrollment }, { status: 201 });
-}, { rateLimit: { windowMs: 60_000, max: 30 } });
+}

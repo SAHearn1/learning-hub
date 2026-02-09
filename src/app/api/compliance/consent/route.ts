@@ -1,8 +1,6 @@
 import { ConsentStatus } from '@prisma/client';
 import { NextResponse } from 'next/server';
 import { z } from 'zod';
-import { withApiHandler } from '@/lib/api-handler';
-import { ForbiddenError, NotFoundError, ValidationError } from '@/lib/api-errors';
 import { requireUser } from '@/lib/auth';
 import { db } from '@/lib/db';
 import { canManageMinorConsent, isConsentStatusTransitionAllowed } from '@/lib/compliance';
@@ -14,13 +12,13 @@ const updateConsentSchema = z.object({
   notes: z.string().max(1000).optional(),
 });
 
-export const GET = withApiHandler(async (req) => {
+export async function GET(request: Request) {
   const actor = await requireUser();
-  const url = new URL(req.url);
+  const url = new URL(request.url);
   const studentUserId = url.searchParams.get('studentUserId') || actor.id;
 
   if (studentUserId !== actor.id && !canManageMinorConsent(actor.role)) {
-    throw new ForbiddenError();
+    return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
   }
 
   const student = await db.user.findUnique({
@@ -37,83 +35,91 @@ export const GET = withApiHandler(async (req) => {
   });
 
   if (!student) {
-    throw new NotFoundError('Student not found');
+    return NextResponse.json({ error: 'Student not found' }, { status: 404 });
   }
 
   if (student.tenantId !== actor.tenantId) {
-    throw new ForbiddenError();
+    return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
   }
 
   return NextResponse.json({ consent: student });
-}, { rateLimit: { windowMs: 60_000, max: 60 } });
+}
 
-export const POST = withApiHandler(async (req) => {
-  const actor = await requireUser();
+export async function POST(request: Request) {
+  try {
+    const actor = await requireUser();
+    if (!canManageMinorConsent(actor.role)) {
+      return NextResponse.json({ error: 'Only parent/admin roles can update consent status' }, { status: 403 });
+    }
 
-  if (!canManageMinorConsent(actor.role)) {
-    throw new ForbiddenError('Only parent/admin roles can update consent status');
-  }
+    const payload = updateConsentSchema.parse(await request.json());
 
-  const payload = updateConsentSchema.parse(await req.json());
-
-  const student = await db.user.findUnique({
-    where: { id: payload.studentUserId },
-    select: {
-      id: true,
-      tenantId: true,
-      isMinor: true,
-      consentStatus: true,
-    },
-  });
-
-  if (!student) {
-    throw new NotFoundError('Student not found');
-  }
-
-  if (student.tenantId !== actor.tenantId) {
-    throw new ForbiddenError();
-  }
-
-  if (!student.isMinor) {
-    throw new ValidationError('Consent workflow applies only to minor accounts');
-  }
-
-  const currentStatus = student.consentStatus as ConsentStatus | null;
-  if (!isConsentStatusTransitionAllowed(currentStatus, payload.consentStatus)) {
-    throw new ValidationError(
-      `Invalid consent status transition from ${currentStatus ?? 'UNSET'} to ${payload.consentStatus}`,
-    );
-  }
-
-  const updated = await db.user.update({
-    where: { id: student.id },
-    data: {
-      consentStatus: payload.consentStatus,
-    },
-    select: {
-      id: true,
-      firstName: true,
-      lastName: true,
-      consentStatus: true,
-      updatedAt: true,
-    },
-  });
-
-  await db.auditLog.create({
-    data: {
-      tenantId: student.tenantId,
-      userId: actor.id,
-      action: 'CONSENT_STATUS_UPDATED',
-      resource: 'User',
-      resourceId: student.id,
-      metadata: {
-        previousStatus: currentStatus,
-        nextStatus: payload.consentStatus,
-        method: payload.method,
-        notes: payload.notes,
+    const student = await db.user.findUnique({
+      where: { id: payload.studentUserId },
+      select: {
+        id: true,
+        tenantId: true,
+        isMinor: true,
+        consentStatus: true,
       },
-    },
-  });
+    });
 
-  return NextResponse.json({ success: true, consent: updated });
-}, { rateLimit: { windowMs: 60_000, max: 30 } });
+    if (!student) {
+      return NextResponse.json({ error: 'Student not found' }, { status: 404 });
+    }
+
+    if (student.tenantId !== actor.tenantId) {
+      return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+    }
+
+    if (!student.isMinor) {
+      return NextResponse.json({ error: 'Consent workflow applies only to minor accounts' }, { status: 400 });
+    }
+
+    const currentStatus = student.consentStatus as ConsentStatus | null;
+    if (!isConsentStatusTransitionAllowed(currentStatus, payload.consentStatus)) {
+      return NextResponse.json(
+        { error: `Invalid consent status transition from ${currentStatus ?? 'UNSET'} to ${payload.consentStatus}` },
+        { status: 400 }
+      );
+    }
+
+    const updated = await db.user.update({
+      where: { id: student.id },
+      data: {
+        consentStatus: payload.consentStatus,
+      },
+      select: {
+        id: true,
+        firstName: true,
+        lastName: true,
+        consentStatus: true,
+        updatedAt: true,
+      },
+    });
+
+    await db.auditLog.create({
+      data: {
+        tenantId: student.tenantId,
+        userId: actor.id,
+        action: 'CONSENT_STATUS_UPDATED',
+        resource: 'User',
+        resourceId: student.id,
+        metadata: {
+          previousStatus: currentStatus,
+          nextStatus: payload.consentStatus,
+          method: payload.method,
+          notes: payload.notes,
+        },
+      },
+    });
+
+    return NextResponse.json({ success: true, consent: updated });
+  } catch (error) {
+    if (error instanceof z.ZodError) {
+      return NextResponse.json({ error: 'Invalid request payload' }, { status: 400 });
+    }
+
+    return NextResponse.json({ error: 'Unable to update consent status' }, { status: 500 });
+  }
+}

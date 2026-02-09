@@ -1,10 +1,8 @@
-import { NextResponse } from 'next/server';
+import { NextRequest, NextResponse } from 'next/server';
 import { auth } from '@clerk/nextjs/server';
 import { db } from '@/lib/db';
 import { z } from 'zod';
 import type { Prisma } from '@prisma/client';
-import { withApiHandler } from '@/lib/api-handler';
-import { AuthenticationError, ForbiddenError } from '@/lib/api-errors';
 
 const accommodationSchema = z.object({
   studentId: z.string().min(1),
@@ -19,15 +17,15 @@ const accommodationSchema = z.object({
   endDate: z.string().transform(s => new Date(s)).optional(),
 });
 
-export const GET = withApiHandler(async (req) => {
+export async function GET(req: NextRequest) {
   const { userId: clerkId } = auth();
   if (!clerkId) {
-    throw new AuthenticationError();
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
 
   const user = await db.user.findUnique({ where: { clerkUserId: clerkId } });
   if (!user || !['EDUCATOR', 'SCHOOL_ADMIN', 'DISTRICT_ADMIN', 'PLATFORM_ADMIN'].includes(user.role)) {
-    throw new ForbiddenError();
+    return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
   }
 
   const studentId = req.nextUrl.searchParams.get('studentId');
@@ -39,7 +37,7 @@ export const GET = withApiHandler(async (req) => {
       include: { user: { select: { tenantId: true } } },
     });
     if (!student || student.user.tenantId !== user.tenantId) {
-      throw new ForbiddenError();
+      return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
     }
 
     const accommodations = await db.iepAccommodation.findMany({
@@ -63,20 +61,26 @@ export const GET = withApiHandler(async (req) => {
   });
 
   return NextResponse.json({ data: students });
-}, { rateLimit: { windowMs: 60_000, max: 60 } });
+}
 
-export const POST = withApiHandler(async (req) => {
+export async function POST(req: NextRequest) {
   const { userId: clerkId } = auth();
   if (!clerkId) {
-    throw new AuthenticationError();
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
 
   const user = await db.user.findUnique({ where: { clerkUserId: clerkId } });
   if (!user || !['EDUCATOR', 'SCHOOL_ADMIN'].includes(user.role)) {
-    throw new ForbiddenError();
+    return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
   }
 
-  const body = accommodationSchema.parse(await req.json());
+  let body;
+  try {
+    body = accommodationSchema.parse(await req.json());
+  } catch (err) {
+    const message = err instanceof z.ZodError ? err.errors.map(e => e.message).join(', ') : 'Invalid request';
+    return NextResponse.json({ error: message }, { status: 400 });
+  }
 
   // Verify the student belongs to the educator's tenant
   const student = await db.student.findUnique({
@@ -84,7 +88,7 @@ export const POST = withApiHandler(async (req) => {
     include: { user: { select: { tenantId: true } } },
   });
   if (!student || student.user.tenantId !== user.tenantId) {
-    throw new ForbiddenError();
+    return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
   }
 
   const accommodation = await db.iepAccommodation.create({
@@ -111,4 +115,4 @@ export const POST = withApiHandler(async (req) => {
   });
 
   return NextResponse.json({ data: accommodation }, { status: 201 });
-}, { rateLimit: { windowMs: 60_000, max: 30 } });
+}
