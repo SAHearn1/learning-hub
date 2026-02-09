@@ -7,7 +7,9 @@ import { generateEmbedding } from '@/lib/pinecone/embeddings';
 import { queryPinecone } from '@/lib/pinecone/client';
 import { enforceUsageLimits, UsageLimitError } from '@/lib/usage-limits';
 import { detectDysregulation, updateRegulationLevel } from '@/lib/regulation/detector';
+import { classifySentiment, formatInterventionMessage } from '@/lib/regulation/sentiment-classifier';
 import { analyzeThinkingQuality } from '@/lib/trace/tracker';
+import { createNVCEvaluation } from '@/lib/nvc/evaluation-service';
 import { z } from 'zod';
 import { anonymizeForLlmWithMap, reattachPii } from '@/lib/privacy';
 import { appendImmutableAuditLog } from '@/lib/audit';
@@ -133,6 +135,97 @@ export async function POST(req: NextRequest) {
       },
     });
   }
+
+  // ═══════════════════════════════════════════════════════════════
+  // SENTIMENT CLASSIFICATION LAYER (Pre-RAG)
+  // ═══════════════════════════════════════════════════════════════
+  // This classification layer runs BEFORE the RAG pipeline to detect
+  // high-stress patterns and inject regulation exercises when needed.
+  // When high stress is detected, we bypass RAG entirely and return
+  // a regulation intervention immediately.
+  //
+  // WHY PRE-RAG?
+  // - Ensures immediate emotional support (< 50ms latency)
+  // - Prevents academic content from being mixed with regulation needs
+  // - Trauma-informed: prioritize safety/regulation before learning
+  //
+  // STRESS DETECTION APPROACH:
+  // - Pattern matching on content (no ML inference needed)
+  // - Considers cumulative stress from recent message history
+  // - Multiple thresholds: crisis, high, medium, low
+  //
+  // HIGH-PRIORITY PATTERNS:
+  // - Panic/overwhelm: "I can't breathe", "freaking out"
+  // - Crisis language: "I want to give up", "hate myself"
+  // - Acute distress: "I'm so scared", "can't stop crying"
+
+  const sentimentClassification = classifySentiment(
+    body.message,
+    messageHistory,
+    newRegulationLevel
+  );
+
+  // Log sentiment classification for monitoring
+  console.log(`Sentiment classification for session ${session.id}:`, {
+    stressLevel: sentimentClassification.stressLevel,
+    shouldIntervene: sentimentClassification.shouldIntervene,
+    patterns: sentimentClassification.detectedPatterns,
+  });
+
+  // If high stress detected, return regulation intervention and bypass RAG
+  if (sentimentClassification.shouldIntervene && sentimentClassification.exercise) {
+    try {
+      // Format the intervention message
+      const interventionContent = formatInterventionMessage(sentimentClassification.exercise);
+
+      // Save the intervention as an assistant message
+      await db.message.create({
+        data: {
+          sessionId: session.id,
+          role: 'ASSISTANT',
+          content: interventionContent,
+        },
+      });
+
+      // Update session phase to REGULATE
+      await db.session.update({
+        where: { id: session.id },
+        data: {
+          currentPhase: 'REGULATE',
+        },
+      });
+
+      // Invalidate session cache
+      await invalidateSessionCache(session.id);
+
+      // Stream the intervention response back to client
+      // Using same format as normal streaming: { text: "..." }
+      const encoder = new TextEncoder();
+      const readable = new ReadableStream({
+        start(controller) {
+          // Send the complete intervention message
+          controller.enqueue(encoder.encode(`data: ${JSON.stringify({ text: interventionContent })}\n\n`));
+          controller.close();
+        },
+      });
+
+      return new Response(readable, {
+        headers: {
+          'Content-Type': 'text/event-stream',
+          'Cache-Control': 'no-cache',
+          'Connection': 'keep-alive',
+        },
+      });
+    } catch (error) {
+      console.error('Error creating intervention response:', error);
+      captureException(error as Error);
+      // Continue with normal flow if intervention fails (graceful degradation)
+    }
+  }
+
+  // ═══════════════════════════════════════════════════════════════
+  // NORMAL TUTORING FLOW (No intervention needed)
+  // ═══════════════════════════════════════════════════════════════
 
   // Build context for system prompt
   const regulationState = session.regulationState as { level?: number } | null;
@@ -272,8 +365,8 @@ export async function POST(req: NextRequest) {
 
         const restoredAssistantText = reattachPii(fullText, anonymizedInput.tokenMap);
 
-        // Save assistant message with citations in metadata
-        await db.message.create({
+        // Save assistant message and invalidate session cache
+        const assistantMessage = await db.message.create({
           data: {
             sessionId: session.id,
             role: 'ASSISTANT',
@@ -343,6 +436,25 @@ export async function POST(req: NextRequest) {
               });
             });
         }
+
+        // Evaluate NVC compliance (async, don't block response)
+        const conversationContext = session.messages
+          .slice(-5)
+          .map(m => `${m.role}: ${m.content}`)
+          .join('\n');
+
+        createNVCEvaluation({
+          messageId: assistantMessage.id,
+          sessionId: session.id,
+          tenantId: user.tenantId,
+          assistantResponse: restoredAssistantText,
+          conversationContext,
+        }).catch((error) => {
+          captureException(error, {
+            tags: { endpoint: 'chat', phase: 'nvc_evaluation' },
+            extra: { sessionId: session.id, messageId: assistantMessage.id },
+          });
+        });
 
         // Track AI usage
         const finalMessage = await stream.finalMessage();
