@@ -14,10 +14,11 @@ export interface SearchResult {
 
 const searchCache = new Map<string, SearchResult[]>();
 
-function cacheKey(query: string, options: { subject?: string; gradeLevel?: number; topK?: number; minScore?: number }): string {
+function cacheKey(query: string, options: { subject?: string; subjects?: string[]; gradeLevel?: number; topK?: number; minScore?: number }): string {
   return JSON.stringify({
     query: query.trim().toLowerCase(),
     subject: options.subject,
+    subjects: options.subjects?.slice().sort(),
     gradeLevel: options.gradeLevel,
     topK: options.topK,
     minScore: options.minScore,
@@ -33,6 +34,7 @@ export async function searchCurriculum(
   query: string,
   options: {
     subject?: string;
+    subjects?: string[];
     gradeLevel?: number;
     topK?: number;
     minScore?: number;
@@ -60,6 +62,7 @@ export async function searchCurriculum(
       const hybridResults = await searchCurriculumHybrid(query, embedding, {
         topK,
         subject: options.subject,
+        subjects: options.subjects,
         gradeLevel: options.gradeLevel,
       });
 
@@ -77,6 +80,7 @@ export async function searchCurriculum(
       const results = await queryVectors(embedding, {
         topK,
         subject: options.subject,
+        subjects: options.subjects,
         gradeLevel: options.gradeLevel,
       });
 
