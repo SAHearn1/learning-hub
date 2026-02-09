@@ -21,10 +21,10 @@ interface MonitoringContext {
   tenantId?: string;
 }
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
+// eslint-disable-next-line
 let sentryModule: any = null;
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
+// eslint-disable-next-line
 async function getSentry(): Promise<any> {
   if (sentryModule) return sentryModule;
   if (!process.env.NEXT_PUBLIC_SENTRY_DSN) return null;
@@ -92,7 +92,7 @@ export async function captureException(
   // Forward to Datadog via dd-trace (if loaded)
   if (process.env.DD_API_KEY) {
     try {
-      // eslint-disable-next-line @typescript-eslint/no-require-imports
+      // eslint-disable-next-line
       const tracer = require('dd-trace');
       const activeSpan = tracer?.scope?.()?.active?.();
       if (activeSpan && error instanceof Error) {
