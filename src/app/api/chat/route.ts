@@ -6,13 +6,16 @@ import { buildMasterSystemPrompt } from '@/lib/ai/prompts/master-system-prompt';
 import { searchCurriculum, formatCurriculumContext } from '@/lib/vector-search';
 import { enforceUsageLimits, UsageLimitError } from '@/lib/usage-limits';
 import { detectDysregulation, updateRegulationLevel } from '@/lib/regulation/detector';
+import { classifySentiment, formatInterventionMessage } from '@/lib/regulation/sentiment-classifier';
 import { analyzeThinkingQuality } from '@/lib/trace/tracker';
+import { createNVCEvaluation } from '@/lib/nvc/evaluation-service';
 import { z } from 'zod';
 import { anonymizeForLlmWithMap, reattachPii } from '@/lib/privacy';
 import { appendImmutableAuditLog } from '@/lib/audit';
 import { getCachedUserProfile, getCachedSession, invalidateSessionCache } from '@/lib/redis/cached-queries';
 import { cacheGet, cacheSet, contentHash, CACHE_TTL, CACHE_KEY } from '@/lib/redis/cache';
 import { captureException, recordMetric } from '@/lib/monitoring';
+import type { SourceCitation } from '@/types/chat';
 
 const chatRequestSchema = z.object({
   sessionId: z.string().min(1),
@@ -21,6 +24,41 @@ const chatRequestSchema = z.object({
 
 // Minimum message length to trigger TRACE analysis (avoid analyzing very short responses)
 const MIN_MESSAGE_LENGTH_FOR_TRACE = 10;
+
+/**
+ * Construct GitHub URL for a source file
+ */
+function constructSourceUrl(filename: string): string {
+  const baseUrl = 'https://github.com/SAHearn1/learning-hub/blob/main';
+  // Ensure filename has proper path
+  const cleanPath = filename.startsWith('/') ? filename : `/${filename}`;
+  return `${baseUrl}${cleanPath}`;
+}
+
+/**
+ * Extract source citations from Pinecone matches
+ */
+function extractCitations(matches: any[]): SourceCitation[] {
+  return matches.map((match, idx) => {
+    const metadata = match.metadata as Record<string, any> || {};
+    
+    return {
+      id: match.id || `citation-${idx}`,
+      filename: metadata.filename || 'Unknown',
+      section: metadata.section,
+      chunkIndex: metadata.chunkIndex ?? idx,
+      totalChunks: metadata.totalChunks ?? 1,
+      text: metadata.content || metadata.text || '',
+      relevanceScore: match.score ?? 0,
+      sourceUrl: metadata.sourceUrl || constructSourceUrl(metadata.filename || ''),
+      subject: metadata.subject || '',
+      gradeLevel: metadata.gradeLevel ?? 0,
+      standardCodes: metadata.standardCodes || [],
+      course: metadata.course,
+      module: metadata.module,
+    };
+  });
+}
 
 export async function POST(req: NextRequest) {
   const { userId: clerkId } = auth();
@@ -79,26 +117,141 @@ export async function POST(req: NextRequest) {
   }));
 
   const regulationCheck = detectDysregulation(body.message, messageHistory);
+  const sentiment = analyzeSentiment(body.message, regulationCheck);
   const currentRegulationState = session.regulationState as { level?: number; signals?: string[]; interventionCount?: number } | null;
   const currentLevel = currentRegulationState?.level ?? 70;
   const newRegulationLevel = updateRegulationLevel(currentLevel, regulationCheck);
+  const nextPhase = computePhaseTransition(session.currentPhase, {
+    regulationLevel: newRegulationLevel,
+    sentiment,
+  });
+  const previousStateMachine = (session.metadata as { fiveRState?: { phaseHistory?: Array<{ phase: 'ROOT' | 'REGULATE' | 'REFLECT' | 'RESTORE' | 'RECONNECT'; timestamp: string; reason: string }> } } | null)?.fiveRState;
+  const nextFiveRState = buildFiveRStateSnapshot({
+    currentPhase: session.currentPhase,
+    nextPhase,
+    previousHistory: previousStateMachine?.phaseHistory ?? [],
+    sentiment,
+    regulationLevel: newRegulationLevel,
+  });
 
-  // Update regulation state if changed
-  if (newRegulationLevel !== currentLevel || regulationCheck.signals.length > 0) {
+  // Persist regulation updates and enforce the 5Rs FSM progression.
+  if (
+    newRegulationLevel !== currentLevel ||
+    regulationCheck.signals.length > 0 ||
+    session.currentPhase !== nextPhase
+  ) {
     await db.session.update({
       where: { id: session.id },
       data: {
+        currentPhase: nextPhase,
         regulationState: {
           level: newRegulationLevel,
           signals: regulationCheck.signals,
           interventionCount: (currentRegulationState?.interventionCount ?? 0) + (regulationCheck.severity === 'high' ? 1 : 0),
+          sentiment,
+          regulationPassed: nextFiveRState.regulationPassed,
+        },
+        metadata: {
+          ...(session.metadata as Record<string, unknown> ?? {}),
+          fiveRState: nextFiveRState,
         },
       },
     });
   }
 
+  // ═══════════════════════════════════════════════════════════════
+  // SENTIMENT CLASSIFICATION LAYER (Pre-RAG)
+  // ═══════════════════════════════════════════════════════════════
+  // This classification layer runs BEFORE the RAG pipeline to detect
+  // high-stress patterns and inject regulation exercises when needed.
+  // When high stress is detected, we bypass RAG entirely and return
+  // a regulation intervention immediately.
+  //
+  // WHY PRE-RAG?
+  // - Ensures immediate emotional support (< 50ms latency)
+  // - Prevents academic content from being mixed with regulation needs
+  // - Trauma-informed: prioritize safety/regulation before learning
+  //
+  // STRESS DETECTION APPROACH:
+  // - Pattern matching on content (no ML inference needed)
+  // - Considers cumulative stress from recent message history
+  // - Multiple thresholds: crisis, high, medium, low
+  //
+  // HIGH-PRIORITY PATTERNS:
+  // - Panic/overwhelm: "I can't breathe", "freaking out"
+  // - Crisis language: "I want to give up", "hate myself"
+  // - Acute distress: "I'm so scared", "can't stop crying"
+
+  const sentimentClassification = classifySentiment(
+    body.message,
+    messageHistory,
+    newRegulationLevel
+  );
+
+  // Log sentiment classification for monitoring
+  console.log(`Sentiment classification for session ${session.id}:`, {
+    stressLevel: sentimentClassification.stressLevel,
+    shouldIntervene: sentimentClassification.shouldIntervene,
+    patterns: sentimentClassification.detectedPatterns,
+  });
+
+  // If high stress detected, return regulation intervention and bypass RAG
+  if (sentimentClassification.shouldIntervene && sentimentClassification.exercise) {
+    try {
+      // Format the intervention message
+      const interventionContent = formatInterventionMessage(sentimentClassification.exercise);
+
+      // Save the intervention as an assistant message
+      await db.message.create({
+        data: {
+          sessionId: session.id,
+          role: 'ASSISTANT',
+          content: interventionContent,
+        },
+      });
+
+      // Update session phase to REGULATE
+      await db.session.update({
+        where: { id: session.id },
+        data: {
+          currentPhase: 'REGULATE',
+        },
+      });
+
+      // Invalidate session cache
+      await invalidateSessionCache(session.id);
+
+      // Stream the intervention response back to client
+      // Using same format as normal streaming: { text: "..." }
+      const encoder = new TextEncoder();
+      const readable = new ReadableStream({
+        start(controller) {
+          // Send the complete intervention message
+          controller.enqueue(encoder.encode(`data: ${JSON.stringify({ text: interventionContent })}\n\n`));
+          controller.close();
+        },
+      });
+
+      return new Response(readable, {
+        headers: {
+          'Content-Type': 'text/event-stream',
+          'Cache-Control': 'no-cache',
+          'Connection': 'keep-alive',
+        },
+      });
+    } catch (error) {
+      console.error('Error creating intervention response:', error);
+      captureException(error as Error);
+      // Continue with normal flow if intervention fails (graceful degradation)
+    }
+  }
+
+  // ═══════════════════════════════════════════════════════════════
+  // NORMAL TUTORING FLOW (No intervention needed)
+  // ═══════════════════════════════════════════════════════════════
+
   // Build context for system prompt
-  const regulationState = session.regulationState as { level?: number } | null;
+  const regulationState = { level: newRegulationLevel };
   const learningPrefs = user.student.learningPreferences as { modalities?: string[] } | null;
   const accommodationTypes = user.student.iepAccommodations.map(a => a.type);
 
@@ -110,6 +263,7 @@ export async function POST(req: NextRequest) {
   // RAG: Retrieve relevant curriculum context (with Redis cache)
   let curriculumContext = '';
   let ragMetrics = { retrieved: 0, durationMs: 0 };
+  let citations: SourceCitation[] = [];
 
   try {
     const ragStartTime = Date.now();
@@ -122,6 +276,8 @@ export async function POST(req: NextRequest) {
       curriculumContext = cachedRag;
       ragMetrics.durationMs = Date.now() - ragStartTime;
       ragMetrics.retrieved = -1; // indicates cache hit
+      // Note: We don't have citations for cached RAG results
+      // This is acceptable since citations are for transparency, not caching
     } else {
       const results = await searchCurriculum(body.message, {
         subject: session.subject,
@@ -133,8 +289,25 @@ export async function POST(req: NextRequest) {
       ragMetrics.retrieved = results.length;
       ragMetrics.durationMs = Date.now() - ragStartTime;
 
-      if (results.length > 0) {
-        curriculumContext = formatCurriculumContext(results);
+      // Extract citations from matches
+      if (matches.length > 0) {
+        citations = extractCitations(matches);
+      }
+
+      // Format retrieved context
+      if (matches.length > 0) {
+        curriculumContext = matches
+          .map((match, idx) => {
+            const metadata = match.metadata as Record<string, any> || {};
+            const content = metadata.content || metadata.text || 'No content available';
+            const source = metadata.source || metadata.title || 'Unknown source';
+            const score = match.score?.toFixed(3) || 'N/A';
+
+            return `[Context ${idx + 1}] (Relevance: ${score})\nSource: ${source}\n${content}`;
+          })
+          .join('\n\n---\n\n');
+
+        // Cache the formatted RAG context
         await cacheSet(ragCacheKey, curriculumContext, CACHE_TTL.CURRICULUM);
         console.log(`RAG: Retrieved ${results.length} curriculum contexts in ${ragMetrics.durationMs}ms for session ${session.id}`);
       }
@@ -142,10 +315,11 @@ export async function POST(req: NextRequest) {
   } catch (error) {
     console.error(`RAG retrieval error for session ${session.id}:`, error);
     curriculumContext = '';
+    citations = [];
   }
 
   const systemPrompt = buildMasterSystemPrompt({
-    currentPhase: session.currentPhase,
+    currentPhase: nextPhase,
     gradeLevel: user.student.gradeLevel,
     subject: session.subject,
     regulationBaseline: regulationState?.level ?? 70,
@@ -206,11 +380,12 @@ export async function POST(req: NextRequest) {
         const restoredAssistantText = reattachPii(fullText, anonymizedInput.tokenMap);
 
         // Save assistant message and invalidate session cache
-        await db.message.create({
+        const assistantMessage = await db.message.create({
           data: {
             sessionId: session.id,
             role: 'ASSISTANT',
             content: restoredAssistantText,
+            metadata: citations.length > 0 ? { citations } : null,
           },
         });
         await invalidateSessionCache(session.id);
@@ -276,6 +451,25 @@ export async function POST(req: NextRequest) {
             });
         }
 
+        // Evaluate NVC compliance (async, don't block response)
+        const conversationContext = session.messages
+          .slice(-5)
+          .map(m => `${m.role}: ${m.content}`)
+          .join('\n');
+
+        createNVCEvaluation({
+          messageId: assistantMessage.id,
+          sessionId: session.id,
+          tenantId: user.tenantId,
+          assistantResponse: restoredAssistantText,
+          conversationContext,
+        }).catch((error) => {
+          captureException(error, {
+            tags: { endpoint: 'chat', phase: 'nvc_evaluation' },
+            extra: { sessionId: session.id, messageId: assistantMessage.id },
+          });
+        });
+
         // Track AI usage
         const finalMessage = await stream.finalMessage();
         const latencyMs = Date.now() - startTime;
@@ -319,6 +513,12 @@ export async function POST(req: NextRequest) {
             inputLength: body.message.length,
           },
         });
+        
+        // Send citations if available
+        if (citations.length > 0) {
+          controller.enqueue(encoder.encode(`data: ${JSON.stringify({ citations })}\n\n`));
+        }
+        
         controller.enqueue(encoder.encode(`data: ${JSON.stringify({ done: true })}\n\n`));
         controller.close();
       } catch (err) {
