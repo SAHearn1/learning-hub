@@ -2,7 +2,7 @@ import { SignUp } from '@clerk/nextjs';
 
 export default function SignUpPage() {
   return (
-    <div className="flex min-h-screen items-center justify-center bg-gradient-to-br from-primary-50 via-white to-secondary-50 px-4">
+    <main className="flex min-h-screen items-center justify-center bg-gradient-to-br from-primary-50 via-white to-secondary-50 px-4">
       <SignUp 
         appearance={{
           elements: {
@@ -14,6 +14,6 @@ export default function SignUpPage() {
         path="/sign-up"
         signInUrl="/sign-in"
       />
-    </div>
+    </main>
   );
 }
