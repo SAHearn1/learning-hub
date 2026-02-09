@@ -331,7 +331,7 @@ function formatAlertMessage(alert: AlertRule, value: number, context?: Record<st
  * Note: Emojis are used here for internal monitoring/alerting (Slack, PagerDuty)
  * and are not part of the user-facing production UI
  */
-// eslint-disable-next-line no-restricted-syntax
+/* eslint-disable no-restricted-syntax */
 function getSeverityEmoji(severity: AlertSeverity): string {
   switch (severity) {
     case AlertSeverity.CRITICAL:
@@ -344,6 +344,7 @@ function getSeverityEmoji(severity: AlertSeverity): string {
       return 'ℹ️';
   }
 }
+/* eslint-enable no-restricted-syntax */
 
 /**
  * Format metric value for display
