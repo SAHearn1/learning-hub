@@ -282,9 +282,15 @@ export async function parseCurriculumFile(
     })),
   );
 
+  // Guardrail: skip near-empty chunks during ingestion embedding flow.
+  const eligibleChunks = chunks.filter(chunk => chunk.trim().length >= 50);
+  if (eligibleChunks.length === 0) {
+    return [];
+  }
+
   const cleanPath = file.path.replace(/[^a-zA-Z0-9-_]/g, '-');
 
-  return chunks.map((chunk, index) => ({
+  return eligibleChunks.map((chunk, index) => ({
     id: `${cleanPath}-chunk-${index}`,
     text: chunk,
     metadata: {
@@ -295,7 +301,7 @@ export async function parseCurriculumFile(
       ...(typeof metadata.gradeBand === 'string' ? { gradeBand: metadata.gradeBand } : {}),
       standardCodes,
       chunkIndex: index,
-      totalChunks: chunks.length,
+      totalChunks: eligibleChunks.length,
       text: chunk,
       metadata: {
         filename: file.path,
