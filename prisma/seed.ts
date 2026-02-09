@@ -557,6 +557,186 @@ async function main() {
     console.log(`✅ Topic created: ${topic.name}`);
   }
 
+
+  // ═══════════════════════════════════════════════════════════════
+  // 7.5 CREATE FINANCIAL LITERACY TOPICS (Ch. I-XII)
+  // ═══════════════════════════════════════════════════════════════
+  console.log('Creating financial literacy topics...');
+
+  const finlitTopics = [
+    {
+      key: 'finlit-ch-i-income-career-planning',
+      name: 'Ch. I: Income and Career Planning',
+      learningObjectives: [
+        'Explain how education and career choices influence lifetime income.',
+        'Compare salary, wages, and gig income including tradeoffs.',
+      ],
+      fiveRsAlignment: { ROOT: 'Career identity and goals', REFLECT: 'Income decision making' },
+    },
+    {
+      key: 'finlit-ch-ii-budgeting-cash-flow',
+      name: 'Ch. II: Budgeting and Cash Flow',
+      learningObjectives: [
+        'Create a monthly zero-based budget using fixed and variable expenses.',
+        'Analyze spending patterns and adjust categories to meet savings goals.',
+      ],
+      fiveRsAlignment: { REGULATE: 'Impulse spending awareness', RESTORE: 'Budget review cycle' },
+    },
+    {
+      key: 'finlit-ch-iii-banking-services',
+      name: 'Ch. III: Banking and Financial Services',
+      learningObjectives: [
+        'Differentiate checking, savings, and money market accounts.',
+        'Evaluate banking fees and choose cost-effective account options.',
+      ],
+    },
+    {
+      key: 'finlit-ch-iv-saving-strategies',
+      name: 'Ch. IV: Saving and Emergency Funds',
+      learningObjectives: [
+        'Set short- and long-term savings goals using SMART criteria.',
+        'Calculate emergency fund targets based on monthly expenses.',
+      ],
+      fiveRsAlignment: { ROOT: 'Needs vs wants baseline', RECONNECT: 'Savings habits transfer' },
+    },
+    {
+      key: 'finlit-ch-v-credit-and-debt',
+      name: 'Ch. V: Credit and Debt Management',
+      learningObjectives: [
+        'Explain how credit scores are calculated and why they matter.',
+        'Compare debt repayment methods including avalanche and snowball.',
+      ],
+    },
+    {
+      key: 'finlit-ch-vi-loans-and-interest',
+      name: 'Ch. VI: Loans and Interest',
+      learningObjectives: [
+        'Compute simple and compound interest for common loan products.',
+        'Compare total borrowing costs across loan terms and rates.',
+      ],
+      fiveRsAlignment: { REFLECT: 'Cost-of-credit reasoning' },
+    },
+    {
+      key: 'finlit-ch-vii-consumer-skills',
+      name: 'Ch. VII: Consumer Skills and Smart Purchasing',
+      learningObjectives: [
+        'Use unit pricing and total cost to compare purchasing options.',
+        'Identify persuasive marketing techniques and consumer protections.',
+      ],
+    },
+    {
+      key: 'finlit-ch-viii-risk-insurance',
+      name: 'Ch. VIII: Risk Management and Insurance',
+      learningObjectives: [
+        'Explain how insurance pools risk and why deductibles affect premiums.',
+        'Match insurance products to real-world risk scenarios.',
+      ],
+      fiveRsAlignment: { REGULATE: 'Risk perception and emotional decisions' },
+    },
+    {
+      key: 'finlit-ch-ix-taxes-paychecks',
+      name: 'Ch. IX: Taxes and Paychecks',
+      learningObjectives: [
+        'Interpret paycheck components including withholdings and net pay.',
+        'Describe the purpose of major U.S. taxes and filing basics.',
+      ],
+    },
+    {
+      key: 'finlit-ch-x-investing-basics',
+      name: 'Ch. X: Investing Basics',
+      learningObjectives: [
+        'Differentiate stocks, bonds, mutual funds, and ETFs.',
+        'Explain diversification and risk-return tradeoffs for beginners.',
+      ],
+      fiveRsAlignment: { RECONNECT: 'Long-term wealth building habits' },
+    },
+    {
+      key: 'finlit-ch-xi-retirement-planning',
+      name: 'Ch. XI: Retirement and Long-Term Planning',
+      learningObjectives: [
+        'Compare retirement account options such as 401(k) and IRA.',
+        'Model the impact of starting contributions early vs later.',
+      ],
+    },
+    {
+      key: 'finlit-ch-xii-financial-decision-making',
+      name: 'Ch. XII: Financial Decision-Making and Goal Setting',
+      learningObjectives: [
+        'Apply a structured process to make major financial decisions.',
+        'Build a personal financial action plan for the next 12 months.',
+      ],
+      fiveRsAlignment: { ROOT: 'Values and priorities', RECONNECT: 'Action plan and accountability' },
+    },
+  ] as const;
+
+  for (const finlitTopic of finlitTopics) {
+    const topicId = `topic-${finlitTopic.key}`;
+
+    await prisma.topic.upsert({
+      where: { id: topicId },
+      update: {
+        name: finlitTopic.name,
+        subject: 'FINANCIAL_LITERACY',
+        gradeLevel: [9, 10, 11, 12],
+        description: `${finlitTopic.name} introduces core personal finance concepts for high school learners.`,
+        conceptualUnderstanding:
+          'Personal finance choices compound over time; informed, values-aligned decisions improve long-term outcomes.',
+        commonMisconceptions: [
+          'Financial literacy is only relevant in adulthood',
+          'Higher income alone guarantees financial stability',
+          'Small money decisions do not meaningfully affect long-term goals',
+        ],
+        realWorldConnections: [
+          'Managing paycheck-to-paycheck decisions',
+          'Comparing financial products and contracts',
+          'Planning for education, housing, and future goals',
+        ],
+        estimatedDuration: 50,
+        fiveRsAlignment: finlitTopic.fiveRsAlignment ?? null,
+      },
+      create: {
+        id: topicId,
+        name: finlitTopic.name,
+        subject: 'FINANCIAL_LITERACY',
+        gradeLevel: [9, 10, 11, 12],
+        description: `${finlitTopic.name} introduces core personal finance concepts for high school learners.`,
+        conceptualUnderstanding:
+          'Personal finance choices compound over time; informed, values-aligned decisions improve long-term outcomes.',
+        commonMisconceptions: [
+          'Financial literacy is only relevant in adulthood',
+          'Higher income alone guarantees financial stability',
+          'Small money decisions do not meaningfully affect long-term goals',
+        ],
+        realWorldConnections: [
+          'Managing paycheck-to-paycheck decisions',
+          'Comparing financial products and contracts',
+          'Planning for education, housing, and future goals',
+        ],
+        estimatedDuration: 50,
+        fiveRsAlignment: finlitTopic.fiveRsAlignment ?? null,
+      },
+    });
+
+    for (const [index, objective] of finlitTopic.learningObjectives.entries()) {
+      await prisma.learningObjective.upsert({
+        where: { id: `obj-${finlitTopic.key}-${index + 1}` },
+        update: {
+          description: objective,
+          topicId,
+          bloomsLevel: 'APPLY',
+        },
+        create: {
+          id: `obj-${finlitTopic.key}-${index + 1}`,
+          topicId,
+          description: objective,
+          bloomsLevel: 'APPLY',
+        },
+      });
+    }
+
+    console.log(`✅ Financial literacy topic created: ${finlitTopic.name}`);
+  }
+
   // ═══════════════════════════════════════════════════════════════
   // 8. CREATE LEARNING OBJECTIVES
   // ═══════════════════════════════════════════════════════════════

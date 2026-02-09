@@ -620,6 +620,7 @@ model Topic {
   commonMisconceptions    String[]
   realWorldConnections    String[]
   estimatedDuration       Int
+  fiveRsAlignment         Json?
   embedding               Bytes?
   createdAt               DateTime            @default(now())
   updatedAt               DateTime            @updatedAt
