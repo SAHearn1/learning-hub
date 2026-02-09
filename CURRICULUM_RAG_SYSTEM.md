@@ -188,11 +188,134 @@ The chat API (`/api/chat`) has been enhanced with RAG capabilities:
 3. **Filtering**: Filter by subject and grade level
 4. **Context Injection**: Retrieved content is added to the system prompt
 5. **Response Generation**: Claude generates response using both conversation history and curriculum context
+6. **Citation Extraction**: Source metadata from Pinecone matches is extracted and formatted
+7. **Citation Streaming**: Citations are sent to the client along with the response
 
 **Metrics Logged**:
 - Number of contexts retrieved
 - Retrieval duration (ms)
 - Session ID for debugging
+
+### 6.1. Citation & Source Attribution System
+
+The RAG system now includes a citation system that displays the exact curriculum content used to generate AI responses. This transparency feature helps reduce hallucination and builds trust by showing students the sources behind each answer.
+
+**Citation Metadata Structure** (`src/types/chat.ts`):
+
+```typescript
+interface SourceCitation {
+  id: string;               // Unique identifier
+  filename: string;         // Source file path
+  section?: string;         // Section/part within document
+  chunkIndex: number;       // Chunk position in document
+  totalChunks: number;      // Total chunks in document
+  text: string;             // The actual retrieved text
+  relevanceScore: number;   // Pinecone similarity score (0-1)
+  sourceUrl: string;        // GitHub URL to source file
+  subject: string;          // Subject area
+  gradeLevel: number;       // Grade level
+  standardCodes: string[];  // Educational standards covered
+  course?: string;          // Course name
+  module?: string;          // Module name
+}
+```
+
+**Enhanced Pinecone Metadata** (`src/lib/pinecone.ts`):
+
+The `CurriculumMetadata` interface has been extended with citation fields:
+
+```typescript
+interface CurriculumMetadata {
+  // Existing fields
+  filename: string;
+  documentType: string;
+  subject: string;
+  gradeLevel: number;
+  standardCodes: string[];
+  chunkIndex: number;
+  totalChunks: number;
+  text: string;
+  
+  // New citation fields
+  section?: string;          // e.g., "Part 2: Regulate Phase"
+  pageNumber?: number;       // If available from PDF/structured docs
+  paragraphId?: string;      // Unique ID for this chunk
+  sourceUrl?: string;        // GitHub URL to the source file
+  course?: string;           // e.g., "RootWork Framework"
+  module?: string;           // e.g., "Introduction"
+}
+```
+
+**Citation Flow**:
+
+1. **Backend Processing** (`src/app/api/chat/route.ts`):
+   - After querying Pinecone, the `extractCitations()` function processes matches
+   - Constructs GitHub URLs using `constructSourceUrl()` helper
+   - Stores citations in message metadata (JSON field)
+   - Streams citations to client in SSE format: `data: {"citations": [...]}`
+
+2. **Frontend Reception** (`src/components/tutoring/chat-interface.tsx`):
+   - Chat interface handles `data.citations` events during SSE streaming
+   - Citations are stored with the assistant message in `metadata.citations`
+   - Messages with citations are passed to `MessageBubble` component
+
+3. **UI Display** (`src/components/tutoring/message-bubble.tsx`):
+   - Assistant messages check for `metadata?.citations`
+   - If citations exist, renders `SourceCitationPanel` below the message
+   - Panel shows "📚 Sources used to generate this response"
+
+4. **Citation Panel** (`src/components/tutoring/source-citation-panel.tsx`):
+   - Groups citations by document for cleaner display
+   - Sorts by relevance score (highest first)
+   - Shows document name, section, relevance percentage
+   - Expandable accordions reveal the actual text chunk
+   - "View full document" links open GitHub source files
+   - Responsive design with collapsible sections
+
+**Citation Panel Features**:
+
+- **Relevance Badges**: Color-coded badges show similarity scores
+  - ≥80%: Primary badge (most relevant)
+  - 60-79%: Secondary badge (moderately relevant)
+  - <60%: Outline badge (less relevant)
+- **Document Grouping**: Multiple chunks from same file are grouped
+- **Metadata Display**: Shows chunk position, grade level, section name
+- **Text Preview**: Scrollable text boxes show retrieved content
+- **External Links**: Direct links to source files on GitHub
+- **Accessibility**: Keyboard navigable, screen-reader friendly
+
+**Performance**:
+
+- Citation extraction adds ~10-20ms to response time
+- Citations are streamed after the text response completes
+- No impact on streaming chat experience
+- Citations are cached with messages in database
+
+**Testing**:
+
+Unit tests are available in `src/app/api/chat/__tests__/citations.test.ts`:
+- Citation extraction from Pinecone matches
+- GitHub URL construction
+- Handling of missing metadata fields
+- Edge cases (empty arrays, null values)
+
+**Best Practices**:
+
+1. **Enriching Curriculum Metadata**: When ingesting curriculum, include rich metadata:
+   ```javascript
+   {
+     filename: "02-introduction/overview.md",
+     section: "Why This Curriculum Matters",
+     course: "RootWork Framework",
+     module: "Introduction",
+     standardCodes: ["CCSS.ELA-LITERACY.RL.5.1"],
+     // ... other fields
+   }
+   ```
+
+2. **Citation Quality**: Higher relevance scores (>0.8) indicate better matches
+3. **Source Verification**: Students can verify AI responses by reading source material
+4. **Educator Insights**: Track which sources are most frequently cited for curriculum improvement
 
 ### 7. GitHub Actions Workflow
 

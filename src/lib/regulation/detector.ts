@@ -13,6 +13,11 @@ export interface RegulationCheck {
   recommendation: 'continue' | 'check-in' | 'calm-corner';
 }
 
+export interface SentimentResult {
+  label: 'negative' | 'neutral' | 'positive';
+  score: number;
+}
+
 interface MessageHistory {
   role: string;
   content: string;
@@ -118,4 +123,30 @@ export function updateRegulationLevel(
 
   const newLevel = Math.max(0, Math.min(100, currentLevel - decrease + recovery));
   return newLevel;
+}
+
+export function analyzeSentiment(message: string, check: RegulationCheck): SentimentResult {
+  const positivePatterns = [
+    /i\s*(got|understand|think\s*i\s*get)/i,
+    /that\s*makes\s*sense/i,
+    /thanks|thank\s*you/i,
+    /i\s*can\s*do\s*this/i,
+  ];
+
+  const negativePatterns = [
+    /i\s*(can't|cannot|hate|give\s*up)/i,
+    /this\s*is\s*(too\s*hard|impossible|stupid)/i,
+    /i\s*don't\s*get\s*it/i,
+  ];
+
+  let score = 0;
+  if (positivePatterns.some((pattern) => pattern.test(message))) score += 0.4;
+  if (negativePatterns.some((pattern) => pattern.test(message))) score -= 0.5;
+
+  // Known dysregulation signals count against sentiment confidence.
+  score -= check.signals.length * 0.1;
+  score = Math.max(-1, Math.min(1, score));
+
+  const label = score > 0.2 ? 'positive' : score < -0.2 ? 'negative' : 'neutral';
+  return { label, score };
 }
