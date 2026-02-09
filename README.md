@@ -146,6 +146,9 @@ npm run ops:parallel
 
 # Launch only selected task agents
 npm run ops:parallel -- lint build
+
+# Run operational diagnostics (env, toolchain, Prisma)
+npm run ops:doctor
 ```
 
 ## Project Structure
