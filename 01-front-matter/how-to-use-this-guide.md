@@ -3,6 +3,7 @@ title: "How to Use This Guide"
 section: "Front Matter"
 source_path: "01-front-matter/how-to-use-this-guide.md"
 document_type: "curriculum"
+subsection: "how-to-use"
 ---
 # How to Use This Guide
 

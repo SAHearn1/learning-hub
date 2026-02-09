@@ -4,6 +4,9 @@ section: "Grade Bands"
 source_path: "05-grade-bands/3-5/part-2.md"
 document_type: "curriculum"
 subsection: "3-5"
+phase: "Regulate"
+framework_question: "Can I return to my window of tolerance?"
+duration: "2-15 minutes"
 ---
 # 3-5 Regulate Phase: Building Self-Regulation
 

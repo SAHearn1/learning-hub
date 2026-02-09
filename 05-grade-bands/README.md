@@ -21,6 +21,12 @@ The grade bands are the heart of the FG2G curriculum. While the [5Rs Framework](
 | [6-8](6-8/) | 11-14 | Self-assessment and peer grounding, numeric regulation scales, independent strategy menus, community application | `6-8/` |
 | [9-12](9-12/) | 14-18 | Self-directed grounding, personal grounding plans, mentorship roles, garden-to-community enterprise | `9-12/` |
 
+### Additional Resources
+
+| Document | Description |
+|----------|-------------|
+| [Transition Guide](transition-guide.md) | Guidance for managing student transitions between grade bands, onboarding new students, and monitoring transition success |
+
 ## Structure Within Each Grade Band
 
 Each grade band contains five parts aligned with the 5Rs phases:

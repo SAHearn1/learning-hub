@@ -3,6 +3,7 @@ title: "Title Page"
 section: "Front Matter"
 source_path: "01-front-matter/title-page.md"
 document_type: "curriculum"
+subsection: "title-page"
 ---
 # From Garden to Growth (FG2G)
 

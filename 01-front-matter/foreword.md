@@ -3,6 +3,7 @@ title: "Foreword"
 section: "Front Matter"
 source_path: "01-front-matter/foreword.md"
 document_type: "curriculum"
+subsection: "foreword"
 ---
 # Foreword
 

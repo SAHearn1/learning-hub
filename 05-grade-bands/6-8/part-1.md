@@ -4,6 +4,9 @@ section: "Grade Bands"
 source_path: "05-grade-bands/6-8/part-1.md"
 document_type: "curriculum"
 subsection: "6-8"
+phase: "Root"
+framework_question: "Am I safe and ready to learn?"
+duration: "3-5 minutes"
 ---
 # 6-8 Root Phase: Self-Assessment and Peer Grounding
 

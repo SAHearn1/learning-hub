@@ -4,6 +4,9 @@ section: "Grade Bands"
 source_path: "05-grade-bands/3-5/part-4.md"
 document_type: "curriculum"
 subsection: "3-5"
+phase: "Restore"
+framework_question: "What can I learn from this mistake?"
+duration: "5-10 minutes"
 ---
 # 3-5 Restore Phase: Error Analysis Foundations
 

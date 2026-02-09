@@ -4,6 +4,9 @@ section: "Grade Bands"
 source_path: "05-grade-bands/3-5/part-1.md"
 document_type: "curriculum"
 subsection: "3-5"
+phase: "Root"
+framework_question: "Am I safe and ready to learn?"
+duration: "5-7 minutes"
 ---
 # 3-5 Root Phase: Student-Selected Grounding
 
