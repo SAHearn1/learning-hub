@@ -20,22 +20,23 @@ export function PhaseIndicator({ currentPhase, className }: PhaseIndicatorProps)
   const currentIndex = PHASES.findIndex((p) => p.key === currentPhase);
 
   return (
-    <div className={cn('flex flex-col gap-3', className)}>
-      <div className="flex items-center justify-between gap-2">
+    <div className={cn('flex flex-col gap-3', className)} role="status" aria-live="polite" aria-label="Current learning phase">
+      <div className="grid grid-cols-5 items-center gap-2">
         {PHASES.map((phase, index) => {
           const isActive = phase.key === currentPhase;
           const isPast = index < currentIndex;
 
           return (
-            <div key={phase.key} className="flex flex-1 items-center gap-2">
+            <div key={phase.key} className="flex min-w-0 items-center gap-2">
               <div
                 className={cn(
-                  'flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-full border-2 text-xs font-bold transition-all',
+                  'flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-full border-2 text-xs font-bold transition-all sm:h-10 sm:w-10',
                   isActive && 'border-primary bg-primary text-primary-foreground shadow-md',
                   isPast && 'border-primary/50 bg-primary/10 text-primary',
                   !isActive && !isPast && 'border-neutral-300 bg-neutral-100 text-neutral-400'
                 )}
                 title={`${phase.label}: ${phase.description}`}
+                aria-label={`${phase.label}: ${phase.description}`}
               >
                 {index + 1}
               </div>

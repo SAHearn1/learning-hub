@@ -87,6 +87,12 @@ export function LearnClient({ session, messages, regulationLevel, studentId }: L
 
   return (
     <div className="flex h-screen flex-col">
+      <a
+        href="#learning-chat-log"
+        className="sr-only z-50 rounded-md bg-white px-3 py-2 text-sm font-medium text-neutral-900 focus:not-sr-only focus:absolute focus:left-3 focus:top-3"
+      >
+        Skip to conversation
+      </a>
       {/* Session Header */}
       <SessionHeader
         subject={session.subject}
@@ -97,11 +103,11 @@ export function LearnClient({ session, messages, regulationLevel, studentId }: L
       />
 
       {/* Phase Indicator & Mode Selector */}
-      <div className="border-b bg-white px-4 py-3">
+      <section className="border-b bg-white px-4 py-3" aria-label="Session controls">
         <div className="mx-auto max-w-5xl space-y-3">
           <PhaseIndicator currentPhase={currentPhase} />
-          <div className="flex items-center justify-between">
-            <span className="text-sm font-medium text-neutral-700">Engagement Mode:</span>
+          <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+            <span className="text-sm font-medium text-neutral-700">Engagement mode</span>
             <ModeSelector
               currentMode={currentMode}
               onModeChange={handleModeChange}
@@ -109,12 +115,13 @@ export function LearnClient({ session, messages, regulationLevel, studentId }: L
             />
           </div>
         </div>
-      </div>
+      </section>
 
       {/* Chat Interface */}
-      <div className="flex-1 overflow-hidden">
+      <section className="flex-1 overflow-hidden" aria-label="Learning conversation">
         <div className="mx-auto h-full max-w-5xl">
           <ChatInterface
+            id="learning-chat-log"
             sessionId={session.id}
             initialMessages={messages.map((msg) => ({
               ...msg,
@@ -127,7 +134,7 @@ export function LearnClient({ session, messages, regulationLevel, studentId }: L
             onModeChange={handleModeChange}
           />
         </div>
-      </div>
+      </section>
     </div>
   );
 }

@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useRef, useState, useCallback } from 'react';
-import type { Message as PrismaMessage, FiveRPhase, EngagementMode, Session } from '@prisma/client';
+import type { Message as PrismaMessage, FiveRPhase, EngagementMode } from '@prisma/client';
 import { MessageBubble } from './message-bubble';
 import { MessageInput } from './message-input';
 import { StreamingIndicator } from './streaming-indicator';
@@ -17,6 +17,7 @@ interface ChatMessage extends PrismaMessage {
 }
 
 interface ChatInterfaceProps {
+  id?: string;
   sessionId: string;
   initialMessages: ChatMessage[];
   currentPhase: FiveRPhase;
@@ -28,6 +29,7 @@ interface ChatInterfaceProps {
 }
 
 export function ChatInterface({
+  id,
   sessionId,
   initialMessages,
   currentPhase,
@@ -198,9 +200,9 @@ export function ChatInterface({
   };
 
   return (
-    <div className={cn('flex h-full flex-col', className)} role="main" aria-label="Chat interface">
+    <div id={id} className={cn('flex h-full flex-col', className)} role="main" aria-label="Chat interface">
       {/* Messages container */}
-      <div className="flex-1 overflow-y-auto px-4 py-6" role="log" aria-label="Chat messages" aria-live="polite">
+      <div className="flex-1 overflow-y-auto px-4 py-6" role="log" aria-label="Chat messages" aria-live="polite" aria-relevant="additions text">
         {messages.length === 0 ? (
           <div className="flex h-full items-center justify-center text-center">
             <div className="max-w-md space-y-2">

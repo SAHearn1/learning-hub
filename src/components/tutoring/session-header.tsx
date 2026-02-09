@@ -32,23 +32,23 @@ export function SessionHeader({
   const sessionDuration = formatDistanceToNow(startedAt, { addSuffix: false });
 
   return (
-    <div className={cn('flex items-center justify-between border-b bg-white p-4', className)}>
-      <div className="flex items-center gap-4">
+    <header className={cn('flex flex-col gap-3 border-b bg-white p-4 sm:flex-row sm:items-center sm:justify-between', className)}>
+      <div className="flex items-center gap-3 sm:gap-4">
         <div className="flex items-center gap-2">
           <BookOpen className="h-5 w-5 text-primary" />
           <span className="font-semibold text-neutral-900">{SUBJECT_LABELS[subject]}</span>
         </div>
-        <div className="hidden items-center gap-2 text-sm text-neutral-600 sm:flex">
+        <div className="items-center gap-2 text-sm text-neutral-600 hidden sm:flex" aria-label={`Session duration ${sessionDuration}`}>
           <Clock className="h-4 w-4" />
           <span>{sessionDuration}</span>
         </div>
       </div>
       {onEndSession && (
-        <Button variant="outline" size="sm" onClick={onEndSession} className="gap-2">
+        <Button variant="outline" size="sm" onClick={onEndSession} className="w-full gap-2 sm:w-auto" aria-label="End current learning session">
           <X className="h-4 w-4" />
           <span className="hidden sm:inline">End Session</span>
         </Button>
       )}
-    </div>
+    </header>
   );
 }
