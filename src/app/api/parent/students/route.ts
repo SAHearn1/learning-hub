@@ -6,7 +6,7 @@
 import { NextResponse } from 'next/server';
 import { auth } from '@clerk/nextjs/server';
 import { prisma } from '@/lib/db';
-import { getUserFromClerkId } from '@/lib/auth-helpers';
+import { getUserFromClerkId } from '@/lib/auth';
 
 export const dynamic = 'force-dynamic';
 

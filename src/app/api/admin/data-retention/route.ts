@@ -10,7 +10,7 @@ import {
   getRetentionStatistics,
 } from '@/lib/compliance/data-retention';
 import { logger } from '@/lib/logger';
-import { getUserFromClerkId } from '@/lib/auth-helpers';
+import { getUserFromClerkId } from '@/lib/auth';
 
 export const dynamic = 'force-dynamic';
 
