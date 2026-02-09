@@ -33,29 +33,60 @@ export interface CurriculumMetadata {
   chunkIndex: number;
   totalChunks: number;
   text: string;
-  
+
+  // Curriculum/source metadata
+  chapter?: string;
+  title?: string;
+  topics?: string[];
+  sourcePath?: string;
+  sourceCollection?: string;
+  sectionHeading?: string;
+
   // Citation metadata
-  section?: string;          // e.g., "Part 2: Regulate Phase"
-  pageNumber?: number;       // If available from PDF/structured docs
-  paragraphId?: string;      // Unique ID for this chunk
-  sourceUrl?: string;        // GitHub URL to the source file
-  course?: string;           // e.g., "RootWork Framework"
-  module?: string;           // e.g., "Introduction"
+  section?: string;
+  pageNumber?: number;
+  paragraphId?: string;
+  sourceUrl?: string;
+  course?: string;
+  module?: string;
 }
 
-/**
- * Upsert embedding vectors into Pinecone with curriculum metadata.
- */
+export function buildCurriculumFilter(options: {
+  subject?: string;
+  subjects?: string[];
+  gradeLevel?: number;
+  gradeBand?: string;
+}): Record<string, unknown> {
+  const filter: Record<string, unknown> = {};
+
+  if (options.subjects && options.subjects.length > 0) {
+    filter.subject = { $in: options.subjects };
+  } else if (options.subject) {
+    filter.subject = { $eq: options.subject };
+  }
+
+  if (options.gradeLevel) {
+    filter.gradeLevel = { $eq: options.gradeLevel };
+  }
+
+  if (options.gradeBand) {
+    filter.gradeBand = { $eq: options.gradeBand };
+  }
+
+  return filter;
+}
+
 export async function upsertVectors(
   vectors: {
     id: string;
     values: number[];
     metadata: CurriculumMetadata;
   }[],
+  options: { namespace?: string } = {},
 ): Promise<string[]> {
-  const index = getIndex();
+  const baseIndex = getIndex();
+  const index = options.namespace ? baseIndex.namespace(options.namespace) : baseIndex;
 
-  // Pinecone supports up to 100 vectors per upsert
   const batchSize = 100;
   const ids: string[] = [];
 
@@ -67,29 +98,31 @@ export async function upsertVectors(
     logger.debug('Pinecone upsert batch', {
       upserted: ids.length,
       total: vectors.length,
+      namespace: options.namespace,
     });
   }
 
   return ids;
 }
 
-/**
- * Query Pinecone for similar curriculum content.
- */
 export async function queryVectors(
   embedding: number[],
   options: {
     topK?: number;
     subject?: string;
+    subjects?: string[];
     gradeLevel?: number;
+    gradeBand?: string;
+    namespace?: string;
   } = {},
 ): Promise<{
   id: string;
   score: number;
   metadata: CurriculumMetadata;
 }[]> {
-  const index = getIndex();
-  const { topK = 5, subject, gradeLevel } = options;
+  const baseIndex = getIndex();
+  const index = options.namespace ? baseIndex.namespace(options.namespace) : baseIndex;
+  const { topK = 5, subject, subjects, gradeLevel, gradeBand } = options;
 
   // Build metadata filter
   const filter: Record<string, unknown> = {};
@@ -114,10 +147,8 @@ export async function queryVectors(
   }));
 }
 
-/**
- * Delete vectors by ID.
- */
-export async function deleteVectors(ids: string[]): Promise<void> {
-  const index = getIndex();
+export async function deleteVectors(ids: string[], options: { namespace?: string } = {}): Promise<void> {
+  const baseIndex = getIndex();
+  const index = options.namespace ? baseIndex.namespace(options.namespace) : baseIndex;
   await index.deleteMany({ ids });
 }
