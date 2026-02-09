@@ -14,8 +14,9 @@ const requestSchema = z.object({
   ).min(1),
 });
 
-export async function POST(request: Request, { params }: { params: { tenantId: string } }) {
+export async function POST(request: Request, context: { params: Promise<{ tenantId: string }> }) {
   try {
+    const params = await context.params;
     const actor = await requireRole(['PLATFORM_ADMIN']);
     const body = requestSchema.parse(await request.json());
 
