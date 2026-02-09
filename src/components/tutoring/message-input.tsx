@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, type FormEvent, type KeyboardEvent } from 'react';
+import { useId, useState, type FormEvent, type KeyboardEvent } from 'react';
 import { Send } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
@@ -20,6 +20,7 @@ export function MessageInput({
   className,
 }: MessageInputProps) {
   const [input, setInput] = useState('');
+  const helpTextId = useId();
 
   const handleSubmit = (e: FormEvent) => {
     e.preventDefault();
@@ -37,7 +38,7 @@ export function MessageInput({
   };
 
   return (
-    <form onSubmit={handleSubmit} className={cn('flex gap-2', className)} aria-label="Send message">
+    <form onSubmit={handleSubmit} className={cn('flex flex-col gap-2 sm:flex-row', className)} aria-label="Send message">
       <Textarea
         value={input}
         onChange={(e) => setInput(e.target.value)}
@@ -47,12 +48,16 @@ export function MessageInput({
         className="min-h-[60px] flex-1 resize-none"
         rows={2}
         aria-label="Message text"
+        aria-describedby={helpTextId}
       />
+      <p id={helpTextId} className="text-xs text-neutral-500">
+        Press Enter to send. Press Shift+Enter for a new line.
+      </p>
       <Button
         type="submit"
         disabled={disabled || !input.trim()}
         size="icon"
-        className="h-[60px] w-[60px]"
+        className="h-[48px] w-full sm:h-[60px] sm:w-[60px]"
         aria-label="Send message"
       >
         <Send className="h-5 w-5" />

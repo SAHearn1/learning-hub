@@ -62,13 +62,14 @@ export function ModeSelector({ currentMode, onModeChange, disabled, className }:
           disabled={disabled}
           className={cn('gap-2', className)}
           size="sm"
+          aria-label={`Engagement mode: ${currentModeData?.label ?? "Unknown"}`}
         >
           {currentModeData?.icon}
-          <span className="hidden sm:inline">{currentModeData?.label}</span>
+          <span>{currentModeData?.label}</span>
           <ChevronDown className="h-4 w-4 opacity-50" />
         </Button>
       </DropdownMenuTrigger>
-      <DropdownMenuContent align="end" className="w-64">
+      <DropdownMenuContent align="end" className="w-[min(90vw,16rem)]">
         {MODES.map((mode) => (
           <DropdownMenuItem
             key={mode.key}
