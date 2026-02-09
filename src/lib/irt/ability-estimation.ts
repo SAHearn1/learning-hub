@@ -329,7 +329,7 @@ export function estimateAbilityEAP(
  */
 export async function updateStudentAbility(
   studentId: string,
-  subject: "MATH" | "SCIENCE" | "LANGUAGE_ARTS",
+  subject: "MATH" | "SCIENCE" | "LANGUAGE_ARTS" | "FINANCIAL_LITERACY",
   estimate: AbilityEstimate
 ): Promise<void> {
   await prisma.studentAbility.upsert({
@@ -368,7 +368,7 @@ export async function updateStudentAbility(
  */
 export async function getStudentAbility(
   studentId: string,
-  subject: "MATH" | "SCIENCE" | "LANGUAGE_ARTS"
+  subject: "MATH" | "SCIENCE" | "LANGUAGE_ARTS" | "FINANCIAL_LITERACY"
 ): Promise<AbilityEstimate | null> {
   const ability = await prisma.studentAbility.findUnique({
     where: {

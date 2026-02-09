@@ -7,7 +7,7 @@ import { detectDysregulation, detectTRACEStep, type TRACEStep } from '@/lib/regu
 
 interface UseChatReturn {
   sendMessage: (content: string) => Promise<void>;
-  createSession: (subject: 'MATH' | 'SCIENCE' | 'LANGUAGE_ARTS', mode?: string) => Promise<string | null>;
+  createSession: (subject: 'MATH' | 'SCIENCE' | 'LANGUAGE_ARTS' | 'FINANCIAL_LITERACY', mode?: string) => Promise<string | null>;
   endSession: () => Promise<void>;
   updatePhase: (phase: string) => Promise<void>;
   updateEngagementMode: (mode: string) => Promise<void>;
@@ -175,7 +175,7 @@ export function useChat(): UseChatReturn {
   ]);
 
   const createSession = useCallback(async (
-    subject: 'MATH' | 'SCIENCE' | 'LANGUAGE_ARTS',
+    subject: 'MATH' | 'SCIENCE' | 'LANGUAGE_ARTS' | 'FINANCIAL_LITERACY',
     mode: string = 'FORWARD',
   ): Promise<string | null> => {
     setLoading(true);

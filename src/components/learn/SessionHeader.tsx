@@ -9,7 +9,7 @@ import type { TRACEStep } from '@/lib/regulation/detect-dysregulation';
 
 type FiveRPhase = 'ROOT' | 'REGULATE' | 'REFLECT' | 'RESTORE' | 'RECONNECT';
 type EngagementMode = 'FORWARD' | 'REVERSE' | 'ERROR_ANALYSIS' | 'MULTIPLE_PATHWAYS' | 'PROBLEM_POSING';
-type Subject = 'MATH' | 'SCIENCE' | 'LANGUAGE_ARTS';
+type Subject = 'MATH' | 'SCIENCE' | 'LANGUAGE_ARTS' | 'FINANCIAL_LITERACY';
 
 interface SessionHeaderProps {
   subject: Subject;

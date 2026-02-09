@@ -27,7 +27,8 @@ export interface CurriculumMetadata {
   filename: string;
   documentType: string;
   subject: string;
-  gradeLevel: number;
+  gradeLevel: number | number[];
+  gradeBand?: string;
   standardCodes: string[];
   chunkIndex: number;
   totalChunks: number;
@@ -96,7 +97,7 @@ export async function queryVectors(
     filter.subject = { $eq: subject };
   }
   if (gradeLevel) {
-    filter.gradeLevel = { $eq: gradeLevel };
+    filter.$or = [{ gradeLevel: { $eq: gradeLevel } }, { gradeLevel: { $in: [gradeLevel] } }];
   }
 
   const results = await index.query({

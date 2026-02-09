@@ -2,7 +2,7 @@ import { create } from 'zustand';
 
 type FiveRPhase = 'ROOT' | 'REGULATE' | 'REFLECT' | 'RESTORE' | 'RECONNECT';
 type EngagementMode = 'FORWARD' | 'REVERSE' | 'ERROR_ANALYSIS' | 'MULTIPLE_PATHWAYS' | 'PROBLEM_POSING';
-type Subject = 'MATH' | 'SCIENCE' | 'LANGUAGE_ARTS';
+type Subject = 'MATH' | 'SCIENCE' | 'LANGUAGE_ARTS' | 'FINANCIAL_LITERACY';
 
 interface SessionMessage {
   id: string;

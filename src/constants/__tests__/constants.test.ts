@@ -17,7 +17,7 @@ describe('GRADE_LEVELS', () => {
 
   it('grades 6-8 are Middle School', () => {
     const middle = GRADE_LEVELS.filter((g) => g.group === 'Middle School');
-    expect(middle).toHaveLength(3);
+    expect(middle).toHaveLength(4);
     expect(middle.map((g) => g.value)).toEqual([6, 7, 8]);
   });
 
@@ -80,6 +80,7 @@ describe('DYSREGULATION_SIGNALS', () => {
     expect(DYSREGULATION_SIGNALS).toContain('negative_self_talk');
     expect(DYSREGULATION_SIGNALS).toContain('all_caps');
     expect(DYSREGULATION_SIGNALS).toContain('avoidance_behavior');
+    expect(SUBJECTS.FINANCIAL_LITERACY).toBe('FINANCIAL_LITERACY');
   });
 });
 
@@ -95,17 +96,19 @@ describe('ROLES', () => {
     expect(ROLES.SCHOOL_ADMIN).toBe('SCHOOL_ADMIN');
     expect(ROLES.DISTRICT_ADMIN).toBe('DISTRICT_ADMIN');
     expect(ROLES.PLATFORM_ADMIN).toBe('PLATFORM_ADMIN');
+    expect(SUBJECTS.FINANCIAL_LITERACY).toBe('FINANCIAL_LITERACY');
   });
 });
 
 describe('SUBJECTS', () => {
-  it('defines 3 subjects', () => {
-    expect(Object.keys(SUBJECTS)).toHaveLength(3);
+  it('defines 4 subjects', () => {
+    expect(Object.keys(SUBJECTS)).toHaveLength(4);
   });
 
-  it('includes MATH, SCIENCE, and LANGUAGE_ARTS', () => {
+  it('includes MATH, SCIENCE, LANGUAGE_ARTS, and FINANCIAL_LITERACY', () => {
     expect(SUBJECTS.MATH).toBe('MATH');
     expect(SUBJECTS.SCIENCE).toBe('SCIENCE');
     expect(SUBJECTS.LANGUAGE_ARTS).toBe('LANGUAGE_ARTS');
+    expect(SUBJECTS.FINANCIAL_LITERACY).toBe('FINANCIAL_LITERACY');
   });
 });
