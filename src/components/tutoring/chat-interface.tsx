@@ -8,12 +8,14 @@ import { StreamingIndicator } from './streaming-indicator';
 import { CalmCorner } from './calm-corner';
 import { detectDysregulation, updateRegulationLevel } from '@/lib/regulation/detector';
 import { cn } from '@/lib/utils';
+import type { SourceCitation, ChatMessageMetadata } from '@/types/chat';
 
 interface ChatMessage extends PrismaMessage {
   id: string;
   role: 'USER' | 'ASSISTANT' | 'SYSTEM';
   content: string;
   createdAt: Date;
+  metadata: ChatMessageMetadata | null;
 }
 
 interface ChatInterfaceProps {
@@ -128,6 +130,7 @@ export function ChatInterface({
       }
 
       let fullText = '';
+      let receivedCitations: SourceCitation[] = [];
 
       while (true) {
         const { done, value } = await reader.read();
@@ -150,15 +153,19 @@ export function ChatInterface({
                 setStreamingContent(fullText);
               }
 
+              if (data.citations) {
+                receivedCitations = data.citations;
+              }
+
               if (data.done) {
-                // Add complete assistant message
+                // Add complete assistant message with citations
                 const assistantMessage: ChatMessage = {
                   id: `assistant-${Date.now()}`,
                   role: 'ASSISTANT',
                   content: fullText,
                   createdAt: new Date(),
                   sessionId,
-                  metadata: null,
+                  metadata: receivedCitations.length > 0 ? { citations: receivedCitations } : null,
                 };
                 setMessages((prev) => [...prev, assistantMessage]);
                 setStreamingContent('');
@@ -222,6 +229,7 @@ export function ChatInterface({
                 role={message.role}
                 content={message.content}
                 timestamp={message.createdAt}
+                metadata={message.metadata}
               />
             ))}
             {isStreaming && streamingContent && (
