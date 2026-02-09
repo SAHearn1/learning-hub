@@ -126,4 +126,36 @@ describe('vector-search', () => {
     expect(first).toEqual(second);
     expect(pinecone.queryVectors).toHaveBeenCalledTimes(1);
   });
+
+  it('passes multi-subject filters for FINLIT-aware retrieval', async () => {
+    vi.mocked(embeddings.generateEmbedding).mockResolvedValue([0.9, 0.1]);
+    vi.mocked(pinecone.queryVectors).mockResolvedValue([
+      {
+        id: 'finlit-1',
+        score: 0.92,
+        metadata: {
+          text: 'Compound interest grows as interest earns interest over time.',
+          filename: 'finlit/compound-interest.md',
+          subject: 'FINANCIAL_LITERACY',
+          gradeLevel: 8,
+          standardCodes: ['FINLIT.CI.1'],
+        },
+      },
+    ] as any);
+
+    const results = await searchCurriculum('What is compound interest?', {
+      subjects: ['MATH', 'FINANCIAL_LITERACY'],
+      gradeLevel: 8,
+      topK: 5,
+    });
+
+    expect(pinecone.queryVectors).toHaveBeenCalledWith([0.9, 0.1], expect.objectContaining({
+      subjects: ['MATH', 'FINANCIAL_LITERACY'],
+      gradeLevel: 8,
+      topK: 5,
+    }));
+    expect(results).toHaveLength(1);
+    expect(results[0].subject).toBe('FINANCIAL_LITERACY');
+  });
+
 });

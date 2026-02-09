@@ -126,7 +126,9 @@ export async function queryVectors(
 
   // Build metadata filter
   const filter: Record<string, unknown> = {};
-  if (subject) {
+  if (subjects && subjects.length > 0) {
+    filter.subject = { $in: subjects };
+  } else if (subject) {
     filter.subject = { $eq: subject };
   }
   if (gradeLevel) {
