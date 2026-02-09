@@ -404,6 +404,139 @@ async function main() {
       ],
       estimatedDuration: 40,
     },
+
+    {
+      id: 'topic-finlit-ch-i-001',
+      name: 'Financial Literacy Chapter I: Foundations',
+      subject: 'FINANCIAL_LITERACY' as const,
+      gradeLevel: [9, 10, 11, 12],
+      description: 'Foundational financial decision-making, values, and goal setting.',
+      conceptualUnderstanding: 'Financial choices are shaped by priorities, tradeoffs, and time horizon.',
+      commonMisconceptions: ['Money habits are fixed', 'Financial planning is only for adults'],
+      realWorldConnections: ['Personal spending choices', 'Short- and long-term goal planning'],
+      estimatedDuration: 45,
+    },
+    {
+      id: 'topic-finlit-ch-ii-001',
+      name: 'Financial Literacy Chapter II: Budgeting and Cash Flow',
+      subject: 'FINANCIAL_LITERACY' as const,
+      gradeLevel: [9, 10, 11, 12],
+      description: 'Budget construction and cash-flow tracking.',
+      conceptualUnderstanding: 'Budgets align spending with priorities and constraints.',
+      commonMisconceptions: ['Budgets are restrictive only'],
+      realWorldConnections: ['Allowance, paychecks, subscriptions'],
+      estimatedDuration: 45,
+    },
+    {
+      id: 'topic-finlit-ch-iii-001',
+      name: 'Financial Literacy Chapter III: Banking',
+      subject: 'FINANCIAL_LITERACY' as const,
+      gradeLevel: [9, 10, 11, 12],
+      description: 'Bank accounts, fees, and account security.',
+      conceptualUnderstanding: 'Banks provide services that support liquidity and safety.',
+      commonMisconceptions: ['All accounts are the same'],
+      realWorldConnections: ['Debit cards and direct deposit'],
+      estimatedDuration: 45,
+    },
+    {
+      id: 'topic-finlit-ch-iv-001',
+      name: 'Financial Literacy Chapter IV: Credit and Debt',
+      subject: 'FINANCIAL_LITERACY' as const,
+      gradeLevel: [9, 10, 11, 12],
+      description: 'Credit scores, APR, and healthy borrowing.',
+      conceptualUnderstanding: 'Credit is a tool that can help or harm depending on usage.',
+      commonMisconceptions: ['Minimum payments are enough'],
+      realWorldConnections: ['Credit cards, student loans'],
+      estimatedDuration: 45,
+    },
+    {
+      id: 'topic-finlit-ch-v-001',
+      name: 'Financial Literacy Chapter V: Income and Taxes',
+      subject: 'FINANCIAL_LITERACY' as const,
+      gradeLevel: [9, 10, 11, 12],
+      description: 'Paychecks, deductions, and tax basics.',
+      conceptualUnderstanding: 'Net pay depends on deductions and withholding choices.',
+      commonMisconceptions: ['Gross pay equals take-home pay'],
+      realWorldConnections: ['Part-time jobs'],
+      estimatedDuration: 45,
+    },
+    {
+      id: 'topic-finlit-ch-vi-001',
+      name: 'Financial Literacy Chapter VI: Saving',
+      subject: 'FINANCIAL_LITERACY' as const,
+      gradeLevel: [9, 10, 11, 12],
+      description: 'Savings goals and emergency funds.',
+      conceptualUnderstanding: 'Automatic and goal-based saving improves resilience.',
+      commonMisconceptions: ['Saving starts after earning a lot'],
+      realWorldConnections: ['Emergency expenses'],
+      estimatedDuration: 45,
+    },
+    {
+      id: 'topic-finlit-ch-vii-001',
+      name: 'Financial Literacy Chapter VII: Investing Fundamentals',
+      subject: 'FINANCIAL_LITERACY' as const,
+      gradeLevel: [9, 10, 11, 12],
+      description: 'Risk, return, and diversification.',
+      conceptualUnderstanding: 'Time in market and diversification reduce concentrated risk.',
+      commonMisconceptions: ['Investing is gambling'],
+      realWorldConnections: ['Retirement accounts'],
+      estimatedDuration: 45,
+    },
+    {
+      id: 'topic-finlit-ch-viii-001',
+      name: 'Financial Literacy Chapter VIII: Insurance',
+      subject: 'FINANCIAL_LITERACY' as const,
+      gradeLevel: [9, 10, 11, 12],
+      description: 'Insurance as risk transfer.',
+      conceptualUnderstanding: 'Insurance protects against low-probability high-cost events.',
+      commonMisconceptions: ['Insurance always costs more than it helps'],
+      realWorldConnections: ['Health and auto insurance'],
+      estimatedDuration: 45,
+    },
+    {
+      id: 'topic-finlit-ch-ix-001',
+      name: 'Financial Literacy Chapter IX: Consumer Skills',
+      subject: 'FINANCIAL_LITERACY' as const,
+      gradeLevel: [9, 10, 11, 12],
+      description: 'Smart spending, fraud prevention, and contracts.',
+      conceptualUnderstanding: 'Informed consumer behavior reduces financial risk.',
+      commonMisconceptions: ['Lowest sticker price is always best'],
+      realWorldConnections: ['Online shopping and subscriptions'],
+      estimatedDuration: 45,
+    },
+    {
+      id: 'topic-finlit-ch-x-001',
+      name: 'Financial Literacy Chapter X: Major Purchases',
+      subject: 'FINANCIAL_LITERACY' as const,
+      gradeLevel: [9, 10, 11, 12],
+      description: 'Housing, transportation, and major purchase planning.',
+      conceptualUnderstanding: 'Total cost of ownership matters more than monthly payment alone.',
+      commonMisconceptions: ['If monthly payment fits, it is affordable'],
+      realWorldConnections: ['Renting, buying used car'],
+      estimatedDuration: 45,
+    },
+    {
+      id: 'topic-finlit-ch-xi-001',
+      name: 'Financial Literacy Chapter XI: College and Career Finance',
+      subject: 'FINANCIAL_LITERACY' as const,
+      gradeLevel: [9, 10, 11, 12],
+      description: 'Postsecondary planning and aid options.',
+      conceptualUnderstanding: 'Education ROI should be evaluated with debt and earnings.',
+      commonMisconceptions: ['Most expensive school is always best'],
+      realWorldConnections: ['FAFSA and scholarships'],
+      estimatedDuration: 45,
+    },
+    {
+      id: 'topic-finlit-ch-xii-001',
+      name: 'Financial Literacy Chapter XII: Capstone',
+      subject: 'FINANCIAL_LITERACY' as const,
+      gradeLevel: [9, 10, 11, 12],
+      description: 'Integrated financial wellness plan.',
+      conceptualUnderstanding: 'Budgeting, saving, credit, and investing work as a system.',
+      commonMisconceptions: ['One-time planning is enough'],
+      realWorldConnections: ['Personal financial roadmap'],
+      estimatedDuration: 60,
+    },
   ];
 
   const createdTopics = [];
@@ -422,6 +555,186 @@ async function main() {
     });
     createdTopics.push(topic);
     console.log(`✅ Topic created: ${topic.name}`);
+  }
+
+
+  // ═══════════════════════════════════════════════════════════════
+  // 7.5 CREATE FINANCIAL LITERACY TOPICS (Ch. I-XII)
+  // ═══════════════════════════════════════════════════════════════
+  console.log('Creating financial literacy topics...');
+
+  const finlitTopics = [
+    {
+      key: 'finlit-ch-i-income-career-planning',
+      name: 'Ch. I: Income and Career Planning',
+      learningObjectives: [
+        'Explain how education and career choices influence lifetime income.',
+        'Compare salary, wages, and gig income including tradeoffs.',
+      ],
+      fiveRsAlignment: { ROOT: 'Career identity and goals', REFLECT: 'Income decision making' },
+    },
+    {
+      key: 'finlit-ch-ii-budgeting-cash-flow',
+      name: 'Ch. II: Budgeting and Cash Flow',
+      learningObjectives: [
+        'Create a monthly zero-based budget using fixed and variable expenses.',
+        'Analyze spending patterns and adjust categories to meet savings goals.',
+      ],
+      fiveRsAlignment: { REGULATE: 'Impulse spending awareness', RESTORE: 'Budget review cycle' },
+    },
+    {
+      key: 'finlit-ch-iii-banking-services',
+      name: 'Ch. III: Banking and Financial Services',
+      learningObjectives: [
+        'Differentiate checking, savings, and money market accounts.',
+        'Evaluate banking fees and choose cost-effective account options.',
+      ],
+    },
+    {
+      key: 'finlit-ch-iv-saving-strategies',
+      name: 'Ch. IV: Saving and Emergency Funds',
+      learningObjectives: [
+        'Set short- and long-term savings goals using SMART criteria.',
+        'Calculate emergency fund targets based on monthly expenses.',
+      ],
+      fiveRsAlignment: { ROOT: 'Needs vs wants baseline', RECONNECT: 'Savings habits transfer' },
+    },
+    {
+      key: 'finlit-ch-v-credit-and-debt',
+      name: 'Ch. V: Credit and Debt Management',
+      learningObjectives: [
+        'Explain how credit scores are calculated and why they matter.',
+        'Compare debt repayment methods including avalanche and snowball.',
+      ],
+    },
+    {
+      key: 'finlit-ch-vi-loans-and-interest',
+      name: 'Ch. VI: Loans and Interest',
+      learningObjectives: [
+        'Compute simple and compound interest for common loan products.',
+        'Compare total borrowing costs across loan terms and rates.',
+      ],
+      fiveRsAlignment: { REFLECT: 'Cost-of-credit reasoning' },
+    },
+    {
+      key: 'finlit-ch-vii-consumer-skills',
+      name: 'Ch. VII: Consumer Skills and Smart Purchasing',
+      learningObjectives: [
+        'Use unit pricing and total cost to compare purchasing options.',
+        'Identify persuasive marketing techniques and consumer protections.',
+      ],
+    },
+    {
+      key: 'finlit-ch-viii-risk-insurance',
+      name: 'Ch. VIII: Risk Management and Insurance',
+      learningObjectives: [
+        'Explain how insurance pools risk and why deductibles affect premiums.',
+        'Match insurance products to real-world risk scenarios.',
+      ],
+      fiveRsAlignment: { REGULATE: 'Risk perception and emotional decisions' },
+    },
+    {
+      key: 'finlit-ch-ix-taxes-paychecks',
+      name: 'Ch. IX: Taxes and Paychecks',
+      learningObjectives: [
+        'Interpret paycheck components including withholdings and net pay.',
+        'Describe the purpose of major U.S. taxes and filing basics.',
+      ],
+    },
+    {
+      key: 'finlit-ch-x-investing-basics',
+      name: 'Ch. X: Investing Basics',
+      learningObjectives: [
+        'Differentiate stocks, bonds, mutual funds, and ETFs.',
+        'Explain diversification and risk-return tradeoffs for beginners.',
+      ],
+      fiveRsAlignment: { RECONNECT: 'Long-term wealth building habits' },
+    },
+    {
+      key: 'finlit-ch-xi-retirement-planning',
+      name: 'Ch. XI: Retirement and Long-Term Planning',
+      learningObjectives: [
+        'Compare retirement account options such as 401(k) and IRA.',
+        'Model the impact of starting contributions early vs later.',
+      ],
+    },
+    {
+      key: 'finlit-ch-xii-financial-decision-making',
+      name: 'Ch. XII: Financial Decision-Making and Goal Setting',
+      learningObjectives: [
+        'Apply a structured process to make major financial decisions.',
+        'Build a personal financial action plan for the next 12 months.',
+      ],
+      fiveRsAlignment: { ROOT: 'Values and priorities', RECONNECT: 'Action plan and accountability' },
+    },
+  ] as const;
+
+  for (const finlitTopic of finlitTopics) {
+    const topicId = `topic-${finlitTopic.key}`;
+
+    await prisma.topic.upsert({
+      where: { id: topicId },
+      update: {
+        name: finlitTopic.name,
+        subject: 'FINANCIAL_LITERACY',
+        gradeLevel: [9, 10, 11, 12],
+        description: `${finlitTopic.name} introduces core personal finance concepts for high school learners.`,
+        conceptualUnderstanding:
+          'Personal finance choices compound over time; informed, values-aligned decisions improve long-term outcomes.',
+        commonMisconceptions: [
+          'Financial literacy is only relevant in adulthood',
+          'Higher income alone guarantees financial stability',
+          'Small money decisions do not meaningfully affect long-term goals',
+        ],
+        realWorldConnections: [
+          'Managing paycheck-to-paycheck decisions',
+          'Comparing financial products and contracts',
+          'Planning for education, housing, and future goals',
+        ],
+        estimatedDuration: 50,
+        fiveRsAlignment: finlitTopic.fiveRsAlignment ?? null,
+      },
+      create: {
+        id: topicId,
+        name: finlitTopic.name,
+        subject: 'FINANCIAL_LITERACY',
+        gradeLevel: [9, 10, 11, 12],
+        description: `${finlitTopic.name} introduces core personal finance concepts for high school learners.`,
+        conceptualUnderstanding:
+          'Personal finance choices compound over time; informed, values-aligned decisions improve long-term outcomes.',
+        commonMisconceptions: [
+          'Financial literacy is only relevant in adulthood',
+          'Higher income alone guarantees financial stability',
+          'Small money decisions do not meaningfully affect long-term goals',
+        ],
+        realWorldConnections: [
+          'Managing paycheck-to-paycheck decisions',
+          'Comparing financial products and contracts',
+          'Planning for education, housing, and future goals',
+        ],
+        estimatedDuration: 50,
+        fiveRsAlignment: finlitTopic.fiveRsAlignment ?? null,
+      },
+    });
+
+    for (const [index, objective] of finlitTopic.learningObjectives.entries()) {
+      await prisma.learningObjective.upsert({
+        where: { id: `obj-${finlitTopic.key}-${index + 1}` },
+        update: {
+          description: objective,
+          topicId,
+          bloomsLevel: 'APPLY',
+        },
+        create: {
+          id: `obj-${finlitTopic.key}-${index + 1}`,
+          topicId,
+          description: objective,
+          bloomsLevel: 'APPLY',
+        },
+      });
+    }
+
+    console.log(`✅ Financial literacy topic created: ${finlitTopic.name}`);
   }
 
   // ═══════════════════════════════════════════════════════════════
@@ -454,6 +767,19 @@ async function main() {
       description: 'Students will apply the distributive property to expand expressions',
       bloomsLevel: 'APPLY' as const,
     },
+
+    { id: 'obj-finlit-ch-i-001', topicId: 'topic-finlit-ch-i-001', description: 'Set measurable personal financial goals with optional 5Rs reflection.', bloomsLevel: 'APPLY' as const },
+    { id: 'obj-finlit-ch-ii-001', topicId: 'topic-finlit-ch-ii-001', description: 'Create and balance a monthly budget.', bloomsLevel: 'APPLY' as const },
+    { id: 'obj-finlit-ch-iii-001', topicId: 'topic-finlit-ch-iii-001', description: 'Compare checking and savings account features.', bloomsLevel: 'ANALYZE' as const },
+    { id: 'obj-finlit-ch-iv-001', topicId: 'topic-finlit-ch-iv-001', description: 'Explain how credit behaviors affect score and borrowing cost.', bloomsLevel: 'UNDERSTAND' as const },
+    { id: 'obj-finlit-ch-v-001', topicId: 'topic-finlit-ch-v-001', description: 'Interpret paycheck deductions and estimate net pay.', bloomsLevel: 'APPLY' as const },
+    { id: 'obj-finlit-ch-vi-001', topicId: 'topic-finlit-ch-vi-001', description: 'Design an emergency fund plan.', bloomsLevel: 'CREATE' as const },
+    { id: 'obj-finlit-ch-vii-001', topicId: 'topic-finlit-ch-vii-001', description: 'Evaluate basic investment choices by risk and return.', bloomsLevel: 'ANALYZE' as const },
+    { id: 'obj-finlit-ch-viii-001', topicId: 'topic-finlit-ch-viii-001', description: 'Select insurance types for common scenarios.', bloomsLevel: 'APPLY' as const },
+    { id: 'obj-finlit-ch-ix-001', topicId: 'topic-finlit-ch-ix-001', description: 'Use comparison-shopping criteria to make a purchase decision.', bloomsLevel: 'APPLY' as const },
+    { id: 'obj-finlit-ch-x-001', topicId: 'topic-finlit-ch-x-001', description: 'Calculate total ownership costs for major purchases.', bloomsLevel: 'ANALYZE' as const },
+    { id: 'obj-finlit-ch-xi-001', topicId: 'topic-finlit-ch-xi-001', description: 'Compare postsecondary options using cost and aid data.', bloomsLevel: 'EVALUATE' as const },
+    { id: 'obj-finlit-ch-xii-001', topicId: 'topic-finlit-ch-xii-001', description: 'Develop a personal financial wellness capstone plan.', bloomsLevel: 'CREATE' as const },
   ];
 
   for (const objData of objectives) {

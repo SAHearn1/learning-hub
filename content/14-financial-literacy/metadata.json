@@ -1,0 +1,9 @@
+{
+  "id": 14,
+  "slug": "financial-literacy",
+  "title": "Financial Literacy",
+  "subject": "FINANCIAL_LITERACY",
+  "gradeBand": [9, 10, 11, 12],
+  "chapterCount": 12,
+  "chapterPattern": "ch##-*.md"
+}

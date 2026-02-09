@@ -5,12 +5,14 @@ const SUBJECT_COLORS = {
   MATH: 'bg-blue-100 text-blue-800 border-blue-200',
   SCIENCE: 'bg-green-100 text-green-800 border-green-200',
   LANGUAGE_ARTS: 'bg-purple-100 text-purple-800 border-purple-200',
+  FINANCIAL_LITERACY: 'bg-amber-100 text-amber-800 border-amber-200',
 } as const;
 
 const SUBJECT_LABELS = {
   MATH: 'Math',
   SCIENCE: 'Science',
   LANGUAGE_ARTS: 'Language Arts',
+  FINANCIAL_LITERACY: 'Financial Literacy',
 } as const;
 
 interface SubjectBadgeProps {

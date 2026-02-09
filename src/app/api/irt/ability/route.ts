@@ -11,7 +11,7 @@ export async function GET(request: NextRequest) {
   try {
     const searchParams = request.nextUrl.searchParams;
     const studentId = searchParams.get('studentId');
-    const subject = searchParams.get('subject') as 'MATH' | 'SCIENCE' | 'LANGUAGE_ARTS';
+    const subject = searchParams.get('subject') as 'MATH' | 'SCIENCE' | 'LANGUAGE_ARTS' | 'FINANCIAL_LITERACY';
 
     if (!studentId || !subject) {
       return NextResponse.json(
@@ -20,7 +20,7 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    if (!['MATH', 'SCIENCE', 'LANGUAGE_ARTS'].includes(subject)) {
+    if (!['MATH', 'SCIENCE', 'LANGUAGE_ARTS', 'FINANCIAL_LITERACY'].includes(subject)) {
       return NextResponse.json(
         { error: 'Invalid subject. Must be MATH, SCIENCE, or LANGUAGE_ARTS' },
         { status: 400 }
