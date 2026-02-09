@@ -106,6 +106,21 @@ export async function POST(req: NextRequest) {
   // high-stress patterns and inject regulation exercises when needed.
   // When high stress is detected, we bypass RAG entirely and return
   // a regulation intervention immediately.
+  //
+  // WHY PRE-RAG?
+  // - Ensures immediate emotional support (< 50ms latency)
+  // - Prevents academic content from being mixed with regulation needs
+  // - Trauma-informed: prioritize safety/regulation before learning
+  //
+  // STRESS DETECTION APPROACH:
+  // - Pattern matching on content (no ML inference needed)
+  // - Considers cumulative stress from recent message history
+  // - Multiple thresholds: crisis, high, medium, low
+  //
+  // HIGH-PRIORITY PATTERNS:
+  // - Panic/overwhelm: "I can't breathe", "freaking out"
+  // - Crisis language: "I want to give up", "hate myself"
+  // - Acute distress: "I'm so scared", "can't stop crying"
 
   const sentimentClassification = classifySentiment(
     body.message,
@@ -147,6 +162,7 @@ export async function POST(req: NextRequest) {
       await invalidateSessionCache(session.id);
 
       // Stream the intervention response back to client
+      // Using same format as normal streaming: { text: "..." }
       const encoder = new TextEncoder();
       const readable = new ReadableStream({
         start(controller) {
@@ -166,7 +182,7 @@ export async function POST(req: NextRequest) {
     } catch (error) {
       console.error('Error creating intervention response:', error);
       captureException(error as Error);
-      // Continue with normal flow if intervention fails
+      // Continue with normal flow if intervention fails (graceful degradation)
     }
   }
 

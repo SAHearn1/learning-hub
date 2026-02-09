@@ -11,9 +11,11 @@ interface MessageBubbleProps {
   content: string;
   timestamp: Date;
   className?: string;
+  messageId?: string;
+  onInterventionReady?: () => void;
 }
 
-export function MessageBubble({ role, content, timestamp, className }: MessageBubbleProps) {
+export function MessageBubble({ role, content, timestamp, className, messageId, onInterventionReady }: MessageBubbleProps) {
   const [isReady, setIsReady] = useState(false);
   const isSystem = role === 'SYSTEM';
   const isAssistant = role === 'ASSISTANT';
@@ -25,6 +27,14 @@ export function MessageBubble({ role, content, timestamp, className }: MessageBu
     content.includes('5-4-3-2-1 Grounding') ||
     content.includes('Garden Sensory Reset')
   );
+
+  const handleReadyToContinue = () => {
+    setIsReady(true);
+    // Notify parent component if callback provided
+    if (onInterventionReady) {
+      onInterventionReady();
+    }
+  };
 
   if (isSystem) {
     return (
@@ -80,7 +90,7 @@ export function MessageBubble({ role, content, timestamp, className }: MessageBu
             {!isReady && (
               <div className="mt-6 flex justify-center">
                 <button
-                  onClick={() => setIsReady(true)}
+                  onClick={handleReadyToContinue}
                   className="bg-green-600 hover:bg-green-700 text-white font-medium px-6 py-3 rounded-lg transition-colors duration-200 shadow-sm"
                 >
                   I&apos;m ready to continue learning

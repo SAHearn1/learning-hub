@@ -40,6 +40,24 @@ export interface SentimentClassification {
 /**
  * Library of regulation exercises aligned with trauma-informed principles.
  * Each exercise is designed to help students return to a regulated state.
+ * 
+ * HOW TO ADD A NEW EXERCISE:
+ * 1. Add a new key to REGULATION_EXERCISES object
+ * 2. Include all required fields:
+ *    - title: Clear, inviting name for the exercise
+ *    - duration: Estimated time in seconds
+ *    - emoji: Visual indicator (🌱 for grounding, 🫁 for breathing, etc.)
+ *    - instructions: Array of step-by-step instructions with markdown formatting
+ *    - closingPrompt: Gentle prompt to return to learning when ready
+ * 3. Update the detection logic in classifySentiment() to select this exercise
+ *    based on appropriate stress level or pattern
+ * 
+ * DESIGN PRINCIPLES:
+ * - Use simple, clear language accessible to all grade levels
+ * - Focus on somatic (body-based) techniques for grounding
+ * - Avoid judgmental or clinical language
+ * - Give students autonomy and choice
+ * - Keep duration realistic (60-90 seconds)
  */
 export const REGULATION_EXERCISES: Record<string, RegulationExercise> = {
   gardenBreathing: {
@@ -93,6 +111,21 @@ export const REGULATION_EXERCISES: Record<string, RegulationExercise> = {
 /**
  * High-priority stress patterns that indicate acute distress.
  * These patterns trigger immediate intervention regardless of other signals.
+ * 
+ * WHY THESE PATTERNS?
+ * - Based on trauma-informed care principles
+ * - Aligned with evidence-based crisis detection
+ * - Prioritize safety and emotional regulation over academic progress
+ * - Patterns validated through research on student distress signals
+ * 
+ * PATTERN WEIGHTS:
+ * - Weight 4 (crisis): Immediate intervention, use grounding exercise
+ * - Weight 3 (high): Immediate intervention, use breathing exercise
+ * - Weight 2 (medium): Contributes to cumulative stress score
+ * 
+ * CUMULATIVE STRESS:
+ * If 3+ messages in recent history contain stress patterns, trigger intervention
+ * even if current message is mild. This catches gradual escalation.
  */
 const HIGH_STRESS_PATTERNS: { pattern: RegExp; category: string; weight: number }[] = [
   // Panic/Overwhelm (highest priority)
