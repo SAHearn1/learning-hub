@@ -36,26 +36,29 @@ function constructSourceUrl(filename: string): string {
 }
 
 /**
- * Extract source citations from Pinecone matches
+ * Extract source citations from retrieved curriculum search results
  */
-function extractCitations(matches: any[]): SourceCitation[] {
-  return matches.map((match, idx) => {
-    const metadata = match.metadata as Record<string, any> || {};
-    
+function extractCitations(results: Array<Record<string, unknown>>): SourceCitation[] {
+  return results.map((result, idx) => {
+    const filename = String(result.filename || result.sourcePath || 'Unknown');
+    const sourcePath = String(result.sourcePath || filename);
+
     return {
-      id: match.id || `citation-${idx}`,
-      filename: metadata.filename || 'Unknown',
-      section: metadata.section,
-      chunkIndex: metadata.chunkIndex ?? idx,
-      totalChunks: metadata.totalChunks ?? 1,
-      text: metadata.content || metadata.text || '',
-      relevanceScore: match.score ?? 0,
-      sourceUrl: metadata.sourceUrl || constructSourceUrl(metadata.filename || ''),
-      subject: metadata.subject || '',
-      gradeLevel: metadata.gradeLevel ?? 0,
-      standardCodes: metadata.standardCodes || [],
-      course: metadata.course,
-      module: metadata.module,
+      id: `citation-${idx}`,
+      filename,
+      sourcePath,
+      section: (result.sectionHeading as string | undefined) || undefined,
+      sectionHeading: (result.sectionHeading as string | undefined) || undefined,
+      chunkIndex: (result.chunkIndex as number | undefined) ?? idx,
+      totalChunks: (result.totalChunks as number | undefined) ?? 1,
+      text: (result.text as string | undefined) || '',
+      relevanceScore: (result.score as number | undefined) ?? 0,
+      sourceUrl: constructSourceUrl(sourcePath),
+      subject: (result.subject as string | undefined) || '',
+      gradeLevel: (result.gradeLevel as number | undefined) ?? 0,
+      standardCodes: (result.standardCodes as string[] | undefined) || [],
+      course: result.course as string | undefined,
+      module: result.module as string | undefined,
     };
   });
 }
@@ -300,23 +303,9 @@ export async function POST(req: NextRequest) {
       ragMetrics.retrieved = results.length;
       ragMetrics.durationMs = Date.now() - ragStartTime;
 
-      // Extract citations from matches
-      if (matches.length > 0) {
-        citations = extractCitations(matches);
-      }
-
-      // Format retrieved context
-      if (matches.length > 0) {
-        curriculumContext = matches
-          .map((match, idx) => {
-            const metadata = match.metadata as Record<string, any> || {};
-            const content = metadata.content || metadata.text || 'No content available';
-            const source = metadata.source || metadata.title || 'Unknown source';
-            const score = match.score?.toFixed(3) || 'N/A';
-
-            return `[Context ${idx + 1}] (Relevance: ${score})\nSource: ${source}\n${content}`;
-          })
-          .join('\n\n---\n\n');
+      if (results.length > 0) {
+        citations = extractCitations(results as Array<Record<string, unknown>>);
+        curriculumContext = formatCurriculumContext(results);
 
         // Cache the formatted RAG context
         await cacheSet(ragCacheKey, curriculumContext, CACHE_TTL.CURRICULUM);

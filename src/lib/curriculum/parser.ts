@@ -13,6 +13,8 @@ export interface ParsedCurriculumChunk {
   text: string;
   metadata: {
     filename: string;
+    sourcePath: string;
+    sectionHeading?: string;
     documentType: 'curriculum';
     subject: string;
     gradeLevel: number;
@@ -104,20 +106,27 @@ export async function parseCurriculumFile(
 
   const cleanPath = file.path.replace(/[^a-zA-Z0-9-_]/g, '-');
 
-  return chunks.map((chunk, index) => ({
-    id: `${cleanPath}-chunk-${index}`,
-    text: chunk,
-    metadata: {
-      filename: file.path,
-      documentType: 'curriculum',
-      subject,
-      gradeLevel,
-      standardCodes,
-      chunkIndex: index,
-      totalChunks: chunks.length,
+  return chunks.map((chunk, index) => {
+    const firstLine = chunk.split('\n').find(line => line.trim().length > 0) ?? '';
+    const sectionHeading = firstLine.replace(/^#+\s*/, '').trim() || undefined;
+
+    return {
+      id: `${cleanPath}-chunk-${index}`,
       text: chunk,
-      ...(course ? { course } : {}),
-      ...(moduleName ? { module: moduleName } : {}),
-    },
-  }));
+      metadata: {
+        filename: file.path,
+        sourcePath: file.path,
+        ...(sectionHeading ? { sectionHeading } : {}),
+        documentType: 'curriculum',
+        subject,
+        gradeLevel,
+        standardCodes,
+        chunkIndex: index,
+        totalChunks: chunks.length,
+        text: chunk,
+        ...(course ? { course } : {}),
+        ...(moduleName ? { module: moduleName } : {}),
+      },
+    };
+  });
 }
