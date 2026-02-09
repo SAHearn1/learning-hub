@@ -3,11 +3,12 @@ import { auth } from '@clerk/nextjs/server';
 import { db } from '@/lib/db';
 import { anthropic, AI_MODELS } from '@/lib/ai/client';
 import { buildMasterSystemPrompt } from '@/lib/ai/prompts/master-system-prompt';
-import { generateEmbedding } from '@/lib/pinecone/embeddings';
-import { queryPinecone } from '@/lib/pinecone/client';
 import { enforceUsageLimits, UsageLimitError } from '@/lib/usage-limits';
 import { detectDysregulation, updateRegulationLevel } from '@/lib/regulation/detector';
 import { analyzeThinkingQuality } from '@/lib/trace/tracker';
+import { GuardrailsEngine } from '@/lib/ai/guardrails';
+import { buildOptimizedContext } from '@/lib/rag/context-window-manager';
+import { createSuggestionReview } from '@/lib/ai/hitl/suggestion-service';
 import { z } from 'zod';
 
 const chatRequestSchema = z.object({
@@ -63,6 +64,11 @@ export async function POST(req: NextRequest) {
     throw error;
   }
 
+  // Initialize guardrails engine
+  const guardrails = new GuardrailsEngine({
+    skipIepCheck: user.student.iepAccommodations.length === 0,
+  });
+
   // Save user message
   const userMessage = await db.message.create({
     data: {
@@ -108,50 +114,77 @@ export async function POST(req: NextRequest) {
     .map(m => `${m.role}: ${m.content}`)
     .join('\n');
 
-  // RAG: Retrieve relevant curriculum context from Pinecone
+  // Pre-generation guardrail check on user input
+  const guardrailContext = {
+    sessionPhase: session.currentPhase,
+    subject: session.subject,
+    gradeLevel: user.student.gradeLevel,
+    accommodations: accommodationTypes,
+    ragContext: '',
+    sessionHistory,
+    studentId: user.student.id,
+  };
+
+  const preCheck = guardrails.runPreGeneration(body.message, guardrailContext);
+
+  // Log escalation triggers for educator notification
+  const escalationViolations = preCheck.violations.filter(
+    v => v.details?.requiresEscalation === true,
+  );
+  if (escalationViolations.length > 0) {
+    await db.auditLog.create({
+      data: {
+        tenantId: user.tenantId,
+        userId: user.id,
+        action: 'ESCALATION_TRIGGER_DETECTED',
+        resource: 'Session',
+        resourceId: session.id,
+        metadata: {
+          signals: escalationViolations.map(v => v.message),
+          studentId: user.student.id,
+        },
+      },
+    });
+  }
+
+  // RAG: Retrieve optimized context (IEP + curriculum + session) via context window manager
   let curriculumContext = '';
-  let ragMetrics = { retrieved: 0, durationMs: 0 };
-  
+  let iepContext = '';
+  let ragMetrics = { iepChunks: 0, curriculumChunks: 0, durationMs: 0 };
+
   try {
-    const ragStartTime = Date.now();
-    
-    // Generate embedding for the user's query
-    const queryEmbedding = await generateEmbedding(body.message);
-    
-    // Query Pinecone for relevant curriculum content
-    const filter: Record<string, any> = {
+    const optimizedContext = await buildOptimizedContext({
+      studentId: user.student.id,
+      query: preCheck.sanitizedInput || body.message,
+      sessionPhase: session.currentPhase,
       subject: session.subject,
+      gradeLevel: user.student.gradeLevel,
+      accommodations: accommodationTypes,
+      sessionHistory,
+    });
+
+    curriculumContext = optimizedContext.curriculumContext;
+    iepContext = optimizedContext.iepContext;
+    ragMetrics = {
+      iepChunks: optimizedContext.retrievalMetrics.iepChunksRetrieved,
+      curriculumChunks: optimizedContext.retrievalMetrics.curriculumChunksRetrieved,
+      durationMs: optimizedContext.retrievalMetrics.retrievalTimeMs,
     };
-    
-    // Add grade level filter if available
-    if (user.student.gradeLevel) {
-      filter.gradeLevel = user.student.gradeLevel;
-    }
-    
-    const matches = await queryPinecone(queryEmbedding, 5, filter);
-    ragMetrics.retrieved = matches.length;
-    ragMetrics.durationMs = Date.now() - ragStartTime;
-    
-    // Format retrieved context
-    if (matches.length > 0) {
-      curriculumContext = matches
-        .map((match, idx) => {
-          const metadata = match.metadata as Record<string, any> || {};
-          const content = metadata.content || metadata.text || 'No content available';
-          const source = metadata.source || metadata.title || 'Unknown source';
-          const score = match.score?.toFixed(3) || 'N/A';
-          
-          return `[Context ${idx + 1}] (Relevance: ${score})\nSource: ${source}\n${content}`;
-        })
-        .join('\n\n---\n\n');
-      
-      console.log(`RAG: Retrieved ${matches.length} curriculum contexts in ${ragMetrics.durationMs}ms for session ${session.id}`);
-    }
+
+    console.log(
+      `RAG: Retrieved ${ragMetrics.curriculumChunks} curriculum + ${ragMetrics.iepChunks} IEP chunks ` +
+      `in ${ragMetrics.durationMs}ms for session ${session.id} ` +
+      `(${optimizedContext.totalTokensUsed} tokens used)`,
+    );
   } catch (error) {
     console.error(`RAG retrieval error for session ${session.id}:`, error);
-    // Continue without RAG context if Pinecone fails
-    curriculumContext = '';
   }
+
+  // Update guardrail context with retrieved RAG content for post-generation checks
+  guardrailContext.ragContext = [curriculumContext, iepContext].filter(Boolean).join('\n\n');
+
+  // Combine curriculum and IEP context for the topic context
+  const combinedTopicContext = [curriculumContext, iepContext].filter(Boolean).join('\n\n');
 
   const systemPrompt = buildMasterSystemPrompt({
     currentPhase: session.currentPhase,
@@ -161,7 +194,7 @@ export async function POST(req: NextRequest) {
     accommodations: accommodationTypes,
     modalities: learningPrefs?.modalities ?? [],
     sessionHistory,
-    topicContext: curriculumContext,
+    topicContext: combinedTopicContext,
     engagementMode: session.engagementMode,
   });
 
@@ -209,14 +242,60 @@ export async function POST(req: NextRequest) {
           }
         }
 
+        // Post-generation guardrail check on AI output
+        const postCheck = guardrails.runPostGeneration(fullText, guardrailContext);
+
+        // Use sanitized output if guardrails modified it
+        const finalContent = postCheck.sanitizedOutput || fullText;
+
         // Save assistant message
         await db.message.create({
           data: {
             sessionId: session.id,
             role: 'ASSISTANT',
-            content: fullText,
+            content: finalContent,
+            metadata: {
+              guardrails: {
+                passed: postCheck.passed,
+                confidenceScore: postCheck.confidenceScore,
+                hallucinationScore: postCheck.hallucinationScore,
+                fiveRsAlignmentScore: postCheck.fiveRsAlignmentScore,
+                violationCount: postCheck.violations.length,
+              },
+            },
           },
         });
+
+        // If guardrails flagged issues or confidence is low, create HITL review
+        if (!postCheck.passed || postCheck.confidenceScore < 0.7) {
+          createSuggestionReview({
+            tenantId: user.tenantId,
+            studentId: user.student!.id,
+            sessionId: session.id,
+            suggestionType: 'TUTORING_RESPONSE',
+            originalContent: finalContent,
+            confidenceScore: postCheck.confidenceScore,
+            guardrailFlags: {
+              passed: postCheck.passed,
+              violationCount: postCheck.violations.length,
+              violations: postCheck.violations.map(v => ({
+                category: v.category,
+                severity: v.severity,
+                message: v.message,
+              })),
+            },
+            contextSnapshot: {
+              phase: session.currentPhase,
+              subject: session.subject,
+              gradeLevel: user.student!.gradeLevel,
+              accommodations: accommodationTypes,
+              userMessage: body.message.slice(0, 500),
+            },
+            priority: postCheck.confidenceScore < 0.5 ? 8 : postCheck.passed ? 2 : 5,
+          }).catch(err => {
+            console.error('Failed to create HITL review:', err);
+          });
+        }
 
         // Track thinking quality with TRACE protocol (async, don't block response)
         if (body.message.length > MIN_MESSAGE_LENGTH_FOR_TRACE) {

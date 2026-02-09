@@ -604,3 +604,50 @@ enum IngestSource {
   SCHEDULED
   API
 }
+
+// ═══════════════════════════════════════════════════════════════
+// AI SUGGESTION REVIEW (Human-in-the-Loop)
+// ═══════════════════════════════════════════════════════════════
+
+enum SuggestionType {
+  TUTORING_RESPONSE
+  IEP_RECOMMENDATION
+  ASSESSMENT_FEEDBACK
+  ACCOMMODATION_SUGGESTION
+  PROGRESS_NOTE
+}
+
+enum ReviewStatus {
+  PENDING_REVIEW
+  APPROVED
+  APPROVED_WITH_EDITS
+  REJECTED
+  EXPIRED
+}
+
+model AiSuggestionReview {
+  id               String         @id @default(cuid())
+  tenantId         String
+  studentId        String
+  sessionId        String?
+  suggestionType   SuggestionType
+  originalContent  String         @db.Text
+  editedContent    String?        @db.Text
+  reviewStatus     ReviewStatus   @default(PENDING_REVIEW)
+  reviewerId       String?
+  reviewerNotes    String?        @db.Text
+  confidenceScore  Float?
+  guardrailFlags   Json?
+  contextSnapshot  Json?
+  priority         Int            @default(0)
+  expiresAt        DateTime?
+  reviewedAt       DateTime?
+  createdAt        DateTime       @default(now())
+  updatedAt        DateTime       @updatedAt
+
+  @@index([tenantId])
+  @@index([studentId])
+  @@index([reviewStatus])
+  @@index([reviewerId])
+  @@index([suggestionType])
+}
