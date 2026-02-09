@@ -1,6 +1,12 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   output: "standalone",
+  serverComponentsExternalPackages: [
+    'dd-trace',
+    '@datadog/libdatadog',
+    '@datadog/openfeature-node-server',
+    '@opentelemetry/instrumentation',
+  ],
   images: {
     remotePatterns: [
       { protocol: "https", hostname: "img.clerk.com" },
@@ -20,26 +26,6 @@ const nextConfig = {
         message: /Critical dependency: the request of a dependency is an expression/,
       },
     ];
-
-    // Exclude server-only files and dependencies from client bundle
-    if (!isServer) {
-      // Ignore server-only modules during client build
-      config.plugins.push(
-        new (require('webpack').IgnorePlugin)({
-          resourceRegExp: /^dd-trace$/,
-        })
-      );
-      config.plugins.push(
-        new (require('webpack').IgnorePlugin)({
-          resourceRegExp: /^@datadog\//,
-        })
-      );
-      config.plugins.push(
-        new (require('webpack').IgnorePlugin)({
-          resourceRegExp: /^@openfeature\/server-sdk$/,
-        })
-      );
-    }
 
     return config;
   },

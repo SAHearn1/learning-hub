@@ -4,6 +4,9 @@ section: "Grade Bands"
 source_path: "05-grade-bands/9-12/part-1.md"
 document_type: "curriculum"
 subsection: "9-12"
+phase: "Root"
+framework_question: "Am I safe and ready to learn?"
+duration: "2-5 minutes"
 ---
 # 9-12 Root Phase: Self-Directed Grounding
 

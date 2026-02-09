@@ -4,6 +4,9 @@ section: "Grade Bands"
 source_path: "05-grade-bands/3-5/part-5.md"
 document_type: "curriculum"
 subsection: "3-5"
+phase: "Reconnect"
+framework_question: "How does this connect to my world?"
+duration: "10-15 minutes"
 ---
 # 3-5 Reconnect Phase: Community Connections
 

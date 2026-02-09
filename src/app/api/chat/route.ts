@@ -99,6 +99,17 @@ export async function POST(req: NextRequest) {
     throw error;
   }
 
+  const usageGuardrail = await evaluateOrganizationTokenUsage(user.tenantId, { additionalTokens: 2048 });
+  if (usageGuardrail.spikeDetected) {
+    trackEvent('organization.token_usage_spike_detected', {
+      organizationId: usageGuardrail.organizationId,
+      projectedDailyTokens: usageGuardrail.projectedDailyTokens,
+      baselineDailyTokens: usageGuardrail.baselineDailyTokens,
+      spikeRatio: Number(usageGuardrail.spikeRatio.toFixed(2)),
+      dailyHardLimitTokens: usageGuardrail.dailyHardLimitTokens,
+    });
+  }
+
   // Save user message and invalidate session cache
   const userMessage = await db.message.create({
     data: {
@@ -537,6 +548,18 @@ export async function POST(req: NextRequest) {
           model: AI_MODELS.primary,
           subject: session.subject,
         });
+
+        await recordMetric('chat.organization_tokens_projected_daily', usageGuardrail.projectedDailyTokens, {
+          tenantId: usageGuardrail.organizationId,
+          subject: session.subject,
+        });
+
+        if (usageGuardrail.spikeDetected) {
+          await recordMetric('chat.organization_token_spike_ratio', usageGuardrail.spikeRatio, {
+            tenantId: usageGuardrail.organizationId,
+            subject: session.subject,
+          });
+        }
 
 
         await appendImmutableAuditLog({

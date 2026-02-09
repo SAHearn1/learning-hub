@@ -3,6 +3,7 @@ title: "Why This Curriculum"
 section: "Introduction"
 source_path: "02-introduction/why-this-curriculum.md"
 document_type: "curriculum"
+subsection: "rationale"
 ---
 # Why This Curriculum
 

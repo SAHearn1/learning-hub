@@ -3,6 +3,7 @@ title: "Theoretical Rationale"
 section: "Introduction"
 source_path: "02-introduction/theoretical-rationale.md"
 document_type: "curriculum"
+subsection: "theoretical-rationale"
 ---
 # Theoretical Rationale
 

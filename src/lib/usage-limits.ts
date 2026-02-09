@@ -1,6 +1,11 @@
 import { db } from '@/lib/db';
 import { TIER_LIMITS } from '@/lib/billing';
 
+const DEFAULT_DAILY_HARD_LIMIT_TOKENS = 250_000;
+const DEFAULT_SPIKE_ALERT_MULTIPLIER = 3;
+const DEFAULT_SPIKE_ALERT_MIN_TOKENS = 40_000;
+const DEFAULT_BASELINE_MIN_TOKENS = 10_000;
+
 export class UsageLimitError extends Error {
   constructor(message: string) {
     super(message);
@@ -69,5 +74,92 @@ export async function enforceUsageLimits(tenantId: string, request: { additional
     throw new UsageLimitError('Monthly AI token limit exceeded for current subscription tier.');
   }
 
+  const guardrail = await evaluateOrganizationTokenUsage(tenantId, { additionalTokens: requestedTokens });
+  if (guardrail.hardLimitExceeded) {
+    throw new UsageLimitError(
+      `Daily token limit exceeded for organization ${tenantId}. ` +
+        `Projected usage ${guardrail.projectedDailyTokens.toLocaleString()} exceeds ${guardrail.dailyHardLimitTokens.toLocaleString()} tokens.`,
+    );
+  }
+
   return snapshot;
+}
+
+export interface OrganizationTokenUsageGuardrail {
+  organizationId: string;
+  tokensLastHour: number;
+  tokensLast24Hours: number;
+  baselineDailyTokens: number;
+  projectedDailyTokens: number;
+  dailyHardLimitTokens: number;
+  spikeRatio: number;
+  hardLimitExceeded: boolean;
+  spikeDetected: boolean;
+}
+
+export async function evaluateOrganizationTokenUsage(
+  organizationId: string,
+  options: { additionalTokens?: number; now?: Date } = {},
+): Promise<OrganizationTokenUsageGuardrail> {
+  const now = options.now ?? new Date();
+  const additionalTokens = options.additionalTokens ?? 0;
+
+  const tenant = await db.tenant.findUnique({
+    where: { id: organizationId },
+    select: { id: true, settings: true },
+  });
+  if (!tenant) throw new Error('Tenant not found');
+
+  const settings = (tenant.settings as {
+    aiUsageHardLimitDailyTokens?: number;
+    aiUsageSpikeAlertMultiplier?: number;
+    aiUsageSpikeAlertMinTokens?: number;
+    aiUsageSpikeBaselineMinTokens?: number;
+  } | null) ?? {};
+
+  const oneHourAgo = new Date(now.getTime() - 60 * 60 * 1000);
+  const dayAgo = new Date(now.getTime() - 24 * 60 * 60 * 1000);
+  const baselineStart = new Date(now.getTime() - 8 * 24 * 60 * 60 * 1000);
+
+  const [hourAgg, dayAgg, baselineAgg] = await Promise.all([
+    db.aIUsageLedger.aggregate({
+      where: { tenantId: organizationId, timestamp: { gte: oneHourAgo, lte: now } },
+      _sum: { totalTokens: true },
+    }),
+    db.aIUsageLedger.aggregate({
+      where: { tenantId: organizationId, timestamp: { gte: dayAgo, lte: now } },
+      _sum: { totalTokens: true },
+    }),
+    db.aIUsageLedger.aggregate({
+      where: { tenantId: organizationId, timestamp: { gte: baselineStart, lt: dayAgo } },
+      _sum: { totalTokens: true },
+    }),
+  ]);
+
+  const tokensLastHour = hourAgg._sum.totalTokens ?? 0;
+  const tokensLast24Hours = dayAgg._sum.totalTokens ?? 0;
+  const baselineDailyTokensRaw = Math.floor((baselineAgg._sum.totalTokens ?? 0) / 7);
+  const baselineFloor = settings.aiUsageSpikeBaselineMinTokens ?? DEFAULT_BASELINE_MIN_TOKENS;
+  const baselineDailyTokens = Math.max(baselineDailyTokensRaw, baselineFloor);
+  const projectedDailyTokens = tokensLast24Hours + additionalTokens;
+
+  const dailyHardLimitTokens = settings.aiUsageHardLimitDailyTokens ?? DEFAULT_DAILY_HARD_LIMIT_TOKENS;
+  const spikeAlertMultiplier = settings.aiUsageSpikeAlertMultiplier ?? DEFAULT_SPIKE_ALERT_MULTIPLIER;
+  const spikeAlertMinTokens = settings.aiUsageSpikeAlertMinTokens ?? DEFAULT_SPIKE_ALERT_MIN_TOKENS;
+
+  const spikeRatio = projectedDailyTokens / baselineDailyTokens;
+  const hardLimitExceeded = dailyHardLimitTokens > 0 && projectedDailyTokens > dailyHardLimitTokens;
+  const spikeDetected = projectedDailyTokens >= spikeAlertMinTokens && spikeRatio >= spikeAlertMultiplier;
+
+  return {
+    organizationId,
+    tokensLastHour,
+    tokensLast24Hours,
+    baselineDailyTokens,
+    projectedDailyTokens,
+    dailyHardLimitTokens,
+    spikeRatio,
+    hardLimitExceeded,
+    spikeDetected,
+  };
 }

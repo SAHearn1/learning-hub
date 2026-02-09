@@ -10,6 +10,9 @@ vi.mock('@/lib/db', () => ({
     user: {
       findUnique: vi.fn(),
     },
+    class: {
+      findUnique: vi.fn(),
+    },
     student: {
       findMany: vi.fn(),
       count: vi.fn(),
@@ -74,6 +77,7 @@ describe('GET /api/educator/students', () => {
     ];
 
     vi.mocked(db.student.findMany).mockResolvedValueOnce(mockStudents as any);
+    vi.mocked(db.class.findUnique).mockResolvedValueOnce({ tenantId: 'tenant_123' } as any);
     vi.mocked(db.student.count).mockResolvedValueOnce(2);
 
     const { GET } = await import('@/app/api/educator/students/route');
@@ -96,6 +100,7 @@ describe('GET /api/educator/students', () => {
       tenantId: 'tenant_123',
       role: 'EDUCATOR',
     } as any);
+    vi.mocked(db.class.findUnique).mockResolvedValueOnce({ tenantId: 'tenant_123' } as any);
     vi.mocked(db.student.findMany).mockResolvedValueOnce([{
       id: 'student_1',
       user: { id: 'user_1', firstName: 'Alice', lastName: 'Smith', email: 'alice@test.com' },
@@ -112,11 +117,40 @@ describe('GET /api/educator/students', () => {
 
     expect(response.status).toBe(200);
     expect(data.data).toHaveLength(1);
+    expect(db.class.findUnique).toHaveBeenCalledWith({
+      where: { id: 'class_123' },
+      select: { tenantId: true },
+    });
     expect(db.student.findMany).toHaveBeenCalledWith(
       expect.objectContaining({
-        where: { enrollments: { some: { classId: 'class_123' } } },
+        where: {
+          user: { tenantId: 'tenant_123' },
+          enrollments: { some: { classId: 'class_123' } },
+        },
       })
     );
+  });
+
+
+
+  it('returns 403 when classId belongs to a different tenant', async () => {
+    const { db } = await import('@/lib/db');
+    vi.mocked(db.user.findUnique).mockResolvedValueOnce({
+      id: 'educator_123',
+      clerkUserId: 'clerk_educator_123',
+      tenantId: 'tenant_123',
+      role: 'EDUCATOR',
+    } as any);
+    vi.mocked(db.class.findUnique).mockResolvedValueOnce({ tenantId: 'tenant_other' } as any);
+
+    const { GET } = await import('@/app/api/educator/students/route');
+    const req = new NextRequest('http://localhost:3000/api/educator/students?classId=class_other');
+
+    const response = await GET(req);
+
+    expect(response.status).toBe(403);
+    expect(db.student.findMany).not.toHaveBeenCalled();
+    expect(db.student.count).not.toHaveBeenCalled();
   });
 
   it('respects pagination parameters', async () => {

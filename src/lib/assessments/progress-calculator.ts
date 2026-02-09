@@ -1,5 +1,7 @@
 import { db } from '../db';
-import type { BloomsLevel } from '@prisma/client';
+import type { BloomsLevel, Subject } from '@prisma/client';
+import { getStudentAbility, updateStudentAbility, estimateAbilityMLE, type ResponsePattern } from '../irt/ability-estimation';
+import { probabilityCorrect } from '../irt/ability-estimation';
 
 export interface ProgressUpdate {
   studentId: string;
@@ -8,10 +10,12 @@ export interface ProgressUpdate {
   assessmentScore: number;
   bloomsLevel: BloomsLevel;
   difficulty: number;
+  assessmentId?: string;
+  subject?: Subject;
 }
 
 export async function updateProgress(update: ProgressUpdate): Promise<void> {
-  const { studentId, standardId, tenantId, assessmentScore, bloomsLevel, difficulty } = update;
+  const { studentId, standardId, tenantId, assessmentScore, bloomsLevel, difficulty, assessmentId, subject } = update;
 
   // Get current progress
   const currentProgress = await db.progress.findUnique({
@@ -23,14 +27,30 @@ export async function updateProgress(update: ProgressUpdate): Promise<void> {
     },
   });
 
-  // Calculate new mastery level
-  const newMasteryLevel = calculateNewMasteryLevel(
-    currentProgress?.masteryLevel || 0,
-    currentProgress?.assessmentCount || 0,
-    assessmentScore,
-    bloomsLevel,
-    difficulty
-  );
+  // Try IRT-enhanced mastery calculation if subject is provided
+  let newMasteryLevel: number;
+
+  if (subject && assessmentId) {
+    newMasteryLevel = await calculateIRTEnhancedMastery(
+      studentId,
+      standardId,
+      subject,
+      assessmentScore,
+      bloomsLevel,
+      difficulty,
+      currentProgress?.masteryLevel || 0,
+      currentProgress?.assessmentCount || 0
+    );
+  } else {
+    // Fallback to traditional calculation
+    newMasteryLevel = calculateNewMasteryLevel(
+      currentProgress?.masteryLevel || 0,
+      currentProgress?.assessmentCount || 0,
+      assessmentScore,
+      bloomsLevel,
+      difficulty
+    );
+  }
 
   // Update or create progress
   await db.progress.upsert({
@@ -179,6 +199,100 @@ export async function calculateTopicMastery(
     overallMastery: Math.round(overallMastery * 100) / 100,
     standardMasteries,
   };
+}
+
+/**
+ * IRT-Enhanced Mastery Calculation
+ * Uses student ability (theta) and item difficulty parameters for more accurate mastery estimation
+ */
+async function calculateIRTEnhancedMastery(
+  studentId: string,
+  standardId: string,
+  subject: Subject,
+  assessmentScore: number,
+  bloomsLevel: BloomsLevel,
+  difficulty: number,
+  currentMastery: number,
+  assessmentCount: number
+): Promise<number> {
+  // Get or calculate student ability
+  let studentAbility = await getStudentAbility(studentId, subject);
+
+  // If no ability estimate exists, use traditional calculation initially
+  if (!studentAbility) {
+    return calculateNewMasteryLevel(currentMastery, assessmentCount, assessmentScore, bloomsLevel, difficulty);
+  }
+
+  const theta = studentAbility.theta;
+
+  // Convert mastery level (0-100) to theta scale (-3 to +3)
+  // Mastery 0 = theta -3, Mastery 50 = theta 0, Mastery 100 = theta 3
+  const thetaFromMastery = (currentMastery - 50) / 16.67;
+
+  // Convert assessment difficulty (1-10) to IRT difficulty scale (-3 to +3)
+  const irtDifficulty = (difficulty - 5.5) / 1.5;
+
+  // Calculate expected probability of success based on IRT
+  const expectedProb = probabilityCorrect(theta, {
+    difficulty: irtDifficulty,
+    discrimination: 1.0,
+    guessing: 0,
+    model: 'TWO_PL'
+  });
+
+  // Adjust mastery based on performance relative to expectation
+  // If student performed better than expected, increase mastery more
+  // If student performed worse, decrease mastery
+  const performanceRatio = (assessmentScore / 100) / expectedProb;
+
+  // Bloom's level adjustment
+  const bloomsMultiplier = getBloomsMultiplier(bloomsLevel);
+
+  // Calculate mastery adjustment
+  let masteryChange: number;
+  if (performanceRatio > 1.2) {
+    // Significantly better than expected
+    masteryChange = 15 * bloomsMultiplier;
+  } else if (performanceRatio > 1.0) {
+    // Better than expected
+    masteryChange = 10 * bloomsMultiplier;
+  } else if (performanceRatio > 0.8) {
+    // About as expected
+    masteryChange = 5 * bloomsMultiplier;
+  } else if (performanceRatio > 0.6) {
+    // Worse than expected
+    masteryChange = -5;
+  } else {
+    // Much worse than expected
+    masteryChange = -10;
+  }
+
+  // Apply exponential moving average with mastery change
+  const alpha = 0.3;
+  const newScore = Math.min(100, Math.max(0, currentMastery + masteryChange));
+  const newMastery = assessmentCount === 0
+    ? newScore
+    : alpha * newScore + (1 - alpha) * currentMastery;
+
+  return Math.min(100, Math.max(0, Math.round(newMastery * 100) / 100));
+}
+
+/**
+ * Calculate mastery level from student theta
+ * Converts IRT ability scale (-3 to +3) to mastery percentage (0-100)
+ */
+export function thetaToMastery(theta: number): number {
+  // Linear mapping: theta -3 = 0%, theta 0 = 50%, theta +3 = 100%
+  const mastery = 50 + (theta * 16.67);
+  return Math.min(100, Math.max(0, Math.round(mastery * 100) / 100));
+}
+
+/**
+ * Calculate theta from mastery level
+ * Converts mastery percentage (0-100) to IRT ability scale (-3 to +3)
+ */
+export function masteryToTheta(mastery: number): number {
+  return (mastery - 50) / 16.67;
 }
 
 export function recommendNextStandard(
