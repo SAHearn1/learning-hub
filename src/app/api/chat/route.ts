@@ -318,6 +318,12 @@ export async function POST(req: NextRequest) {
     citations = [];
   }
 
+  // Update guardrail context with retrieved RAG content for post-generation checks
+  guardrailContext.ragContext = [curriculumContext, iepContext].filter(Boolean).join('\n\n');
+
+  // Combine curriculum and IEP context for the topic context
+  const combinedTopicContext = [curriculumContext, iepContext].filter(Boolean).join('\n\n');
+
   const systemPrompt = buildMasterSystemPrompt({
     currentPhase: nextPhase,
     gradeLevel: user.student.gradeLevel,
@@ -326,7 +332,7 @@ export async function POST(req: NextRequest) {
     accommodations: accommodationTypes,
     modalities: learningPrefs?.modalities ?? [],
     sessionHistory,
-    topicContext: curriculumContext,
+    topicContext: combinedTopicContext,
     engagementMode: session.engagementMode,
   });
 
@@ -389,6 +395,37 @@ export async function POST(req: NextRequest) {
           },
         });
         await invalidateSessionCache(session.id);
+
+        // If guardrails flagged issues or confidence is low, create HITL review
+        if (!postCheck.passed || postCheck.confidenceScore < 0.7) {
+          createSuggestionReview({
+            tenantId: user.tenantId,
+            studentId: user.student!.id,
+            sessionId: session.id,
+            suggestionType: 'TUTORING_RESPONSE',
+            originalContent: finalContent,
+            confidenceScore: postCheck.confidenceScore,
+            guardrailFlags: {
+              passed: postCheck.passed,
+              violationCount: postCheck.violations.length,
+              violations: postCheck.violations.map(v => ({
+                category: v.category,
+                severity: v.severity,
+                message: v.message,
+              })),
+            },
+            contextSnapshot: {
+              phase: session.currentPhase,
+              subject: session.subject,
+              gradeLevel: user.student!.gradeLevel,
+              accommodations: accommodationTypes,
+              userMessage: body.message.slice(0, 500),
+            },
+            priority: postCheck.confidenceScore < 0.5 ? 8 : postCheck.passed ? 2 : 5,
+          }).catch(err => {
+            console.error('Failed to create HITL review:', err);
+          });
+        }
 
         // Track thinking quality with TRACE protocol (async, don't block response)
         if (body.message.length > MIN_MESSAGE_LENGTH_FOR_TRACE) {
