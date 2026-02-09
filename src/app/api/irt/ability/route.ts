@@ -5,6 +5,8 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server';
+import { withApiHandler } from '@/lib/api-handler';
+import { ValidationError } from '@/lib/api-errors';
 import { getStudentAbility } from '@/lib/irt';
 
 export async function GET(request: NextRequest) {
@@ -27,28 +29,22 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    const ability = await getStudentAbility(studentId, subject);
-
-    if (!ability) {
-      return NextResponse.json(
-        {
-          message: 'No ability estimate available yet',
-          theta: 0,
-          standardError: 1,
-          confidenceIntervalLower: -2,
-          confidenceIntervalUpper: 2,
-          reliabilityIndex: 0,
-        },
-        { status: 200 }
-      );
-    }
-
-    return NextResponse.json(ability, { status: 200 });
-  } catch (error) {
-    console.error('Error fetching student ability:', error);
-    return NextResponse.json(
-      { error: 'Internal server error' },
-      { status: 500 }
-    );
+  if (!['MATH', 'SCIENCE', 'LANGUAGE_ARTS'].includes(subject)) {
+    throw new ValidationError('Invalid subject. Must be MATH, SCIENCE, or LANGUAGE_ARTS');
   }
-}
+
+  const ability = await getStudentAbility(studentId, subject);
+
+  if (!ability) {
+    return NextResponse.json({
+      message: 'No ability estimate available yet',
+      theta: 0,
+      standardError: 1,
+      confidenceIntervalLower: -2,
+      confidenceIntervalUpper: 2,
+      reliabilityIndex: 0,
+    });
+  }
+
+  return NextResponse.json(ability);
+});

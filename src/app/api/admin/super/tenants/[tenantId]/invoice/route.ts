@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { z } from 'zod';
 import { requireRole } from '@/lib/auth';
 import { issueDistrictInvoice } from '@/lib/super-admin';
+import { withApiHandler } from '@/lib/api-handler';
 
 const requestSchema = z.object({
   memo: z.string().max(300).optional(),
@@ -14,32 +15,21 @@ const requestSchema = z.object({
   ).min(1),
 });
 
-export async function POST(request: Request, context: { params: Promise<{ tenantId: string }> }) {
-  try {
-    const params = await context.params;
-    const actor = await requireRole(['PLATFORM_ADMIN']);
-    const body = requestSchema.parse(await request.json());
+export const POST = withApiHandler(async (req, ctx) => {
+  const actor = await requireRole(['PLATFORM_ADMIN']);
+  const body = requestSchema.parse(await req.json());
 
-    const invoice = await issueDistrictInvoice({
-      tenantId: params.tenantId,
-      actorUserId: actor.id,
-      actorEmail: actor.email,
-      memo: body.memo,
-      lineItems: body.lineItems,
-    });
+  const invoice = await issueDistrictInvoice({
+    tenantId: ctx.params.tenantId,
+    actorUserId: actor.id,
+    actorEmail: actor.email,
+    memo: body.memo,
+    lineItems: body.lineItems,
+  });
 
-    return NextResponse.json({
-      invoiceId: invoice.id,
-      hostedInvoiceUrl: invoice.hosted_invoice_url,
-      status: invoice.status,
-    });
-  } catch (error) {
-    if (error instanceof z.ZodError) {
-      return NextResponse.json({ error: 'Invalid request payload.' }, { status: 400 });
-    }
-
-    const message = error instanceof Error ? error.message : 'Unknown error';
-    const status = message === 'Forbidden' ? 403 : message === 'Unauthorized' ? 401 : 500;
-    return NextResponse.json({ error: message }, { status });
-  }
-}
+  return NextResponse.json({
+    invoiceId: invoice.id,
+    hostedInvoiceUrl: invoice.hosted_invoice_url,
+    status: invoice.status,
+  });
+});

@@ -5,21 +5,19 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server';
+import { withApiHandler } from '@/lib/api-handler';
+import { ValidationError } from '@/lib/api-errors';
 import { getReviewStats } from '@/lib/srs';
 import type { Subject } from '@prisma/client';
 
-export async function GET(request: NextRequest) {
-  try {
-    const searchParams = request.nextUrl.searchParams;
-    const studentId = searchParams.get('studentId');
-    const subject = searchParams.get('subject') as Subject | null;
+export const GET = withApiHandler(async (req: NextRequest) => {
+  const searchParams = req.nextUrl.searchParams;
+  const studentId = searchParams.get('studentId');
+  const subject = searchParams.get('subject') as Subject | null;
 
-    if (!studentId) {
-      return NextResponse.json(
-        { error: 'Missing required parameter: studentId' },
-        { status: 400 }
-      );
-    }
+  if (!studentId) {
+    throw new ValidationError('Missing required parameter: studentId');
+  }
 
     if (subject && !['MATH', 'SCIENCE', 'LANGUAGE_ARTS', 'FINANCIAL_LITERACY'].includes(subject)) {
       return NextResponse.json(
@@ -28,14 +26,7 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    const stats = await getReviewStats(studentId, subject || undefined);
+  const stats = await getReviewStats(studentId, subject || undefined);
 
-    return NextResponse.json(stats, { status: 200 });
-  } catch (error) {
-    console.error('Error fetching review stats:', error);
-    return NextResponse.json(
-      { error: 'Internal server error' },
-      { status: 500 }
-    );
-  }
-}
+  return NextResponse.json(stats);
+});

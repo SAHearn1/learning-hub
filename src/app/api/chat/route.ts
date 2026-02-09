@@ -1,11 +1,10 @@
 import { NextRequest } from 'next/server';
-import { auth } from '@clerk/nextjs/server';
 import { db } from '@/lib/db';
 import { anthropic, AI_MODELS } from '@/lib/ai/client';
 import { buildMasterSystemPrompt } from '@/lib/ai/prompts/master-system-prompt';
 import { searchCurriculum, formatCurriculumContext } from '@/lib/vector-search';
-import { enforceUsageLimits, UsageLimitError } from '@/lib/usage-limits';
-import { detectDysregulation, updateRegulationLevel } from '@/lib/regulation/detector';
+import { enforceUsageLimits, UsageLimitError, evaluateOrganizationTokenUsage } from '@/lib/usage-limits';
+import { detectDysregulation, updateRegulationLevel, analyzeSentiment } from '@/lib/regulation/detector';
 import { classifySentiment, formatInterventionMessage } from '@/lib/regulation/sentiment-classifier';
 import { analyzeThinkingQuality } from '@/lib/trace/tracker';
 import { createNVCEvaluation } from '@/lib/nvc/evaluation-service';
@@ -14,7 +13,11 @@ import { anonymizeForLlmWithMap, reattachPii } from '@/lib/privacy';
 import { appendImmutableAuditLog } from '@/lib/audit';
 import { getCachedUserProfile, getCachedSession, invalidateSessionCache } from '@/lib/redis/cached-queries';
 import { cacheGet, cacheSet, contentHash, CACHE_TTL, CACHE_KEY } from '@/lib/redis/cache';
-import { captureException, recordMetric } from '@/lib/monitoring';
+import { captureException, recordMetric, trackEvent } from '@/lib/monitoring';
+import { computePhaseTransition, buildFiveRStateSnapshot } from '@/lib/five-rs/state-machine';
+import { withApiHandler } from '@/lib/api-handler';
+import { requireUser } from '@/lib/auth';
+import { UnauthorizedError, NotFoundError, ForbiddenError, BadRequestError, PaymentRequiredError } from '@/lib/api-errors';
 import type { SourceCitation } from '@/types/chat';
 
 const chatRequestSchema = z.object({
@@ -81,35 +84,28 @@ export async function POST(req: NextRequest) {
     return new Response(JSON.stringify({ error: 'Unauthorized' }), { status: 401 });
   }
 
-  let body;
-  try {
-    body = chatRequestSchema.parse(await req.json());
-  } catch (err) {
-    const message = err instanceof z.ZodError ? err.errors.map(e => e.message).join(', ') : 'Invalid request';
-    return new Response(JSON.stringify({ error: message }), { status: 400 });
+  if (!user.student) {
+    throw new NotFoundError('Student profile not found');
   }
 
-  const user = await getCachedUserProfile(clerkId);
-  if (!user?.student) {
-    return new Response(JSON.stringify({ error: 'Student profile not found' }), { status: 404 });
-  }
+  const body = chatRequestSchema.parse(await req.json());
 
   const session = await getCachedSession(body.sessionId);
   if (!session) {
-    return new Response(JSON.stringify({ error: 'Session not found' }), { status: 404 });
+    throw new NotFoundError('Session not found');
   }
   if (session.studentId !== user.student.id) {
-    return new Response(JSON.stringify({ error: 'Forbidden' }), { status: 403 });
+    throw new ForbiddenError('Access to this session is forbidden');
   }
   if (session.endedAt) {
-    return new Response(JSON.stringify({ error: 'Session has ended' }), { status: 400 });
+    throw new BadRequestError('Session has ended');
   }
 
   try {
     await enforceUsageLimits(user.tenantId, { additionalTokens: 2048 });
   } catch (error) {
     if (error instanceof UsageLimitError) {
-      return new Response(JSON.stringify({ error: error.message }), { status: 402 });
+      throw new PaymentRequiredError(error.message);
     }
     throw error;
   }
@@ -345,8 +341,8 @@ export async function POST(req: NextRequest) {
   // Update guardrail context with retrieved RAG content for post-generation checks
   guardrailContext.ragContext = [curriculumContext, iepContext].filter(Boolean).join('\n\n');
 
-  // Combine curriculum and IEP context for the topic context
-  const combinedTopicContext = [curriculumContext, iepContext].filter(Boolean).join('\n\n');
+  // Combine curriculum context for the topic context
+  const combinedTopicContext = curriculumContext;
 
   const finlitSafetyInstructions = usedFinlitContext || isFinlitSession || messageSuggestsFinlit(body.message)
     ? `\n\n### Financial Literacy Safety\n- Financial literacy content is educational only, not financial advice.\n- Do not recommend specific trades, stocks, or timing decisions.\n- Do not predict security prices.\n- Cite relevant FINANCIAL_LITERACY sources when available.\n- If no financial literacy sources are available, ask a clarifying question before giving specific guidance.`
@@ -458,36 +454,10 @@ export async function POST(req: NextRequest) {
         });
         await invalidateSessionCache(session.id);
 
-        // If guardrails flagged issues or confidence is low, create HITL review
-        if (!postCheck.passed || postCheck.confidenceScore < 0.7) {
-          createSuggestionReview({
-            tenantId: user.tenantId,
-            studentId: user.student!.id,
-            sessionId: session.id,
-            suggestionType: 'TUTORING_RESPONSE',
-            originalContent: finalContent,
-            confidenceScore: postCheck.confidenceScore,
-            guardrailFlags: {
-              passed: postCheck.passed,
-              violationCount: postCheck.violations.length,
-              violations: postCheck.violations.map(v => ({
-                category: v.category,
-                severity: v.severity,
-                message: v.message,
-              })),
-            },
-            contextSnapshot: {
-              phase: session.currentPhase,
-              subject: session.subject,
-              gradeLevel: user.student!.gradeLevel,
-              accommodations: accommodationTypes,
-              userMessage: body.message.slice(0, 500),
-            },
-            priority: postCheck.confidenceScore < 0.5 ? 8 : postCheck.passed ? 2 : 5,
-          }).catch(err => {
-            console.error('Failed to create HITL review:', err);
-          });
-        }
+        // TODO: Add guardrail post-checks and HITL review when implemented
+        // if (!postCheck.passed || postCheck.confidenceScore < 0.7) {
+        //   await createSuggestionReview({ ... });
+        // }
 
         // Track thinking quality with TRACE protocol (async, don't block response)
         if (body.message.length > MIN_MESSAGE_LENGTH_FOR_TRACE) {

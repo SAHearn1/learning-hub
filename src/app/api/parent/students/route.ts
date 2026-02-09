@@ -3,63 +3,49 @@
  * Returns list of students associated with parent account
  */
 
-import { NextResponse } from 'next/server';
-import { auth } from '@clerk/nextjs/server';
-import { prisma } from '@/lib/db';
-import { getUserFromClerkId } from '@/lib/auth';
+import { NextRequest, NextResponse } from 'next/server';
+import { db } from '@/lib/db';
+import { withApiHandler } from '@/lib/api-handler';
+import { requireUser } from '@/lib/auth';
+import { ForbiddenError } from '@/lib/api-errors';
 
 export const dynamic = 'force-dynamic';
 
-export async function GET() {
-  try {
-    const { userId: clerkId } = await auth();
+export const GET = withApiHandler(async (req: NextRequest) => {
+  const user = await requireUser();
 
-    if (!clerkId) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    }
+  if (user.role !== 'PARENT') {
+    throw new ForbiddenError();
+  }
 
-    // Get parent user
-    const parent = await getUserFromClerkId(clerkId);
-
-    if (!parent || parent.role !== 'PARENT') {
-      return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
-    }
-
-    // Get parent record with children
-    const parentRecord = await prisma.parent.findUnique({
-      where: { userId: parent.id },
-      include: {
-        children: {
-          include: {
-            user: {
-              select: {
-                id: true,
-                firstName: true,
-                lastName: true,
-                email: true,
-                isMinor: true,
-                dateOfBirth: true,
-                consentStatus: true,
-                consentGrantedAt: true,
-              },
+  // Get parent record with children
+  const parentRecord = await db.parent.findUnique({
+    where: { userId: user.id },
+    include: {
+      children: {
+        include: {
+          user: {
+            select: {
+              id: true,
+              firstName: true,
+              lastName: true,
+              email: true,
+              isMinor: true,
+              dateOfBirth: true,
+              consentStatus: true,
+              consentGrantedAt: true,
             },
           },
         },
       },
-    });
+    },
+  });
 
-    if (!parentRecord) {
-      return NextResponse.json({ students: [] });
-    }
-
-    const students = parentRecord.children.map((child) => child.user);
-
-    return NextResponse.json({ students });
-  } catch (error) {
-    console.error('Failed to fetch parent students:', error);
-    return NextResponse.json(
-      { error: 'Internal server error' },
-      { status: 500 }
-    );
+  if (!parentRecord) {
+    return NextResponse.json({ students: [] });
   }
-}
+
+  const students = parentRecord.children.map((child) => child.user);
+
+  return NextResponse.json({ students });
+});

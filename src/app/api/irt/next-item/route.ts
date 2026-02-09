@@ -12,6 +12,8 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server';
+import { withApiHandler } from '@/lib/api-handler';
+import { ValidationError, NotFoundError } from '@/lib/api-errors';
 import { selectNextItem, getStudentAbility } from '@/lib/irt';
 import type { Subject, BloomsLevel } from '@prisma/client';
 
@@ -47,31 +49,29 @@ export async function POST(request: NextRequest) {
       theta = ability?.theta ?? 0;
     }
 
-    // Select next item
-    const selectedItem = await selectNextItem({
-      studentId,
-      subject: subject as Subject,
-      currentTheta: theta,
-      excludeAssessmentIds,
-      bloomsLevelDistribution: bloomsLevelDistribution as Partial<Record<BloomsLevel, number>>,
-    });
-
-    if (!selectedItem) {
-      return NextResponse.json(
-        {
-          message: 'No suitable items found',
-          recommendation: 'Please calibrate more items or expand item pool',
-        },
-        { status: 404 }
-      );
-    }
-
-    return NextResponse.json(selectedItem, { status: 200 });
-  } catch (error) {
-    console.error('Error selecting next item:', error);
-    return NextResponse.json(
-      { error: 'Internal server error' },
-      { status: 500 }
-    );
+  if (!['MATH', 'SCIENCE', 'LANGUAGE_ARTS'].includes(subject)) {
+    throw new ValidationError('Invalid subject. Must be MATH, SCIENCE, or LANGUAGE_ARTS');
   }
-}
+
+  // Get student's current theta if not provided
+  let theta = currentTheta;
+  if (theta === undefined) {
+    const ability = await getStudentAbility(studentId, subject as Subject);
+    theta = ability?.theta ?? 0;
+  }
+
+  // Select next item
+  const selectedItem = await selectNextItem({
+    studentId,
+    subject: subject as Subject,
+    currentTheta: theta,
+    excludeAssessmentIds,
+    bloomsLevelDistribution: bloomsLevelDistribution as Partial<Record<BloomsLevel, number>>,
+  });
+
+  if (!selectedItem) {
+    throw new NotFoundError('No suitable items found. Please calibrate more items or expand item pool');
+  }
+
+  return NextResponse.json(selectedItem);
+});

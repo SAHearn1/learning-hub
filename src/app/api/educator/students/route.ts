@@ -1,16 +1,14 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { auth } from '@clerk/nextjs/server';
 import { db } from '@/lib/db';
+import { withApiHandler } from '@/lib/api-handler';
+import { requireUser } from '@/lib/auth';
+import { ForbiddenError } from '@/lib/api-errors';
 
-export async function GET(req: NextRequest) {
-  const { userId: clerkId } = auth();
-  if (!clerkId) {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-  }
+export const GET = withApiHandler(async (req: NextRequest) => {
+  const user = await requireUser();
 
-  const user = await db.user.findUnique({ where: { clerkUserId: clerkId } });
-  if (!user || !['EDUCATOR', 'SCHOOL_ADMIN', 'DISTRICT_ADMIN', 'PLATFORM_ADMIN'].includes(user.role)) {
-    return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+  if (!['EDUCATOR', 'SCHOOL_ADMIN', 'DISTRICT_ADMIN', 'PLATFORM_ADMIN'].includes(user.role)) {
+    throw new ForbiddenError();
   }
 
   const classId = req.nextUrl.searchParams.get('classId');
@@ -25,7 +23,7 @@ export async function GET(req: NextRequest) {
     });
 
     if (!targetClass || targetClass.tenantId !== user.tenantId) {
-      return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+      throw new ForbiddenError();
     }
   }
 
@@ -56,4 +54,4 @@ export async function GET(req: NextRequest) {
     pageSize,
     hasMore: skip + pageSize < total,
   });
-}
+});
