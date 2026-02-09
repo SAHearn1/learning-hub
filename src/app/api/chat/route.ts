@@ -35,33 +35,45 @@ function constructSourceUrl(filename: string): string {
   return `${baseUrl}${cleanPath}`;
 }
 
-/**
- * Extract source citations from retrieved curriculum search results
- */
-function extractCitations(results: Array<Record<string, unknown>>): SourceCitation[] {
-  return results.map((result, idx) => {
-    const filename = String(result.filename || result.sourcePath || 'Unknown');
-    const sourcePath = String(result.sourcePath || filename);
+const FINLIT_SUBJECT = 'FINANCIAL_LITERACY';
+const FINLIT_KEYWORDS = [
+  'compound interest', 'interest rate', 'budget', 'budgeting', 'saving', 'savings',
+  'invest', 'investing', 'stock', 'stocks', 'bond', 'bonds', 'etf', 'retirement',
+  'credit', 'debt', 'loan', 'apr', 'mortgage', 'portfolio', 'diversification',
+];
+const PERSONAL_TRADE_PATTERNS = [
+  /should\s+i\s+buy\b/i,
+  /what\s+stock\s+should\s+i\s+buy\b/i,
+  /buy\s+[a-z]{1,6}\s+(today|now)\b/i,
+  /is\s+now\s+a\s+good\s+time\s+to\s+buy\b/i,
+  /predict\s+.*price/i,
+];
 
-    return {
-      id: `citation-${idx}`,
-      filename,
-      sourcePath,
-      section: (result.sectionHeading as string | undefined) || undefined,
-      sectionHeading: (result.sectionHeading as string | undefined) || undefined,
-      chunkIndex: (result.chunkIndex as number | undefined) ?? idx,
-      totalChunks: (result.totalChunks as number | undefined) ?? 1,
-      text: (result.text as string | undefined) || '',
-      relevanceScore: (result.score as number | undefined) ?? 0,
-      sourceUrl: constructSourceUrl(sourcePath),
-      subject: (result.subject as string | undefined) || '',
-      gradeLevel: (result.gradeLevel as number | undefined) ?? 0,
-      standardCodes: (result.standardCodes as string[] | undefined) || [],
-      course: result.course as string | undefined,
-      module: result.module as string | undefined,
-    };
-  });
+function messageSuggestsFinlit(message: string): boolean {
+  const normalized = message.toLowerCase();
+  return FINLIT_KEYWORDS.some((keyword) => normalized.includes(keyword));
 }
+
+function buildRetrievalSubjects(message: string, sessionSubject?: string | null): string[] | undefined {
+  if (sessionSubject === FINLIT_SUBJECT) {
+    return [FINLIT_SUBJECT];
+  }
+
+  if (messageSuggestsFinlit(message)) {
+    const subjects = new Set<string>([FINLIT_SUBJECT]);
+    if (sessionSubject) {
+      subjects.add(sessionSubject);
+    }
+    return Array.from(subjects);
+  }
+
+  return undefined;
+}
+
+function isPersonalTradeAdviceRequest(message: string): boolean {
+  return PERSONAL_TRADE_PATTERNS.some((pattern) => pattern.test(message));
+}
+
 
 export async function POST(req: NextRequest) {
   const { userId: clerkId } = auth();
@@ -278,23 +290,24 @@ export async function POST(req: NextRequest) {
   let curriculumContext = '';
   let ragMetrics = { retrieved: 0, durationMs: 0 };
   let citations: SourceCitation[] = [];
+  const retrievalSubjects = buildRetrievalSubjects(body.message, session.subject);
+  const isFinlitSession = session.subject === FINLIT_SUBJECT;
 
   try {
     const ragStartTime = Date.now();
     const grade = String(user.student.gradeLevel ?? 'any');
-    const ragCacheKey = CACHE_KEY.curriculum(session.subject, grade, contentHash(body.message));
+    const ragSubjectKey = retrievalSubjects?.slice().sort().join(',') || session.subject;
+    const ragCacheKey = CACHE_KEY.curriculum(ragSubjectKey, grade, contentHash(body.message));
 
-    // Check cache first
     const cachedRag = await cacheGet<string>(ragCacheKey);
     if (cachedRag) {
       curriculumContext = cachedRag;
       ragMetrics.durationMs = Date.now() - ragStartTime;
-      ragMetrics.retrieved = -1; // indicates cache hit
-      // Note: We don't have citations for cached RAG results
-      // This is acceptable since citations are for transparency, not caching
+      ragMetrics.retrieved = -1;
     } else {
       const results = await searchCurriculum(body.message, {
-        subject: session.subject,
+        subject: retrievalSubjects ? undefined : session.subject,
+        subjects: retrievalSubjects,
         gradeLevel: user.student.gradeLevel ?? undefined,
         topK: 5,
         minScore: 0.3,
@@ -304,10 +317,20 @@ export async function POST(req: NextRequest) {
       ragMetrics.durationMs = Date.now() - ragStartTime;
 
       if (results.length > 0) {
-        citations = extractCitations(results as Array<Record<string, unknown>>);
-        curriculumContext = formatCurriculumContext(results);
+        citations = results.map((result, idx) => ({
+          id: `citation-${idx}`,
+          filename: result.filename || 'Unknown',
+          chunkIndex: idx,
+          totalChunks: results.length,
+          text: result.text || '',
+          relevanceScore: result.score ?? 0,
+          sourceUrl: constructSourceUrl(result.filename || ''),
+          subject: result.subject || '',
+          gradeLevel: result.gradeLevel ?? 0,
+          standardCodes: result.standardCodes || [],
+        }));
 
-        // Cache the formatted RAG context
+        curriculumContext = formatCurriculumContext(results);
         await cacheSet(ragCacheKey, curriculumContext, CACHE_TTL.CURRICULUM);
         console.log(`RAG: Retrieved ${results.length} curriculum contexts in ${ragMetrics.durationMs}ms for session ${session.id}`);
       }
@@ -318,11 +341,16 @@ export async function POST(req: NextRequest) {
     citations = [];
   }
 
+  const usedFinlitContext = citations.some(c => c.subject === FINLIT_SUBJECT);
   // Update guardrail context with retrieved RAG content for post-generation checks
   guardrailContext.ragContext = [curriculumContext, iepContext].filter(Boolean).join('\n\n');
 
   // Combine curriculum and IEP context for the topic context
   const combinedTopicContext = [curriculumContext, iepContext].filter(Boolean).join('\n\n');
+
+  const finlitSafetyInstructions = usedFinlitContext || isFinlitSession || messageSuggestsFinlit(body.message)
+    ? `\n\n### Financial Literacy Safety\n- Financial literacy content is educational only, not financial advice.\n- Do not recommend specific trades, stocks, or timing decisions.\n- Do not predict security prices.\n- Cite relevant FINANCIAL_LITERACY sources when available.\n- If no financial literacy sources are available, ask a clarifying question before giving specific guidance.`
+    : '';
 
   const systemPrompt = buildMasterSystemPrompt({
     currentPhase: nextPhase,
@@ -361,11 +389,45 @@ export async function POST(req: NextRequest) {
 
   const startTime = Date.now();
 
+  if (isPersonalTradeAdviceRequest(body.message)) {
+    const refusalMessage = `I can’t provide personalized buy/sell recommendations or price predictions. I can help with general investing principles for learning, such as diversification, risk tolerance, and long-term planning. ${usedFinlitContext ? 'This is educational only, not financial advice.' : 'Tell me what concept you want to learn, and I can explain it with educational examples.'}`;
+
+    await db.message.create({
+      data: {
+        sessionId: session.id,
+        role: 'ASSISTANT',
+        content: refusalMessage,
+        metadata: citations.length > 0 ? { citations } : null,
+      },
+    });
+    await invalidateSessionCache(session.id);
+
+    const encoder = new TextEncoder();
+    const readable = new ReadableStream({
+      start(controller) {
+        controller.enqueue(encoder.encode(`data: ${JSON.stringify({ text: refusalMessage })}\n\n`));
+        if (citations.length > 0) {
+          controller.enqueue(encoder.encode(`data: ${JSON.stringify({ citations })}\n\n`));
+        }
+        controller.enqueue(encoder.encode(`data: ${JSON.stringify({ done: true })}\n\n`));
+        controller.close();
+      },
+    });
+
+    return new Response(readable, {
+      headers: {
+        'Content-Type': 'text/event-stream',
+        'Cache-Control': 'no-cache',
+        Connection: 'keep-alive',
+      },
+    });
+  }
+
   // Stream response
   const stream = await anthropic.messages.stream({
     model: AI_MODELS.primary,
     max_tokens: 1024,
-    system: anonymizeForLlmWithMap(systemPrompt, piiTokenMap).sanitizedText,
+    system: anonymizeForLlmWithMap(`${systemPrompt}${finlitSafetyInstructions}`, piiTokenMap).sanitizedText,
     messages: filteredMessages,
   });
 

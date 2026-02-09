@@ -10,7 +10,7 @@ import { ChatMessageList } from '@/components/learn/ChatMessageList';
 import { ChatInput } from '@/components/learn/ChatInput';
 import { CalmCorner } from '@/components/learn/CalmCorner';
 
-type Subject = 'MATH' | 'SCIENCE' | 'LANGUAGE_ARTS';
+type Subject = 'MATH' | 'SCIENCE' | 'LANGUAGE_ARTS' | 'FINANCIAL_LITERACY';
 type EngagementMode = 'FORWARD' | 'REVERSE' | 'ERROR_ANALYSIS' | 'MULTIPLE_PATHWAYS' | 'PROBLEM_POSING';
 type FiveRPhase = 'ROOT' | 'REGULATE' | 'REFLECT' | 'RESTORE' | 'RECONNECT';
 

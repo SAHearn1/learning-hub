@@ -6,7 +6,7 @@ import type { AuthenticatedUser } from '@/lib/middleware/rbac-middleware';
 
 const createTopicSchema = z.object({
   name: z.string().min(1),
-  subject: z.enum(['MATH', 'SCIENCE', 'ELA', 'SOCIAL_STUDIES', 'OTHER']),
+  subject: z.enum(['MATH', 'SCIENCE', 'LANGUAGE_ARTS', 'FINANCIAL_LITERACY']),
   gradeLevel: z.array(z.string()),
   description: z.string(),
   learningObjectives: z.array(z.string()).optional().default([]),

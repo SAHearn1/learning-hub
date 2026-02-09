@@ -38,7 +38,7 @@ function getSupabaseConfig() {
   return { url, key };
 }
 
-async function callHybridRpc(query: string, embedding: number[], options: { subject?: string; gradeLevel?: number; topK: number }): Promise<HybridSearchResult[]> {
+async function callHybridRpc(query: string, embedding: number[], options: { subject?: string; subjects?: string[]; gradeLevel?: number; topK: number }): Promise<HybridSearchResult[]> {
   const config = getSupabaseConfig();
   if (!config) return [];
 
@@ -58,6 +58,7 @@ async function callHybridRpc(query: string, embedding: number[], options: { subj
       query_embedding: embedding,
       match_count: Math.max(options.topK * 3, 10),
       match_subject: options.subject,
+      match_subjects: options.subjects,
       match_grade_level: options.gradeLevel,
     }),
   });
@@ -156,12 +157,13 @@ export async function rerankHybridResults(query: string, candidates: HybridSearc
 export async function searchCurriculumHybrid(
   query: string,
   embedding: number[],
-  options: { subject?: string; gradeLevel?: number; topK?: number } = {},
+  options: { subject?: string; subjects?: string[]; gradeLevel?: number; topK?: number } = {},
 ): Promise<HybridSearchResult[]> {
   const topK = options.topK ?? 5;
 
   const candidates = await callHybridRpc(query, embedding, {
     subject: options.subject,
+    subjects: options.subjects,
     gradeLevel: options.gradeLevel,
     topK,
   });

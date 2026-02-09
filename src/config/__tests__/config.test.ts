@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import { featureFlags } from '../feature-flags';
 import { phaseOrder, phaseTransitions } from '../five-rs';
-import { studentNavItems, educatorNavItems, parentNavItems, adminNavItems } from '../navigation';
+import { studentNavItems, getStudentNavItems, educatorNavItems, parentNavItems, adminNavItems } from '../navigation';
 import { pricingPlans } from '../pricing';
 import { siteConfig } from '../site';
 import { gradeSubjectMap } from '../subjects';
@@ -73,8 +73,19 @@ describe('phaseTransitions', () => {
 });
 
 describe('navigation', () => {
-  it('student nav has 5 items', () => {
-    expect(studentNavItems).toHaveLength(5);
+  it('student nav has 7 items total including grade-gated items', () => {
+    expect(studentNavItems).toHaveLength(7);
+  });
+
+
+  it('hides Financial Literacy for grades below 9', () => {
+    const labels = getStudentNavItems(8).map((i) => i.label);
+    expect(labels).not.toContain('Financial Literacy');
+  });
+
+  it('shows Financial Literacy for grade 9 and above', () => {
+    const labels = getStudentNavItems(9).map((i) => i.label);
+    expect(labels).toContain('Financial Literacy');
   });
 
   it('student nav includes Learn and Calm Corner', () => {

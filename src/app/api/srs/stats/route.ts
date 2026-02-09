@@ -21,7 +21,7 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    if (subject && !['MATH', 'SCIENCE', 'LANGUAGE_ARTS'].includes(subject)) {
+    if (subject && !['MATH', 'SCIENCE', 'LANGUAGE_ARTS', 'FINANCIAL_LITERACY'].includes(subject)) {
       return NextResponse.json(
         { error: 'Invalid subject. Must be MATH, SCIENCE, or LANGUAGE_ARTS' },
         { status: 400 }

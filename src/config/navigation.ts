@@ -1,11 +1,37 @@
-export const studentNavItems = [
+export type NavItem = {
+  label: string;
+  href: string;
+  icon: string;
+  minGradeLevel?: number;
+};
+
+export const studentNavItems: readonly NavItem[] = [
   { label: 'Learn', href: '/learn', icon: 'book-open' },
+  {
+    label: 'Financial Literacy',
+    href: '/learn?subject=FINANCIAL_LITERACY',
+    icon: 'book-open',
+    minGradeLevel: 9,
+  },
   { label: 'Browse Curriculum', href: '/curriculum', icon: 'library' },
+  { label: 'Financial Literacy', href: '/curriculum?subject=FINANCIAL_LITERACY', icon: 'banknote' },
   { label: 'Calm Corner', href: '/regulate', icon: 'heart' },
   { label: 'My Progress', href: '/progress', icon: 'bar-chart' },
   { label: 'Community', href: '/community', icon: 'users' },
   { label: 'Settings', href: '/settings', icon: 'settings' },
 ] as const;
+
+export function getStudentNavItems(gradeLevel?: number): readonly NavItem[] {
+  return studentNavItems.filter((item) => {
+    if (item.minGradeLevel === undefined) {
+      return true;
+    }
+    if (typeof gradeLevel !== 'number') {
+      return false;
+    }
+    return gradeLevel >= item.minGradeLevel;
+  });
+}
 
 export const educatorNavItems = [
   { label: 'Students', href: '/educator/students', icon: 'users' },
