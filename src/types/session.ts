@@ -7,7 +7,7 @@ export type EngagementMode =
   | 'MULTIPLE_PATHWAYS'
   | 'PROBLEM_POSING';
 
-export type SubjectType = 'MATH' | 'SCIENCE' | 'LANGUAGE_ARTS';
+export type SubjectType = 'MATH' | 'SCIENCE' | 'LANGUAGE_ARTS' | 'FINANCIAL_LITERACY';
 
 export interface SessionMessage {
   id: string;
