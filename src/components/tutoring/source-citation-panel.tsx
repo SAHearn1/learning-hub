@@ -97,7 +97,7 @@ export function SourceCitationPanel({ citations, className }: SourceCitationPane
             </AccordionTrigger>
             <AccordionContent>
               <div className="space-y-3">
-                {docCitations.map((citation, citationIndex) => (
+                {docCitations.map((citation) => (
                   <div
                     key={citation.id}
                     className="rounded border border-neutral-200 bg-white p-3"
