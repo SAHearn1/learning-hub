@@ -12,6 +12,7 @@ vi.mock('@/lib/db', () => ({
       update: vi.fn(),
     },
     auditLog: {
+      findFirst: vi.fn(),
       create: vi.fn(),
     },
   },
@@ -119,6 +120,7 @@ describe('POST /api/compliance/consent', () => {
       consentStatus: 'GRANTED',
       updatedAt: new Date(),
     } as any);
+    vi.mocked(db.auditLog.findFirst).mockResolvedValueOnce(null as any);
     vi.mocked(db.auditLog.create).mockResolvedValueOnce({} as any);
 
     const { POST } = await import('@/app/api/compliance/consent/route');

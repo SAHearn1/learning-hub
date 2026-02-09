@@ -250,6 +250,8 @@ describe('Prisma schema — AI usage & compliance', () => {
     expect(fields).toContain('resource');
     expect(fields).toContain('resourceId');
     expect(fields).toContain('ipAddress');
+    expect(fields).toContain('previousHash');
+    expect(fields).toContain('chainHash');
     expect(fields).toContain('timestamp');
   });
 });

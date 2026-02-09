@@ -9,6 +9,8 @@ import { enforceUsageLimits, UsageLimitError } from '@/lib/usage-limits';
 import { detectDysregulation, updateRegulationLevel } from '@/lib/regulation/detector';
 import { analyzeThinkingQuality } from '@/lib/trace/tracker';
 import { z } from 'zod';
+import { anonymizeForLlmWithMap, reattachPii } from '@/lib/privacy';
+import { appendImmutableAuditLog } from '@/lib/audit';
 
 const chatRequestSchema = z.object({
   sessionId: z.string().min(1),
@@ -166,11 +168,13 @@ export async function POST(req: NextRequest) {
   });
 
   // Build message history for API call
+  const piiTokenMap: Record<string, string> = {};
   const apiMessages = session.messages.map(m => ({
     role: (m.role === 'USER' ? 'user' : 'assistant') as 'user' | 'assistant',
-    content: m.content,
+    content: anonymizeForLlmWithMap(m.content, piiTokenMap).sanitizedText,
   }));
-  apiMessages.push({ role: 'user', content: body.message });
+  const anonymizedInput = anonymizeForLlmWithMap(body.message, piiTokenMap);
+  apiMessages.push({ role: 'user', content: anonymizedInput.sanitizedText });
 
   // Filter consecutive same-role messages (Anthropic requires alternating)
   const filteredMessages: { role: 'user' | 'assistant'; content: string }[] = [];
@@ -192,7 +196,7 @@ export async function POST(req: NextRequest) {
   const stream = await anthropic.messages.stream({
     model: AI_MODELS.primary,
     max_tokens: 1024,
-    system: systemPrompt,
+    system: anonymizeForLlmWithMap(systemPrompt, piiTokenMap).sanitizedText,
     messages: filteredMessages,
   });
 
@@ -205,22 +209,25 @@ export async function POST(req: NextRequest) {
         for await (const event of stream) {
           if (event.type === 'content_block_delta' && event.delta.type === 'text_delta') {
             fullText += event.delta.text;
-            controller.enqueue(encoder.encode(`data: ${JSON.stringify({ text: event.delta.text })}\n\n`));
+            const deidentifiedChunk = reattachPii(event.delta.text, anonymizedInput.tokenMap);
+            controller.enqueue(encoder.encode(`data: ${JSON.stringify({ text: deidentifiedChunk })}\n\n`));
           }
         }
+
+        const restoredAssistantText = reattachPii(fullText, anonymizedInput.tokenMap);
 
         // Save assistant message
         await db.message.create({
           data: {
             sessionId: session.id,
             role: 'ASSISTANT',
-            content: fullText,
+            content: restoredAssistantText,
           },
         });
 
         // Track thinking quality with TRACE protocol (async, don't block response)
         if (body.message.length > MIN_MESSAGE_LENGTH_FOR_TRACE) {
-          analyzeThinkingQuality(body.message, fullText)
+          analyzeThinkingQuality(body.message, restoredAssistantText)
             .then(async (traceData) => {
               if (!traceData) return;
 
@@ -301,6 +308,18 @@ export async function POST(req: NextRequest) {
           },
         });
 
+
+        await appendImmutableAuditLog({
+          tenantId: user.tenantId,
+          userId: user.id,
+          action: 'LLM_CHAT_COMPLETED',
+          resource: 'Session',
+          resourceId: session.id,
+          metadata: {
+            anonymizationTokens: Object.keys(anonymizedInput.tokenMap).length,
+            inputLength: body.message.length,
+          },
+        });
         controller.enqueue(encoder.encode(`data: ${JSON.stringify({ done: true })}\n\n`));
         controller.close();
       } catch (err) {

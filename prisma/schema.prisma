@@ -554,15 +554,17 @@ enum AIFeature {
 // ═══════════════════════════════════════════════════════════════
 
 model AuditLog {
-  id         String   @id @default(cuid())
-  tenantId   String
-  userId     String
-  action     String
-  resource   String
-  resourceId String?
-  metadata   Json?
-  ipAddress  String?
-  timestamp  DateTime @default(now())
+  id           String   @id @default(cuid())
+  tenantId     String
+  userId       String
+  action       String
+  resource     String
+  resourceId   String?
+  metadata     Json?
+  ipAddress    String?
+  previousHash String?
+  chainHash    String   @unique
+  timestamp    DateTime @default(now())
 
   @@index([tenantId])
   @@index([tenantId, timestamp])
