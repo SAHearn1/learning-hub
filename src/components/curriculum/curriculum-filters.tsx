@@ -18,6 +18,7 @@ const SUBJECT_LABELS = {
   MATH: 'Math',
   SCIENCE: 'Science',
   LANGUAGE_ARTS: 'Language Arts',
+  FINANCIAL_LITERACY: 'Financial Literacy',
 } as const;
 
 const FRAMEWORK_LABELS = {
@@ -106,7 +107,7 @@ export function CurriculumFilters({
           Grade Level
         </label>
         <div className="space-y-2">
-          {[6, 7, 8].map((grade) => (
+          {[6, 7, 8, 9, 10, 11, 12].map((grade) => (
             <label key={grade} className="flex items-center gap-2 cursor-pointer">
               <input
                 type="checkbox"
