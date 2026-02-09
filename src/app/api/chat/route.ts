@@ -16,6 +16,7 @@ import { appendImmutableAuditLog } from '@/lib/audit';
 import { getCachedUserProfile, getCachedSession, invalidateSessionCache } from '@/lib/redis/cached-queries';
 import { cacheGet, cacheSet, contentHash, CACHE_TTL, CACHE_KEY } from '@/lib/redis/cache';
 import { captureException, recordMetric } from '@/lib/monitoring';
+import type { SourceCitation } from '@/types/chat';
 
 const chatRequestSchema = z.object({
   sessionId: z.string().min(1),
@@ -24,6 +25,41 @@ const chatRequestSchema = z.object({
 
 // Minimum message length to trigger TRACE analysis (avoid analyzing very short responses)
 const MIN_MESSAGE_LENGTH_FOR_TRACE = 10;
+
+/**
+ * Construct GitHub URL for a source file
+ */
+function constructSourceUrl(filename: string): string {
+  const baseUrl = 'https://github.com/SAHearn1/learning-hub/blob/main';
+  // Ensure filename has proper path
+  const cleanPath = filename.startsWith('/') ? filename : `/${filename}`;
+  return `${baseUrl}${cleanPath}`;
+}
+
+/**
+ * Extract source citations from Pinecone matches
+ */
+function extractCitations(matches: any[]): SourceCitation[] {
+  return matches.map((match, idx) => {
+    const metadata = match.metadata as Record<string, any> || {};
+    
+    return {
+      id: match.id || `citation-${idx}`,
+      filename: metadata.filename || 'Unknown',
+      section: metadata.section,
+      chunkIndex: metadata.chunkIndex ?? idx,
+      totalChunks: metadata.totalChunks ?? 1,
+      text: metadata.content || metadata.text || '',
+      relevanceScore: match.score ?? 0,
+      sourceUrl: metadata.sourceUrl || constructSourceUrl(metadata.filename || ''),
+      subject: metadata.subject || '',
+      gradeLevel: metadata.gradeLevel ?? 0,
+      standardCodes: metadata.standardCodes || [],
+      course: metadata.course,
+      module: metadata.module,
+    };
+  });
+}
 
 export async function POST(req: NextRequest) {
   const { userId: clerkId } = auth();
@@ -204,6 +240,7 @@ export async function POST(req: NextRequest) {
   // RAG: Retrieve relevant curriculum context (with Redis cache)
   let curriculumContext = '';
   let ragMetrics = { retrieved: 0, durationMs: 0 };
+  let citations: SourceCitation[] = [];
 
   try {
     const ragStartTime = Date.now();
@@ -216,6 +253,8 @@ export async function POST(req: NextRequest) {
       curriculumContext = cachedRag;
       ragMetrics.durationMs = Date.now() - ragStartTime;
       ragMetrics.retrieved = -1; // indicates cache hit
+      // Note: We don't have citations for cached RAG results
+      // This is acceptable since citations are for transparency, not caching
     } else {
       // Generate embedding for the user's query
       const queryEmbedding = await generateEmbedding(body.message);
@@ -233,6 +272,11 @@ export async function POST(req: NextRequest) {
       const matches = await queryPinecone(queryEmbedding, 5, filter);
       ragMetrics.retrieved = matches.length;
       ragMetrics.durationMs = Date.now() - ragStartTime;
+
+      // Extract citations from matches
+      if (matches.length > 0) {
+        citations = extractCitations(matches);
+      }
 
       // Format retrieved context
       if (matches.length > 0) {
@@ -257,6 +301,7 @@ export async function POST(req: NextRequest) {
     console.error(`RAG retrieval error for session ${session.id}:`, error);
     // Continue without RAG context if Pinecone fails
     curriculumContext = '';
+    citations = [];
   }
 
   const systemPrompt = buildMasterSystemPrompt({
@@ -326,6 +371,7 @@ export async function POST(req: NextRequest) {
             sessionId: session.id,
             role: 'ASSISTANT',
             content: restoredAssistantText,
+            metadata: citations.length > 0 ? { citations } : null,
           },
         });
         await invalidateSessionCache(session.id);
@@ -453,6 +499,12 @@ export async function POST(req: NextRequest) {
             inputLength: body.message.length,
           },
         });
+        
+        // Send citations if available
+        if (citations.length > 0) {
+          controller.enqueue(encoder.encode(`data: ${JSON.stringify({ citations })}\n\n`));
+        }
+        
         controller.enqueue(encoder.encode(`data: ${JSON.stringify({ done: true })}\n\n`));
         controller.close();
       } catch (err) {

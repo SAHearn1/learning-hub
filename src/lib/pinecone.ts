@@ -32,6 +32,14 @@ export interface CurriculumMetadata {
   chunkIndex: number;
   totalChunks: number;
   text: string;
+  
+  // Citation metadata
+  section?: string;          // e.g., "Part 2: Regulate Phase"
+  pageNumber?: number;       // If available from PDF/structured docs
+  paragraphId?: string;      // Unique ID for this chunk
+  sourceUrl?: string;        // GitHub URL to the source file
+  course?: string;           // e.g., "RootWork Framework"
+  module?: string;           // e.g., "Introduction"
 }
 
 /**

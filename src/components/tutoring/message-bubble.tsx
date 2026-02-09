@@ -10,6 +10,7 @@ interface MessageBubbleProps {
   role: MessageRole;
   content: string;
   timestamp: Date;
+  metadata?: ChatMessageMetadata | null;
   className?: string;
   messageId?: string;
   onInterventionReady?: () => void;
@@ -143,6 +144,17 @@ export function MessageBubble({ role, content, timestamp, className, messageId, 
         >
           <p className="whitespace-pre-wrap text-sm">{content}</p>
         </div>
+        
+        {/* Source citations for assistant messages */}
+        {isAssistant && metadata?.citations && metadata.citations.length > 0 && (
+          <div className="mt-2 w-full">
+            <p className="mb-2 px-1 text-xs font-medium text-neutral-600">
+              📚 Sources used to generate this response:
+            </p>
+            <SourceCitationPanel citations={metadata.citations} />
+          </div>
+        )}
+        
         <span className="px-1 text-xs text-neutral-500">
           {formatDistanceToNow(timestamp, { addSuffix: true })}
         </span>
