@@ -96,6 +96,69 @@ export async function createBillingPortalSession(params: { tenantId: string; ema
   });
 }
 
+export async function createDistrictInvoice(params: {
+  tenantId: string;
+  initiatedByUserId: string;
+  email?: string;
+  memo?: string;
+  lineItems: Array<{ description: string; unitAmountCents: number; quantity?: number }>;
+  collectionMethod?: 'send_invoice' | 'charge_automatically';
+  daysUntilDue?: number;
+}) {
+  const {
+    tenantId,
+    initiatedByUserId,
+    email,
+    memo,
+    lineItems,
+    collectionMethod = 'send_invoice',
+    daysUntilDue = 30,
+  } = params;
+
+  if (!lineItems.length) {
+    throw new Error('At least one invoice line item is required.');
+  }
+
+  const { stripeCustomerId } = await ensureStripeCustomer(tenantId, email);
+
+  await Promise.all(
+    lineItems.map((item) =>
+      stripe.invoiceItems.create({
+        customer: stripeCustomerId,
+        currency: 'usd',
+        unit_amount: item.unitAmountCents,
+        quantity: item.quantity ?? 1,
+        description: item.description,
+        metadata: {
+          tenantId,
+          initiatedByUserId,
+        },
+      }),
+    ),
+  );
+
+  const invoice = await stripe.invoices.create({
+    customer: stripeCustomerId,
+    auto_advance: false,
+    collection_method: collectionMethod,
+    ...(collectionMethod === 'send_invoice' ? { days_until_due: daysUntilDue } : {}),
+    metadata: {
+      tenantId,
+      initiatedByUserId,
+      billingType: 'district_invoice',
+    },
+    description: memo,
+  });
+
+  const finalizedInvoice = await stripe.invoices.finalizeInvoice(invoice.id);
+
+  if (collectionMethod === 'send_invoice') {
+    await stripe.invoices.sendInvoice(finalizedInvoice.id);
+  }
+
+  return finalizedInvoice;
+}
+
 export async function syncTenantFromSubscription(subscription: Stripe.Subscription) {
   const tenantId = subscription.metadata.tenantId;
   const customerId = typeof subscription.customer === 'string' ? subscription.customer : subscription.customer.id;

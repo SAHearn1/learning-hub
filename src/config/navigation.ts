@@ -20,5 +20,6 @@ export const parentNavItems = [
 ] as const;
 
 export const adminNavItems = [
+  { label: 'Super Admin Dashboard', href: '/admin/dashboard', icon: 'shield-check' },
   { label: 'Ingestion Control', href: '/admin/ingest', icon: 'shield-check' },
 ] as const;

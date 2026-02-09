@@ -23,6 +23,9 @@ model Tenant {
   subscriptionStatus   SubscriptionStatus @default(ACTIVE)
   stripeCustomerId     String?
   stripeSubscriptionId String?
+  isSuspended          Boolean            @default(false)
+  suspendedAt          DateTime?
+  suspensionReason     String?
   settings             Json               @default("{}")
   schools              School[]
   users                User[]
