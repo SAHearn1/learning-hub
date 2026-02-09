@@ -7,6 +7,7 @@ import { generateEmbedding } from '@/lib/pinecone/embeddings';
 import { queryPinecone } from '@/lib/pinecone/client';
 import { enforceUsageLimits, UsageLimitError } from '@/lib/usage-limits';
 import { detectDysregulation, updateRegulationLevel } from '@/lib/regulation/detector';
+import { classifySentiment, formatInterventionMessage } from '@/lib/regulation/sentiment-classifier';
 import { analyzeThinkingQuality } from '@/lib/trace/tracker';
 import { z } from 'zod';
 import { anonymizeForLlmWithMap, reattachPii } from '@/lib/privacy';
@@ -97,6 +98,81 @@ export async function POST(req: NextRequest) {
       },
     });
   }
+
+  // ═══════════════════════════════════════════════════════════════
+  // SENTIMENT CLASSIFICATION LAYER (Pre-RAG)
+  // ═══════════════════════════════════════════════════════════════
+  // This classification layer runs BEFORE the RAG pipeline to detect
+  // high-stress patterns and inject regulation exercises when needed.
+  // When high stress is detected, we bypass RAG entirely and return
+  // a regulation intervention immediately.
+
+  const sentimentClassification = classifySentiment(
+    body.message,
+    messageHistory,
+    newRegulationLevel
+  );
+
+  // Log sentiment classification for monitoring
+  console.log(`Sentiment classification for session ${session.id}:`, {
+    stressLevel: sentimentClassification.stressLevel,
+    shouldIntervene: sentimentClassification.shouldIntervene,
+    patterns: sentimentClassification.detectedPatterns,
+  });
+
+  // If high stress detected, return regulation intervention and bypass RAG
+  if (sentimentClassification.shouldIntervene && sentimentClassification.exercise) {
+    try {
+      // Format the intervention message
+      const interventionContent = formatInterventionMessage(sentimentClassification.exercise);
+
+      // Save the intervention as an assistant message
+      await db.message.create({
+        data: {
+          sessionId: session.id,
+          role: 'ASSISTANT',
+          content: interventionContent,
+        },
+      });
+
+      // Update session phase to REGULATE
+      await db.session.update({
+        where: { id: session.id },
+        data: {
+          currentPhase: 'REGULATE',
+        },
+      });
+
+      // Invalidate session cache
+      await invalidateSessionCache(session.id);
+
+      // Stream the intervention response back to client
+      const encoder = new TextEncoder();
+      const readable = new ReadableStream({
+        start(controller) {
+          // Send the complete intervention message
+          controller.enqueue(encoder.encode(`data: ${JSON.stringify({ text: interventionContent })}\n\n`));
+          controller.close();
+        },
+      });
+
+      return new Response(readable, {
+        headers: {
+          'Content-Type': 'text/event-stream',
+          'Cache-Control': 'no-cache',
+          'Connection': 'keep-alive',
+        },
+      });
+    } catch (error) {
+      console.error('Error creating intervention response:', error);
+      captureException(error as Error);
+      // Continue with normal flow if intervention fails
+    }
+  }
+
+  // ═══════════════════════════════════════════════════════════════
+  // NORMAL TUTORING FLOW (No intervention needed)
+  // ═══════════════════════════════════════════════════════════════
 
   // Build context for system prompt
   const regulationState = session.regulationState as { level?: number } | null;
