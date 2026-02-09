@@ -21,6 +21,14 @@ const isApiRoute = (pathname: string) => pathname.startsWith("/api/");
 const isWebhookRoute = (pathname: string) => pathname.startsWith("/api/webhooks/");
 const isMutatingMethod = (method: string) => ["POST", "PUT", "PATCH", "DELETE"].includes(method);
 
+const applyTransportSecurityHeaders = (response: NextResponse) => {
+  response.headers.set("Strict-Transport-Security", "max-age=31536000; includeSubDomains; preload");
+  response.headers.set("X-Content-Type-Options", "nosniff");
+  response.headers.set("X-Frame-Options", "DENY");
+  return response;
+};
+
+
 const getClientIp = (request: NextRequest) => {
   const forwardedFor = request.headers.get("x-forwarded-for");
   if (forwardedFor) {
@@ -91,19 +99,26 @@ const enforceCsrfForApi = (request: NextRequest) => {
 };
 
 export default clerkMiddleware((auth, req) => {
+  const proto = req.headers.get("x-forwarded-proto");
+  if (proto && proto !== "https") {
+    return NextResponse.json({ error: "HTTPS required" }, { status: 426 });
+  }
+
   const rateLimitResponse = enforceRateLimit(req);
   if (rateLimitResponse) {
-    return rateLimitResponse;
+    return applyTransportSecurityHeaders(rateLimitResponse);
   }
 
   const csrfResponse = enforceCsrfForApi(req);
   if (csrfResponse) {
-    return csrfResponse;
+    return applyTransportSecurityHeaders(csrfResponse);
   }
 
   if (!isPublicRoute(req)) {
     auth().protect();
   }
+
+  return applyTransportSecurityHeaders(NextResponse.next());
 });
 
 export const config = {
