@@ -1,22 +1,36 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/lib/db';
 import { z } from 'zod';
+import { parseCurriculumFile } from '@/lib/curriculum/parser';
+import { generateEmbeddings } from '@/lib/embeddings';
+import { upsertVectors } from '@/lib/pinecone';
+
+const subjectEnum = z.enum(['MATH', 'SCIENCE', 'LANGUAGE_ARTS', 'ELA', 'SOCIAL_STUDIES', 'INTERDISCIPLINARY', 'FINANCIAL_LITERACY']);
+
+const ingestMetadataSchema = z.object({
+  subject: subjectEnum.optional(),
+  gradeLevel: z.array(z.number()).or(z.number()).optional(),
+  gradeBand: z.string().optional(),
+  sourceCollection: z.string().optional(),
+  chapter: z.string().optional(),
+  title: z.string().optional(),
+  topics: z.array(z.string()).optional(),
+}).passthrough();
 
 const ingestPayloadSchema = z.object({
   source: z.enum(['WEBHOOK', 'MANUAL', 'SCHEDULED', 'API']).optional().default('WEBHOOK'),
   files: z.array(z.object({
     path: z.string(),
     content: z.string().optional(),
-    metadata: z.record(z.any()).optional(),
+    metadata: ingestMetadataSchema.optional(),
   })).optional(),
-  metadata: z.record(z.any()).optional(),
+  metadata: ingestMetadataSchema.optional(),
   timestamp: z.string().optional(),
 });
 
 export async function POST(req: NextRequest) {
   const startTime = Date.now();
-  
-  // Verify webhook secret — always required, never allow bypass
+
   const webhookSecret = process.env.N8N_WEBHOOK_SECRET;
   if (!webhookSecret) {
     console.error('N8N_WEBHOOK_SECRET is not configured — rejecting ingest request');
@@ -36,16 +50,15 @@ export async function POST(req: NextRequest) {
 
   let body;
   let payload: z.infer<typeof ingestPayloadSchema>;
-  
+
   try {
     body = await req.json();
     payload = ingestPayloadSchema.parse(body);
   } catch (err) {
-    const errorMessage = err instanceof z.ZodError 
+    const errorMessage = err instanceof z.ZodError
       ? err.errors.map(e => `${e.path.join('.')}: ${e.message}`).join(', ')
       : err instanceof Error ? err.message : 'Invalid request payload';
 
-    // Log failed ingestion attempt
     await db.ingestLog.create({
       data: {
         status: 'FAILURE',
@@ -63,7 +76,6 @@ export async function POST(req: NextRequest) {
     );
   }
 
-  // Create pending log entry
   const log = await db.ingestLog.create({
     data: {
       status: 'PROCESSING',
@@ -74,25 +86,51 @@ export async function POST(req: NextRequest) {
   });
 
   try {
-    // Process the ingestion
-    const processedFiles = payload.files?.length || 0;
-    
-    // TODO: Implement actual file processing logic:
-    // 1. Parse and extract content from curriculum files in payload.files
-    // 2. Generate embeddings for each file's content using generateEmbedding()
-    // 3. Upsert embeddings to Pinecone with metadata (file path, course, module, etc.)
-    // 4. Update database records (Standards, Topics, etc.) if needed
-    // 5. Track processed file count and any errors
-    // For now, we just log the ingestion attempt
-    
-    // Update log with success
+    const files = payload.files ?? [];
+    const allChunks = [];
+
+    for (const file of files) {
+      const mergedMetadata = { ...(payload.metadata ?? {}), ...(file.metadata ?? {}) };
+      const chunks = await parseCurriculumFile({
+        path: file.path,
+        content: file.content,
+        metadata: mergedMetadata,
+      });
+      allChunks.push(...chunks);
+    }
+
+    if (allChunks.length > 0) {
+      const embeddings = await generateEmbeddings(allChunks.map((chunk) => chunk.text));
+
+      const vectors = allChunks.map((chunk, i) => ({
+        id: chunk.id,
+        values: embeddings[i],
+        metadata: chunk.metadata,
+      }));
+
+      const preferredNamespace = allChunks.find(
+        (chunk) => chunk.metadata.sourceCollection === '14-financial-literacy',
+      )
+        ? '14-financial-literacy'
+        : undefined;
+
+      if (preferredNamespace) {
+        await upsertVectors(vectors, { namespace: preferredNamespace });
+      } else {
+        await upsertVectors(vectors);
+      }
+    }
+
     await db.ingestLog.update({
       where: { id: log.id },
       data: {
         status: 'SUCCESS',
-        processedFiles,
+        processedFiles: files.length,
         durationMs: Date.now() - startTime,
-        metadata: payload.metadata,
+        metadata: {
+          ...(payload.metadata ?? {}),
+          chunksUpserted: allChunks.length,
+        } as any,
       },
     });
 
@@ -100,14 +138,14 @@ export async function POST(req: NextRequest) {
       success: true,
       message: 'Ingestion completed successfully',
       logId: log.id,
-      processedFiles,
+      processedFiles: files.length,
+      chunksUpserted: allChunks.length,
       durationMs: Date.now() - startTime,
     });
 
   } catch (err) {
     const errorMessage = err instanceof Error ? err.message : 'Unknown error during ingestion';
-    
-    // Update log with failure
+
     await db.ingestLog.update({
       where: { id: log.id },
       data: {
