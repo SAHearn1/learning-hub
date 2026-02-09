@@ -25,9 +25,7 @@ export interface ParsedCurriculumChunk {
     chapter?: string;
     title?: string;
     topics?: string[];
-    sourcePath?: string;
     sourceCollection?: string;
-    sectionHeading?: string;
     course?: string;
     module?: string;
   };
@@ -254,8 +252,11 @@ export async function parseCurriculumFile(
     return [];
   }
 
-  const subject = inferSubject(metadata, content);
-  const gradeLevel = typeof metadata.gradeLevel === 'number' || Array.isArray(metadata.gradeLevel) ? metadata.gradeLevel as number | number[] : inferGradeLevel(file.path, 0);
+  const sourcePath = normalizePath(file.path);
+  const sourceCollection = inferSourceCollection(file.path, metadata);
+  const subject = inferSubject(metadata, content, sourceCollection);
+  const gradeBand = inferGradeBand(metadata, subject);
+  const gradeLevel = inferGradeLevelValue(file.path, metadata, subject);
   const standardCodes = Array.isArray(metadata.standardCodes)
     ? metadata.standardCodes.filter((code): code is string => typeof code === 'string')
     : [];
@@ -269,7 +270,6 @@ export async function parseCurriculumFile(
     : extractDocumentTitle(content, moduleName ?? path.basename(file.path));
   const chapter = inferChapter(file.path, metadata);
   const topics = extractTopics(content, metadata);
-  const sourcePath = normalizePath(file.path);
 
   const sections = file.path.endsWith('.md')
     ? splitMarkdownBySection(content)
@@ -283,37 +283,37 @@ export async function parseCurriculumFile(
   );
 
   // Guardrail: skip near-empty chunks during ingestion embedding flow.
-  const eligibleChunks = chunks.filter(chunk => chunk.trim().length >= 50);
+  const eligibleChunks = chunkBodies.filter((chunk) => chunk.chunkText.trim().length >= 50);
   if (eligibleChunks.length === 0) {
     return [];
   }
 
-  const cleanPath = file.path.replace(/[^a-zA-Z0-9-_]/g, '-');
+  const cleanPath = sourcePath.replace(/[^a-zA-Z0-9-_]/g, '-');
 
-  return eligibleChunks.map((chunk, index) => ({
-    id: `${cleanPath}-chunk-${index}`,
-    text: chunk,
-    metadata: {
-      filename: file.path,
-      documentType: 'curriculum',
-      subject,
-      gradeLevel,
-      ...(typeof metadata.gradeBand === 'string' ? { gradeBand: metadata.gradeBand } : {}),
-      standardCodes,
-      chunkIndex: index,
-      totalChunks: eligibleChunks.length,
-      text: chunk,
+  return eligibleChunks.map((chunk, index) => {
+    const id = sourceCollection === FINANCIAL_LITERACY_COLLECTION && chapter
+      ? `finlit-${chapter}-${String(index).padStart(4, '0')}`
+      : `${cleanPath}-chunk-${index}`;
+
+    return {
+      id,
+      text: chunk.chunkText,
       metadata: {
         filename: file.path,
-        sourcePath: file.path,
-        ...(sectionHeading ? { sectionHeading } : {}),
+        sourcePath,
+        ...(chunk.sectionHeading ? { sectionHeading: chunk.sectionHeading } : {}),
         documentType: 'curriculum',
         subject,
         gradeLevel,
+        ...(gradeBand ? { gradeBand } : {}),
         standardCodes,
         chunkIndex: index,
-        totalChunks: chunks.length,
-        text: chunk,
+        totalChunks: eligibleChunks.length,
+        text: chunk.chunkText,
+        ...(chapter ? { chapter } : {}),
+        ...(title ? { title } : {}),
+        ...(topics.length ? { topics } : {}),
+        ...(sourceCollection ? { sourceCollection } : {}),
         ...(course ? { course } : {}),
         ...(moduleName ? { module: moduleName } : {}),
       },
