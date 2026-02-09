@@ -328,7 +328,10 @@ function formatAlertMessage(alert: AlertRule, value: number, context?: Record<st
 
 /**
  * Get emoji for severity level
+ * Note: Emojis are used here for internal monitoring/alerting (Slack, PagerDuty)
+ * and are not part of the user-facing production UI
  */
+// eslint-disable-next-line no-restricted-syntax
 function getSeverityEmoji(severity: AlertSeverity): string {
   switch (severity) {
     case AlertSeverity.CRITICAL:
