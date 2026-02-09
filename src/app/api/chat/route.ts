@@ -8,6 +8,7 @@ import { queryPinecone } from '@/lib/pinecone/client';
 import { enforceUsageLimits, UsageLimitError } from '@/lib/usage-limits';
 import { detectDysregulation, updateRegulationLevel } from '@/lib/regulation/detector';
 import { analyzeThinkingQuality } from '@/lib/trace/tracker';
+import { createNVCEvaluation } from '@/lib/nvc/evaluation-service';
 import { z } from 'zod';
 import { anonymizeForLlmWithMap, reattachPii } from '@/lib/privacy';
 import { appendImmutableAuditLog } from '@/lib/audit';
@@ -228,7 +229,7 @@ export async function POST(req: NextRequest) {
         const restoredAssistantText = reattachPii(fullText, anonymizedInput.tokenMap);
 
         // Save assistant message and invalidate session cache
-        await db.message.create({
+        const assistantMessage = await db.message.create({
           data: {
             sessionId: session.id,
             role: 'ASSISTANT',
@@ -297,6 +298,25 @@ export async function POST(req: NextRequest) {
               });
             });
         }
+
+        // Evaluate NVC compliance (async, don't block response)
+        const conversationContext = session.messages
+          .slice(-5)
+          .map(m => `${m.role}: ${m.content}`)
+          .join('\n');
+
+        createNVCEvaluation({
+          messageId: assistantMessage.id,
+          sessionId: session.id,
+          tenantId: user.tenantId,
+          assistantResponse: restoredAssistantText,
+          conversationContext,
+        }).catch((error) => {
+          captureException(error, {
+            tags: { endpoint: 'chat', phase: 'nvc_evaluation' },
+            extra: { sessionId: session.id, messageId: assistantMessage.id },
+          });
+        });
 
         // Track AI usage
         const finalMessage = await stream.finalMessage();
