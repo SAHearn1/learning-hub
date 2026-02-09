@@ -7,6 +7,10 @@ export interface SearchResult {
   text: string;
   score: number;
   filename: string;
+  sourcePath?: string;
+  sectionHeading?: string;
+  chunkIndex?: number;
+  totalChunks?: number;
   subject?: string;
   gradeLevel?: number;
   standardCodes?: string[];
@@ -72,6 +76,7 @@ export async function searchCurriculum(
           text: r.text,
           score: r.hybridScore,
           filename: r.filename,
+          sourcePath: r.filename,
           subject: r.subject,
           gradeLevel: r.gradeLevel,
           standardCodes: r.standardCodes,
@@ -90,6 +95,10 @@ export async function searchCurriculum(
           text: r.metadata.text,
           score: r.score,
           filename: r.metadata.filename,
+          sourcePath: (r.metadata as any).sourcePath || r.metadata.filename,
+          sectionHeading: (r.metadata as any).sectionHeading || (r.metadata as any).section,
+          chunkIndex: r.metadata.chunkIndex,
+          totalChunks: r.metadata.totalChunks,
           subject: r.metadata.subject,
           gradeLevel: r.metadata.gradeLevel,
           standardCodes: r.metadata.standardCodes,

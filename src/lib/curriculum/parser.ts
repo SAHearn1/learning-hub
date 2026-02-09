@@ -12,6 +12,8 @@ export interface ParsedCurriculumChunk {
   text: string;
   metadata: {
     filename: string;
+    sourcePath: string;
+    sectionHeading?: string;
     documentType: 'curriculum';
     subject: string;
     gradeLevel: number | number[];
@@ -295,8 +297,20 @@ export async function parseCurriculumFile(
       chunkIndex: index,
       totalChunks: chunks.length,
       text: chunk,
-      ...(course ? { course } : {}),
-      ...(moduleName ? { module: moduleName } : {}),
-    },
-  }));
+      metadata: {
+        filename: file.path,
+        sourcePath: file.path,
+        ...(sectionHeading ? { sectionHeading } : {}),
+        documentType: 'curriculum',
+        subject,
+        gradeLevel,
+        standardCodes,
+        chunkIndex: index,
+        totalChunks: chunks.length,
+        text: chunk,
+        ...(course ? { course } : {}),
+        ...(moduleName ? { module: moduleName } : {}),
+      },
+    };
+  });
 }

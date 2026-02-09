@@ -15,6 +15,12 @@ export interface SourceCitation {
   /** Source file path (e.g., "02-introduction/overview.md") */
   filename: string;
   
+  /** Canonical source path used in vector metadata */
+  sourcePath?: string;
+
+  /** Heading of the section where this chunk was retrieved */
+  sectionHeading?: string;
+  
   /** Section or part name within the document */
   section?: string;
   
