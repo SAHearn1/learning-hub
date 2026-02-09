@@ -10,7 +10,7 @@
  * Uses Maximum Information Selection by default.
  */
 
-import { prisma } from "@/lib/db";
+import { db as prisma } from "@/lib/db";
 import type { Subject, BloomsLevel } from "@prisma/client";
 import { calculateItemInformation, type ItemParameters } from "./ability-estimation";
 
