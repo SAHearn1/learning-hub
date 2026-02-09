@@ -11,7 +11,7 @@
  * - Item guessing (c) for 3PL model
  */
 
-import { prisma } from "@/lib/db/prisma";
+import { prisma } from "@/lib/db";
 import type { IRTModel } from "@prisma/client";
 
 export interface ItemParameters {

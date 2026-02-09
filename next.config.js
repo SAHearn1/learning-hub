@@ -12,7 +12,7 @@ const nextConfig = {
       bodySizeLimit: "2mb",
     },
   },
-  webpack: (config, { isServer }) => {
+  webpack: (config, { isServer, nextRuntime }) => {
     config.ignoreWarnings = [
       ...(config.ignoreWarnings ?? []),
       {
@@ -21,8 +21,8 @@ const nextConfig = {
       },
     ];
 
-    // Exclude server-only dependencies from client bundle
-    if (!isServer) {
+    // Exclude Node-only dependencies from client and edge bundles
+    if (!isServer || nextRuntime === 'edge') {
       config.resolve.alias = {
         ...config.resolve.alias,
         // Make server-only modules resolve to empty object on client

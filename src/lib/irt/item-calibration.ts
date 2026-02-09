@@ -12,7 +12,7 @@
  * This implementation provides a simplified calibration for real-time updates.
  */
 
-import { prisma } from "@/lib/db/prisma";
+import { prisma } from "@/lib/db";
 import type { IRTModel } from "@prisma/client";
 import {
   estimateAbilityMLE,
