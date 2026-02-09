@@ -11,6 +11,9 @@ function createPrismaClient() {
 
 export const db = globalForPrisma.prisma || createPrismaClient();
 
+// Backward-compatible alias used across older modules.
+export const prisma = db;
+
 if (process.env.NODE_ENV !== 'production') globalForPrisma.prisma = db;
 
 export { createPrismaClient };
