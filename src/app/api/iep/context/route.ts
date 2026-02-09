@@ -1,8 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { auth } from '@clerk/nextjs/server';
 import { z } from 'zod';
 import { db } from '@/lib/db';
 import { buildOptimizedContext } from '@/lib/rag/context-window-manager';
+import { withApiHandler } from '@/lib/api-handler';
+import { requireUser } from '@/lib/auth';
+import { NotFoundError, ForbiddenError, InternalServerError } from '@/lib/api-errors';
 
 // =================================================================
 // IEP Context Retrieval API
@@ -23,46 +25,17 @@ const contextQuerySchema = z.object({
     .pipe(z.number().int().min(1000).max(32000).optional()),
 });
 
-export async function GET(req: NextRequest) {
-  const { userId: clerkId } = auth();
-  if (!clerkId) {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-  }
-
-  // Look up authenticated user
-  const user = await db.user.findUnique({
-    where: { clerkUserId: clerkId },
-    include: {
-      student: true,
-      educator: true,
-    },
-  });
-
-  if (!user) {
-    return NextResponse.json({ error: 'User not found' }, { status: 404 });
-  }
+export const GET = withApiHandler(async (req) => {
+  const user = await requireUser();
 
   // Parse and validate query parameters
   const searchParams = Object.fromEntries(req.nextUrl.searchParams.entries());
-
-  let params: z.infer<typeof contextQuerySchema>;
-  try {
-    params = contextQuerySchema.parse(searchParams);
-  } catch (err) {
-    const message =
-      err instanceof z.ZodError
-        ? err.errors.map((e) => `${e.path.join('.')}: ${e.message}`).join(', ')
-        : 'Invalid query parameters';
-    return NextResponse.json({ error: message }, { status: 400 });
-  }
+  const params = contextQuerySchema.parse(searchParams);
 
   // Authorization: verify the user can access this student's data
   const canAccess = await verifyStudentAccess(user, params.studentId);
   if (!canAccess) {
-    return NextResponse.json(
-      { error: 'Forbidden: you do not have access to this student\'s IEP data' },
-      { status: 403 },
-    );
+    throw new ForbiddenError('You do not have access to this student\'s IEP data');
   }
 
   // Fetch student details for context building
@@ -74,7 +47,7 @@ export async function GET(req: NextRequest) {
   });
 
   if (!student) {
-    return NextResponse.json({ error: 'Student not found' }, { status: 404 });
+    throw new NotFoundError('Student not found');
   }
 
   try {
@@ -99,12 +72,9 @@ export async function GET(req: NextRequest) {
 
     console.error('IEP context retrieval failed:', errorMessage);
 
-    return NextResponse.json(
-      { error: 'Context retrieval failed', message: errorMessage },
-      { status: 500 },
-    );
+    throw new InternalServerError(`Context retrieval failed: ${errorMessage}`);
   }
-}
+});
 
 /**
  * Verifies that the authenticated user has access to a student's IEP data.

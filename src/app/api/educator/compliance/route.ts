@@ -1,10 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { auth } from '@clerk/nextjs/server';
 import { db } from '@/lib/db';
 import { z } from 'zod';
 import type { Prisma } from '@prisma/client';
 import { appendImmutableAuditLog } from '@/lib/audit';
 import { assertTenantAccess } from '@/lib/rbac';
+import { withApiHandler } from '@/lib/api-handler';
+import { requireUser } from '@/lib/auth';
+import { ForbiddenError } from '@/lib/api-errors';
 
 const accommodationSchema = z.object({
   studentId: z.string().min(1),
@@ -19,15 +21,11 @@ const accommodationSchema = z.object({
   endDate: z.string().transform(s => new Date(s)).optional(),
 });
 
-export async function GET(req: NextRequest) {
-  const { userId: clerkId } = auth();
-  if (!clerkId) {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-  }
+export const GET = withApiHandler(async (req: NextRequest) => {
+  const user = await requireUser();
 
-  const user = await db.user.findUnique({ where: { clerkUserId: clerkId } });
-  if (!user || !['EDUCATOR', 'SCHOOL_ADMIN', 'DISTRICT_ADMIN', 'PLATFORM_ADMIN'].includes(user.role)) {
-    return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+  if (!['EDUCATOR', 'SCHOOL_ADMIN', 'DISTRICT_ADMIN', 'PLATFORM_ADMIN'].includes(user.role)) {
+    throw new ForbiddenError();
   }
 
   const studentId = req.nextUrl.searchParams.get('studentId');
@@ -39,12 +37,12 @@ export async function GET(req: NextRequest) {
       include: { user: { select: { tenantId: true } } },
     });
     if (!student) {
-      return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+      throw new ForbiddenError();
     }
     try {
       assertTenantAccess(user.role, user.tenantId, student.user.tenantId);
     } catch {
-      return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+      throw new ForbiddenError();
     }
 
     const accommodations = await db.iepAccommodation.findMany({
@@ -68,26 +66,16 @@ export async function GET(req: NextRequest) {
   });
 
   return NextResponse.json({ data: students });
-}
+});
 
-export async function POST(req: NextRequest) {
-  const { userId: clerkId } = auth();
-  if (!clerkId) {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+export const POST = withApiHandler(async (req: NextRequest) => {
+  const user = await requireUser();
+
+  if (!['EDUCATOR', 'SCHOOL_ADMIN'].includes(user.role)) {
+    throw new ForbiddenError();
   }
 
-  const user = await db.user.findUnique({ where: { clerkUserId: clerkId } });
-  if (!user || !['EDUCATOR', 'SCHOOL_ADMIN'].includes(user.role)) {
-    return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
-  }
-
-  let body;
-  try {
-    body = accommodationSchema.parse(await req.json());
-  } catch (err) {
-    const message = err instanceof z.ZodError ? err.errors.map(e => e.message).join(', ') : 'Invalid request';
-    return NextResponse.json({ error: message }, { status: 400 });
-  }
+  const body = accommodationSchema.parse(await req.json());
 
   // Verify the student belongs to the educator's tenant
   const student = await db.student.findUnique({
@@ -95,7 +83,7 @@ export async function POST(req: NextRequest) {
     include: { user: { select: { tenantId: true } } },
   });
   if (!student || student.user.tenantId !== user.tenantId) {
-    return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+    throw new ForbiddenError();
   }
 
   const accommodation = await db.iepAccommodation.create({
@@ -120,4 +108,4 @@ export async function POST(req: NextRequest) {
   });
 
   return NextResponse.json({ data: accommodation }, { status: 201 });
-}
+});

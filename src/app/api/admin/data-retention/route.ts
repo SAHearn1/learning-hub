@@ -3,91 +3,49 @@
  * Admin endpoint for managing data retention enforcement
  */
 
-import { NextRequest, NextResponse } from 'next/server';
-import { auth } from '@clerk/nextjs/server';
+import { NextResponse } from 'next/server';
 import {
   enforceDataRetention,
   getRetentionStatistics,
 } from '@/lib/compliance/data-retention';
 import { logger } from '@/lib/logger';
-import { getUserFromClerkId } from '@/lib/auth';
+import { withApiHandler } from '@/lib/api-handler';
+import { requireRole } from '@/lib/auth';
 
 export const dynamic = 'force-dynamic';
 
 /**
  * GET - Get data retention statistics
  */
-export async function GET(request: NextRequest) {
-  try {
-    const { userId: clerkId } = await auth();
+export const GET = withApiHandler(async (req, ctx) => {
+  const user = await requireRole(['PLATFORM_ADMIN']);
 
-    if (!clerkId) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    }
+  const statistics = await getRetentionStatistics();
 
-    // Only platform admins can access retention data
-    const user = await getUserFromClerkId(clerkId);
-    if (!user || user.role !== 'PLATFORM_ADMIN') {
-      return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
-    }
-
-    const statistics = await getRetentionStatistics();
-
-    return NextResponse.json({
-      statistics,
-      timestamp: new Date().toISOString(),
-    });
-  } catch (error) {
-    logger.error('Failed to get retention statistics', {
-      error: error instanceof Error ? error.message : String(error),
-    });
-
-    return NextResponse.json(
-      { error: 'Internal server error' },
-      { status: 500 }
-    );
-  }
-}
+  return NextResponse.json({
+    statistics,
+    timestamp: new Date().toISOString(),
+  });
+});
 
 /**
  * POST - Manually trigger data retention enforcement
  */
-export async function POST(request: NextRequest) {
-  try {
-    const { userId: clerkId } = await auth();
+export const POST = withApiHandler(async (req, ctx) => {
+  const user = await requireRole(['PLATFORM_ADMIN']);
 
-    if (!clerkId) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    }
+  logger.info('Manual data retention enforcement triggered', {
+    userId: user.id,
+    requestId: ctx.requestId,
+  });
 
-    // Only platform admins can trigger retention
-    const user = await getUserFromClerkId(clerkId);
-    if (!user || user.role !== 'PLATFORM_ADMIN') {
-      return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
-    }
+  // Run enforcement
+  const result = await enforceDataRetention();
 
-    logger.info('Manual data retention enforcement triggered', {
-      userId: user.id,
-      clerkId,
-    });
-
-    // Run enforcement
-    const result = await enforceDataRetention();
-
-    return NextResponse.json({
-      result,
-      message: result.success
-        ? 'Data retention enforcement completed successfully'
-        : 'Data retention enforcement completed with errors',
-    });
-  } catch (error) {
-    logger.error('Failed to run retention enforcement', {
-      error: error instanceof Error ? error.message : String(error),
-    });
-
-    return NextResponse.json(
-      { error: 'Internal server error' },
-      { status: 500 }
-    );
-  }
-}
+  return NextResponse.json({
+    result,
+    message: result.success
+      ? 'Data retention enforcement completed successfully'
+      : 'Data retention enforcement completed with errors',
+  });
+});

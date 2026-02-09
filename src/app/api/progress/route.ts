@@ -1,20 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { auth } from '@clerk/nextjs/server';
+import { withApiHandler } from '@/lib/api-handler';
+import { requireUser } from '@/lib/auth';
+import { NotFoundError, ForbiddenError, BadRequestError } from '@/lib/api-errors';
 import { db } from '@/lib/db';
 
-export async function GET(req: NextRequest) {
-  const { userId: clerkId } = auth();
-  if (!clerkId) {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-  }
-
-  const user = await db.user.findUnique({
-    where: { clerkUserId: clerkId },
-    include: { student: true },
-  });
-  if (!user) {
-    return NextResponse.json({ error: 'User not found' }, { status: 404 });
-  }
+export const GET = withApiHandler(async (req: NextRequest) => {
+  const user = await requireUser();
 
   // Students see their own progress; educators/admins can specify a studentId
   let studentId: string | null = null;
@@ -22,7 +13,7 @@ export async function GET(req: NextRequest) {
 
   if (user.role === 'STUDENT') {
     if (!user.student) {
-      return NextResponse.json({ error: 'Student profile not found' }, { status: 404 });
+      throw new NotFoundError('Student profile not found');
     }
     studentId = user.student.id;
   } else if (queriedStudentId) {
@@ -32,11 +23,11 @@ export async function GET(req: NextRequest) {
       include: { user: { select: { tenantId: true } } },
     });
     if (!queriedStudent || queriedStudent.user.tenantId !== user.tenantId) {
-      return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+      throw new ForbiddenError('Forbidden');
     }
     studentId = queriedStudentId;
   } else {
-    return NextResponse.json({ error: 'studentId required for non-student roles' }, { status: 400 });
+    throw new BadRequestError('studentId required for non-student roles');
   }
 
   const subject = req.nextUrl.searchParams.get('subject') as string | null;
@@ -86,4 +77,4 @@ export async function GET(req: NextRequest) {
       recentSessions,
     },
   });
-}
+}, { rateLimit: { windowMs: 60_000, max: 60 } });

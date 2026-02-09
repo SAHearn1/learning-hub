@@ -1,7 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { auth } from '@clerk/nextjs/server';
 import { db } from '@/lib/db';
 import { z } from 'zod';
+import { withApiHandler } from '@/lib/api-handler';
+import { requireUser } from '@/lib/auth';
+import { ForbiddenError } from '@/lib/api-errors';
 
 const createClassSchema = z.object({
   schoolId: z.string().min(1),
@@ -11,24 +13,14 @@ const createClassSchema = z.object({
   academicYear: z.string().min(1),
 });
 
-export async function POST(req: NextRequest) {
-  const { userId: clerkId } = auth();
-  if (!clerkId) {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+export const POST = withApiHandler(async (req: NextRequest) => {
+  const user = await requireUser();
+
+  if (!['EDUCATOR', 'SCHOOL_ADMIN', 'DISTRICT_ADMIN'].includes(user.role)) {
+    throw new ForbiddenError();
   }
 
-  const user = await db.user.findUnique({ where: { clerkUserId: clerkId } });
-  if (!user || !['EDUCATOR', 'SCHOOL_ADMIN', 'DISTRICT_ADMIN'].includes(user.role)) {
-    return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
-  }
-
-  let body;
-  try {
-    body = createClassSchema.parse(await req.json());
-  } catch (err) {
-    const message = err instanceof z.ZodError ? err.errors.map(e => e.message).join(', ') : 'Invalid request';
-    return NextResponse.json({ error: message }, { status: 400 });
-  }
+  const body = createClassSchema.parse(await req.json());
 
   const newClass = await db.class.create({
     data: {
@@ -43,17 +35,13 @@ export async function POST(req: NextRequest) {
   });
 
   return NextResponse.json({ data: newClass }, { status: 201 });
-}
+});
 
-export async function GET(req: NextRequest) {
-  const { userId: clerkId } = auth();
-  if (!clerkId) {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-  }
+export const GET = withApiHandler(async (req: NextRequest) => {
+  const user = await requireUser();
 
-  const user = await db.user.findUnique({ where: { clerkUserId: clerkId } });
-  if (!user || !['EDUCATOR', 'SCHOOL_ADMIN', 'DISTRICT_ADMIN', 'PLATFORM_ADMIN'].includes(user.role)) {
-    return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+  if (!['EDUCATOR', 'SCHOOL_ADMIN', 'DISTRICT_ADMIN', 'PLATFORM_ADMIN'].includes(user.role)) {
+    throw new ForbiddenError();
   }
 
   const where = user.role === 'EDUCATOR'
@@ -70,4 +58,4 @@ export async function GET(req: NextRequest) {
   });
 
   return NextResponse.json({ data: classes });
-}
+});

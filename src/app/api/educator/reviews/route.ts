@@ -6,12 +6,11 @@
  */
 
 import { NextResponse } from 'next/server';
-import { auth } from '@clerk/nextjs/server';
 import { z } from 'zod';
 import { db } from '@/lib/db';
 import { withApiHandler } from '@/lib/api-handler';
+import { requireUser } from '@/lib/auth';
 import {
-  AuthenticationError,
   ForbiddenError,
   NotFoundError,
   ValidationError,
@@ -30,32 +29,15 @@ import {
 const ALLOWED_ROLES = ['EDUCATOR', 'SCHOOL_ADMIN', 'DISTRICT_ADMIN', 'PLATFORM_ADMIN'] as const;
 
 // ---------------------------------------------------------------------------
-// Auth helper
-// ---------------------------------------------------------------------------
-
-async function requireReviewer() {
-  const { userId: clerkId } = auth();
-  if (!clerkId) {
-    throw new AuthenticationError();
-  }
-
-  const user = await db.user.findUnique({ where: { clerkUserId: clerkId } });
-  if (!user) {
-    throw new NotFoundError('User not found');
-  }
-  if (!ALLOWED_ROLES.includes(user.role as (typeof ALLOWED_ROLES)[number])) {
-    throw new ForbiddenError();
-  }
-
-  return user;
-}
-
-// ---------------------------------------------------------------------------
 // GET - List reviews
 // ---------------------------------------------------------------------------
 
 export const GET = withApiHandler(async (req) => {
-  const user = await requireReviewer();
+  const user = await requireUser();
+
+  if (!ALLOWED_ROLES.includes(user.role as (typeof ALLOWED_ROLES)[number])) {
+    throw new ForbiddenError();
+  }
 
   const url = req.nextUrl;
   const page = Math.max(1, parseInt(url.searchParams.get('page') ?? '1', 10));
@@ -138,7 +120,12 @@ const PostBodySchema = z.object({
 });
 
 export const POST = withApiHandler(async (req) => {
-  const user = await requireReviewer();
+  const user = await requireUser();
+
+  if (!ALLOWED_ROLES.includes(user.role as (typeof ALLOWED_ROLES)[number])) {
+    throw new ForbiddenError();
+  }
+
   const body = PostBodySchema.parse(await req.json());
 
   // Verify the review exists and belongs to the same tenant
