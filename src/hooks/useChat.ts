@@ -187,7 +187,7 @@ export function useChat(): UseChatReturn {
     }
   }, [setLoading, startSession, setEngagementMode]);
 
-  async function updatePhaseInternal(sid: string, phase: string) {
+  const updatePhaseInternal = useCallback(async (sid: string, phase: string) => {
     setPhase(phase as Parameters<typeof setPhase>[0]);
     try {
       await fetch(`/api/sessions/${sid}`, {
@@ -198,12 +198,12 @@ export function useChat(): UseChatReturn {
     } catch {
       // Silently fail phase persistence -- local state is updated
     }
-  }
+  }, [setPhase]);
 
   const updatePhase = useCallback(async (phase: string) => {
     if (!sessionId) return;
     await updatePhaseInternal(sessionId, phase);
-  }, [sessionId, setPhase]);
+  }, [sessionId, updatePhaseInternal]);
 
   const updateEngagementMode = useCallback(async (mode: string) => {
     if (!sessionId) return;
