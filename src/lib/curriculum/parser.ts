@@ -90,7 +90,8 @@ function inferSubject(metadata: Record<string, unknown>, content: string, source
   if (scan.includes('financial literacy')) return FINANCIAL_LITERACY_SUBJECT;
   if (scan.includes('mathematics') || scan.includes('math')) return 'MATH';
   if (scan.includes('science')) return 'SCIENCE';
-  if (scan.includes('english language arts') || scan.includes('ela')) return 'ELA';
+  if (scan.includes('financial literacy') || scan.includes('budget') || scan.includes('invest')) return 'FINANCIAL_LITERACY';
+  if (scan.includes('english language arts') || scan.includes('ela')) return 'LANGUAGE_ARTS';
   if (scan.includes('social studies')) return 'SOCIAL_STUDIES';
   return 'INTERDISCIPLINARY';
 }
@@ -251,10 +252,8 @@ export async function parseCurriculumFile(
     return [];
   }
 
-  const sourceCollection = inferSourceCollection(file.path, metadata);
-  const subject = inferSubject(metadata, content, sourceCollection);
-  const gradeLevel = inferGradeLevelValue(file.path, metadata, subject);
-  const gradeBand = inferGradeBand(metadata, subject);
+  const subject = inferSubject(metadata, content);
+  const gradeLevel = typeof metadata.gradeLevel === 'number' || Array.isArray(metadata.gradeLevel) ? metadata.gradeLevel as number | number[] : inferGradeLevel(file.path, 0);
   const standardCodes = Array.isArray(metadata.standardCodes)
     ? metadata.standardCodes.filter((code): code is string => typeof code === 'string')
     : [];
@@ -283,33 +282,21 @@ export async function parseCurriculumFile(
 
   const cleanPath = file.path.replace(/[^a-zA-Z0-9-_]/g, '-');
 
-  return chunkBodies.map(({ sectionHeading, chunkText }, index) => {
-    const id = subject === FINANCIAL_LITERACY_SUBJECT && chapter
-      ? `finlit-${chapter}-${index.toString().padStart(4, '0')}`
-      : `${cleanPath}-chunk-${index}`;
-
-    return {
-      id,
-      text: chunkText,
-      metadata: {
-        filename: file.path,
-        documentType: 'curriculum',
-        subject,
-        gradeLevel,
-        ...(gradeBand ? { gradeBand } : {}),
-        standardCodes,
-        chunkIndex: index,
-        totalChunks: chunkBodies.length,
-        text: chunkText,
-        ...(chapter ? { chapter } : {}),
-        ...(title ? { title } : {}),
-        ...(topics.length ? { topics } : {}),
-        sourcePath,
-        ...(sourceCollection ? { sourceCollection } : {}),
-        ...(sectionHeading ? { sectionHeading } : {}),
-        ...(course ? { course } : {}),
-        ...(moduleName ? { module: moduleName } : {}),
-      },
-    };
-  });
+  return chunks.map((chunk, index) => ({
+    id: `${cleanPath}-chunk-${index}`,
+    text: chunk,
+    metadata: {
+      filename: file.path,
+      documentType: 'curriculum',
+      subject,
+      gradeLevel,
+      ...(typeof metadata.gradeBand === 'string' ? { gradeBand: metadata.gradeBand } : {}),
+      standardCodes,
+      chunkIndex: index,
+      totalChunks: chunks.length,
+      text: chunk,
+      ...(course ? { course } : {}),
+      ...(moduleName ? { module: moduleName } : {}),
+    },
+  }));
 }

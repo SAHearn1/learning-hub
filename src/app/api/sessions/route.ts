@@ -5,7 +5,7 @@ import { enforceUsageLimits, UsageLimitError } from '@/lib/usage-limits';
 import { z } from 'zod';
 
 const createSessionSchema = z.object({
-  subject: z.enum(['MATH', 'SCIENCE', 'LANGUAGE_ARTS']),
+  subject: z.enum(['MATH', 'SCIENCE', 'LANGUAGE_ARTS', 'FINANCIAL_LITERACY']),
   engagementMode: z.enum(['FORWARD', 'REVERSE', 'ERROR_ANALYSIS', 'MULTIPLE_PATHWAYS', 'PROBLEM_POSING']).default('FORWARD'),
 });
 

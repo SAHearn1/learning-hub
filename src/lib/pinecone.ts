@@ -124,7 +124,14 @@ export async function queryVectors(
   const index = options.namespace ? baseIndex.namespace(options.namespace) : baseIndex;
   const { topK = 5, subject, subjects, gradeLevel, gradeBand } = options;
 
-  const filter = buildCurriculumFilter({ subject, subjects, gradeLevel, gradeBand });
+  // Build metadata filter
+  const filter: Record<string, unknown> = {};
+  if (subject) {
+    filter.subject = { $eq: subject };
+  }
+  if (gradeLevel) {
+    filter.$or = [{ gradeLevel: { $eq: gradeLevel } }, { gradeLevel: { $in: [gradeLevel] } }];
+  }
 
   const results = await index.query({
     vector: embedding,

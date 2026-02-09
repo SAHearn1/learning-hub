@@ -8,7 +8,7 @@ import { z } from 'zod';
 const diagnosticSchema = z.object({
   studentId: z.string().min(1),
   sessionId: z.string().min(1),
-  subject: z.enum(['MATH', 'SCIENCE', 'LANGUAGE_ARTS']),
+  subject: z.enum(['MATH', 'SCIENCE', 'LANGUAGE_ARTS', 'FINANCIAL_LITERACY']),
   gradeLevel: z.number().int().min(1).max(12),
   standardIds: z.array(z.string()).optional(),
 });

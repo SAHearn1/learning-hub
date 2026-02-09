@@ -62,6 +62,12 @@ export const BRAND = {
       icon: 'language-arts-icon',
       color: '#8B5CF6',
     },
+    FINANCIAL_LITERACY: {
+      name: 'Financial Literacy',
+      shortName: 'Fin Lit',
+      icon: 'finance-icon',
+      color: '#F59E0B',
+    },
   },
 
   engagementModes: {
