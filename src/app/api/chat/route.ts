@@ -6,10 +6,13 @@ import { buildMasterSystemPrompt } from '@/lib/ai/prompts/master-system-prompt';
 import { enforceUsageLimits, UsageLimitError } from '@/lib/usage-limits';
 import { detectDysregulation, updateRegulationLevel } from '@/lib/regulation/detector';
 import { analyzeThinkingQuality } from '@/lib/trace/tracker';
-import { GuardrailsEngine } from '@/lib/ai/guardrails';
-import { buildOptimizedContext } from '@/lib/rag/context-window-manager';
-import { createSuggestionReview } from '@/lib/ai/hitl/suggestion-service';
+import { createNVCEvaluation } from '@/lib/nvc/evaluation-service';
 import { z } from 'zod';
+import { anonymizeForLlmWithMap, reattachPii } from '@/lib/privacy';
+import { appendImmutableAuditLog } from '@/lib/audit';
+import { getCachedUserProfile, getCachedSession, invalidateSessionCache } from '@/lib/redis/cached-queries';
+import { cacheGet, cacheSet, contentHash, CACHE_TTL, CACHE_KEY } from '@/lib/redis/cache';
+import { captureException, recordMetric } from '@/lib/monitoring';
 
 const chatRequestSchema = z.object({
   sessionId: z.string().min(1),
@@ -33,18 +36,12 @@ export async function POST(req: NextRequest) {
     return new Response(JSON.stringify({ error: message }), { status: 400 });
   }
 
-  const user = await db.user.findUnique({
-    where: { clerkUserId: clerkId },
-    include: { student: { include: { iepAccommodations: { where: { active: true } } } } },
-  });
+  const user = await getCachedUserProfile(clerkId);
   if (!user?.student) {
     return new Response(JSON.stringify({ error: 'Student profile not found' }), { status: 404 });
   }
 
-  const session = await db.session.findUnique({
-    where: { id: body.sessionId },
-    include: { messages: { orderBy: { createdAt: 'asc' }, take: 50 } },
-  });
+  const session = await getCachedSession(body.sessionId);
   if (!session) {
     return new Response(JSON.stringify({ error: 'Session not found' }), { status: 404 });
   }
@@ -64,12 +61,7 @@ export async function POST(req: NextRequest) {
     throw error;
   }
 
-  // Initialize guardrails engine
-  const guardrails = new GuardrailsEngine({
-    skipIepCheck: user.student.iepAccommodations.length === 0,
-  });
-
-  // Save user message
+  // Save user message and invalidate session cache
   const userMessage = await db.message.create({
     data: {
       sessionId: session.id,
@@ -77,6 +69,7 @@ export async function POST(req: NextRequest) {
       content: body.message,
     },
   });
+  await invalidateSessionCache(session.id);
 
   // Check for dysregulation signals
   const messageHistory = session.messages.map((m) => ({
@@ -114,68 +107,58 @@ export async function POST(req: NextRequest) {
     .map(m => `${m.role}: ${m.content}`)
     .join('\n');
 
-  // Pre-generation guardrail check on user input
-  const guardrailContext = {
-    sessionPhase: session.currentPhase,
-    subject: session.subject,
-    gradeLevel: user.student.gradeLevel,
-    accommodations: accommodationTypes,
-    ragContext: '',
-    sessionHistory,
-    studentId: user.student.id,
-  };
-
-  const preCheck = guardrails.runPreGeneration(body.message, guardrailContext);
-
-  // Log escalation triggers for educator notification
-  const escalationViolations = preCheck.violations.filter(
-    v => v.details?.requiresEscalation === true,
-  );
-  if (escalationViolations.length > 0) {
-    await db.auditLog.create({
-      data: {
-        tenantId: user.tenantId,
-        userId: user.id,
-        action: 'ESCALATION_TRIGGER_DETECTED',
-        resource: 'Session',
-        resourceId: session.id,
-        metadata: {
-          signals: escalationViolations.map(v => v.message),
-          studentId: user.student.id,
-        },
-      },
-    });
-  }
-
-  // RAG: Retrieve optimized context (IEP + curriculum + session) via context window manager
+  // RAG: Retrieve relevant curriculum context (with Redis cache)
   let curriculumContext = '';
-  let iepContext = '';
-  let ragMetrics = { iepChunks: 0, curriculumChunks: 0, durationMs: 0 };
+  let ragMetrics = { retrieved: 0, durationMs: 0 };
 
   try {
-    const optimizedContext = await buildOptimizedContext({
-      studentId: user.student.id,
-      query: preCheck.sanitizedInput || body.message,
-      sessionPhase: session.currentPhase,
-      subject: session.subject,
-      gradeLevel: user.student.gradeLevel,
-      accommodations: accommodationTypes,
-      sessionHistory,
-    });
+    const ragStartTime = Date.now();
+    const grade = String(user.student.gradeLevel ?? 'any');
+    const ragCacheKey = CACHE_KEY.curriculum(session.subject, grade, contentHash(body.message));
 
-    curriculumContext = optimizedContext.curriculumContext;
-    iepContext = optimizedContext.iepContext;
-    ragMetrics = {
-      iepChunks: optimizedContext.retrievalMetrics.iepChunksRetrieved,
-      curriculumChunks: optimizedContext.retrievalMetrics.curriculumChunksRetrieved,
-      durationMs: optimizedContext.retrievalMetrics.retrievalTimeMs,
-    };
+    // Check cache first
+    const cachedRag = await cacheGet<string>(ragCacheKey);
+    if (cachedRag) {
+      curriculumContext = cachedRag;
+      ragMetrics.durationMs = Date.now() - ragStartTime;
+      ragMetrics.retrieved = -1; // indicates cache hit
+    } else {
+      // Generate embedding for the user's query
+      const queryEmbedding = await generateEmbedding(body.message);
 
-    console.log(
-      `RAG: Retrieved ${ragMetrics.curriculumChunks} curriculum + ${ragMetrics.iepChunks} IEP chunks ` +
-      `in ${ragMetrics.durationMs}ms for session ${session.id} ` +
-      `(${optimizedContext.totalTokensUsed} tokens used)`,
-    );
+      // Query Pinecone for relevant curriculum content
+      const filter: Record<string, any> = {
+        subject: session.subject,
+      };
+
+      // Add grade level filter if available
+      if (user.student.gradeLevel) {
+        filter.gradeLevel = user.student.gradeLevel;
+      }
+
+      const matches = await queryPinecone(queryEmbedding, 5, filter);
+      ragMetrics.retrieved = matches.length;
+      ragMetrics.durationMs = Date.now() - ragStartTime;
+
+      // Format retrieved context
+      if (matches.length > 0) {
+        curriculumContext = matches
+          .map((match, idx) => {
+            const metadata = match.metadata as Record<string, any> || {};
+            const content = metadata.content || metadata.text || 'No content available';
+            const source = metadata.source || metadata.title || 'Unknown source';
+            const score = match.score?.toFixed(3) || 'N/A';
+
+            return `[Context ${idx + 1}] (Relevance: ${score})\nSource: ${source}\n${content}`;
+          })
+          .join('\n\n---\n\n');
+
+        // Cache the formatted RAG context
+        await cacheSet(ragCacheKey, curriculumContext, CACHE_TTL.CURRICULUM);
+
+        console.log(`RAG: Retrieved ${matches.length} curriculum contexts in ${ragMetrics.durationMs}ms for session ${session.id}`);
+      }
+    }
   } catch (error) {
     console.error(`RAG retrieval error for session ${session.id}:`, error);
   }
@@ -199,11 +182,13 @@ export async function POST(req: NextRequest) {
   });
 
   // Build message history for API call
+  const piiTokenMap: Record<string, string> = {};
   const apiMessages = session.messages.map(m => ({
     role: (m.role === 'USER' ? 'user' : 'assistant') as 'user' | 'assistant',
-    content: m.content,
+    content: anonymizeForLlmWithMap(m.content, piiTokenMap).sanitizedText,
   }));
-  apiMessages.push({ role: 'user', content: body.message });
+  const anonymizedInput = anonymizeForLlmWithMap(body.message, piiTokenMap);
+  apiMessages.push({ role: 'user', content: anonymizedInput.sanitizedText });
 
   // Filter consecutive same-role messages (Anthropic requires alternating)
   const filteredMessages: { role: 'user' | 'assistant'; content: string }[] = [];
@@ -225,7 +210,7 @@ export async function POST(req: NextRequest) {
   const stream = await anthropic.messages.stream({
     model: AI_MODELS.primary,
     max_tokens: 1024,
-    system: systemPrompt,
+    system: anonymizeForLlmWithMap(systemPrompt, piiTokenMap).sanitizedText,
     messages: filteredMessages,
   });
 
@@ -238,33 +223,22 @@ export async function POST(req: NextRequest) {
         for await (const event of stream) {
           if (event.type === 'content_block_delta' && event.delta.type === 'text_delta') {
             fullText += event.delta.text;
-            controller.enqueue(encoder.encode(`data: ${JSON.stringify({ text: event.delta.text })}\n\n`));
+            const deidentifiedChunk = reattachPii(event.delta.text, anonymizedInput.tokenMap);
+            controller.enqueue(encoder.encode(`data: ${JSON.stringify({ text: deidentifiedChunk })}\n\n`));
           }
         }
 
-        // Post-generation guardrail check on AI output
-        const postCheck = guardrails.runPostGeneration(fullText, guardrailContext);
+        const restoredAssistantText = reattachPii(fullText, anonymizedInput.tokenMap);
 
-        // Use sanitized output if guardrails modified it
-        const finalContent = postCheck.sanitizedOutput || fullText;
-
-        // Save assistant message
-        await db.message.create({
+        // Save assistant message and invalidate session cache
+        const assistantMessage = await db.message.create({
           data: {
             sessionId: session.id,
             role: 'ASSISTANT',
-            content: finalContent,
-            metadata: {
-              guardrails: {
-                passed: postCheck.passed,
-                confidenceScore: postCheck.confidenceScore,
-                hallucinationScore: postCheck.hallucinationScore,
-                fiveRsAlignmentScore: postCheck.fiveRsAlignmentScore,
-                violationCount: postCheck.violations.length,
-              },
-            },
+            content: restoredAssistantText,
           },
         });
+        await invalidateSessionCache(session.id);
 
         // If guardrails flagged issues or confidence is low, create HITL review
         if (!postCheck.passed || postCheck.confidenceScore < 0.7) {
@@ -299,7 +273,7 @@ export async function POST(req: NextRequest) {
 
         // Track thinking quality with TRACE protocol (async, don't block response)
         if (body.message.length > MIN_MESSAGE_LENGTH_FOR_TRACE) {
-          analyzeThinkingQuality(body.message, fullText)
+          analyzeThinkingQuality(body.message, restoredAssistantText)
             .then(async (traceData) => {
               if (!traceData) return;
 
@@ -351,9 +325,31 @@ export async function POST(req: NextRequest) {
               }
             })
             .catch((error) => {
-              console.error('Error tracking TRACE data:', error);
+              captureException(error, {
+                tags: { endpoint: 'chat', phase: 'trace_analysis' },
+                extra: { sessionId: session.id },
+              });
             });
         }
+
+        // Evaluate NVC compliance (async, don't block response)
+        const conversationContext = session.messages
+          .slice(-5)
+          .map(m => `${m.role}: ${m.content}`)
+          .join('\n');
+
+        createNVCEvaluation({
+          messageId: assistantMessage.id,
+          sessionId: session.id,
+          tenantId: user.tenantId,
+          assistantResponse: restoredAssistantText,
+          conversationContext,
+        }).catch((error) => {
+          captureException(error, {
+            tags: { endpoint: 'chat', phase: 'nvc_evaluation' },
+            extra: { sessionId: session.id, messageId: assistantMessage.id },
+          });
+        });
 
         // Track AI usage
         const finalMessage = await stream.finalMessage();
@@ -380,9 +376,33 @@ export async function POST(req: NextRequest) {
           },
         });
 
+        // Record latency metric for monitoring dashboards
+        await recordMetric('chat.latency_ms', latencyMs, {
+          model: AI_MODELS.primary,
+          subject: session.subject,
+        });
+
+
+        await appendImmutableAuditLog({
+          tenantId: user.tenantId,
+          userId: user.id,
+          action: 'LLM_CHAT_COMPLETED',
+          resource: 'Session',
+          resourceId: session.id,
+          metadata: {
+            anonymizationTokens: Object.keys(anonymizedInput.tokenMap).length,
+            inputLength: body.message.length,
+          },
+        });
         controller.enqueue(encoder.encode(`data: ${JSON.stringify({ done: true })}\n\n`));
         controller.close();
       } catch (err) {
+        await captureException(err, {
+          tags: { endpoint: 'chat', phase: 'stream' },
+          extra: { sessionId: session.id },
+          userId: user.id,
+          tenantId: user.tenantId,
+        });
         const errorMessage = err instanceof Error ? err.message : 'Stream error';
         controller.enqueue(encoder.encode(`data: ${JSON.stringify({ error: errorMessage })}\n\n`));
         controller.close();

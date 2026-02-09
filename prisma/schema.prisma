@@ -23,6 +23,9 @@ model Tenant {
   subscriptionStatus   SubscriptionStatus @default(ACTIVE)
   stripeCustomerId     String?
   stripeSubscriptionId String?
+  isSuspended          Boolean            @default(false)
+  suspendedAt          DateTime?
+  suspensionReason     String?
   settings             Json               @default("{}")
   schools              School[]
   users                User[]
@@ -244,13 +247,14 @@ model Session {
 }
 
 model Message {
-  id        String      @id @default(cuid())
-  sessionId String
-  session   Session     @relation(fields: [sessionId], references: [id])
-  role      MessageRole
-  content   String      @db.Text
-  metadata  Json?
-  createdAt DateTime    @default(now())
+  id                   String                 @id @default(cuid())
+  sessionId            String
+  session              Session                @relation(fields: [sessionId], references: [id])
+  role                 MessageRole
+  content              String                 @db.Text
+  metadata             Json?
+  createdAt            DateTime               @default(now())
+  nvcQualityEvaluations NVCQualityEvaluation[]
 }
 
 enum MessageRole {
@@ -554,15 +558,17 @@ enum AIFeature {
 // ═══════════════════════════════════════════════════════════════
 
 model AuditLog {
-  id         String   @id @default(cuid())
-  tenantId   String
-  userId     String
-  action     String
-  resource   String
-  resourceId String?
-  metadata   Json?
-  ipAddress  String?
-  timestamp  DateTime @default(now())
+  id           String   @id @default(cuid())
+  tenantId     String
+  userId       String
+  action       String
+  resource     String
+  resourceId   String?
+  metadata     Json?
+  ipAddress    String?
+  previousHash String?
+  chainHash    String   @unique
+  timestamp    DateTime @default(now())
 
   @@index([tenantId])
   @@index([tenantId, timestamp])
@@ -606,48 +612,76 @@ enum IngestSource {
 }
 
 // ═══════════════════════════════════════════════════════════════
-// AI SUGGESTION REVIEW (Human-in-the-Loop)
+// NVC QUALITY ASSURANCE
 // ═══════════════════════════════════════════════════════════════
 
-enum SuggestionType {
-  TUTORING_RESPONSE
-  IEP_RECOMMENDATION
-  ASSESSMENT_FEEDBACK
-  ACCOMMODATION_SUGGESTION
-  PROGRESS_NOTE
+model NVCQualityEvaluation {
+  id                 String         @id @default(cuid())
+  messageId          String
+  message            Message        @relation(fields: [messageId], references: [id])
+  sessionId          String
+  tenantId           String
+  evaluatedAt        DateTime       @default(now())
+
+  // Evaluation results
+  isCompliant        Boolean
+  nvcScore           Float          // 0-100 score
+  concerns           NVCConcern[]
+
+  // Detailed analysis
+  judgmentalPhrases  String[]
+  dismissivePhrases  String[]
+  suggestedRevisions String[]       @db.Text
+
+  // LLM analysis metadata
+  rawAnalysis        String         @db.Text
+  llmModel           String
+  llmTokens          Int
+  llmLatencyMs       Int
+
+  // Review status
+  reviewStatus       ReviewStatus   @default(PENDING)
+  reviewedBy         String?
+  reviewedAt         DateTime?
+  reviewNotes        String?        @db.Text
+
+  // Admin actions
+  adminAction        AdminAction?
+  actionTakenAt      DateTime?
+
+  @@index([messageId])
+  @@index([sessionId])
+  @@index([tenantId])
+  @@index([reviewStatus])
+  @@index([evaluatedAt])
+  @@index([isCompliant])
+}
+
+enum NVCConcern {
+  JUDGMENTAL_LANGUAGE
+  DISMISSIVE_TONE
+  LACK_OF_EMPATHY
+  AUTHORITARIAN_LANGUAGE
+  SHAMING_LANGUAGE
+  COMPARISON
+  DEMAND_VS_REQUEST
+  DIAGNOSIS_VS_OBSERVATION
+  BLAME_LANGUAGE
+  COERCIVE_LANGUAGE
 }
 
 enum ReviewStatus {
-  PENDING_REVIEW
+  PENDING
+  REVIEWED
   APPROVED
-  APPROVED_WITH_EDITS
-  REJECTED
-  EXPIRED
+  FLAGGED
+  DISMISSED
 }
 
-model AiSuggestionReview {
-  id               String         @id @default(cuid())
-  tenantId         String
-  studentId        String
-  sessionId        String?
-  suggestionType   SuggestionType
-  originalContent  String         @db.Text
-  editedContent    String?        @db.Text
-  reviewStatus     ReviewStatus   @default(PENDING_REVIEW)
-  reviewerId       String?
-  reviewerNotes    String?        @db.Text
-  confidenceScore  Float?
-  guardrailFlags   Json?
-  contextSnapshot  Json?
-  priority         Int            @default(0)
-  expiresAt        DateTime?
-  reviewedAt       DateTime?
-  createdAt        DateTime       @default(now())
-  updatedAt        DateTime       @updatedAt
-
-  @@index([tenantId])
-  @@index([studentId])
-  @@index([reviewStatus])
-  @@index([reviewerId])
-  @@index([suggestionType])
+enum AdminAction {
+  NONE
+  REVISED_RESPONSE
+  EDUCATOR_NOTIFIED
+  SYSTEM_IMPROVEMENT
+  FALSE_POSITIVE
 }

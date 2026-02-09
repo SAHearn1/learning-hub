@@ -3,6 +3,8 @@ import { auth } from '@clerk/nextjs/server';
 import { db } from '@/lib/db';
 import { z } from 'zod';
 import type { Prisma } from '@prisma/client';
+import { appendImmutableAuditLog } from '@/lib/audit';
+import { assertTenantAccess } from '@/lib/rbac';
 
 const accommodationSchema = z.object({
   studentId: z.string().min(1),
@@ -36,7 +38,12 @@ export async function GET(req: NextRequest) {
       where: { id: studentId },
       include: { user: { select: { tenantId: true } } },
     });
-    if (!student || student.user.tenantId !== user.tenantId) {
+    if (!student) {
+      return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+    }
+    try {
+      assertTenantAccess(user.role, user.tenantId, student.user.tenantId);
+    } catch {
       return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
     }
 
@@ -103,15 +110,13 @@ export async function POST(req: NextRequest) {
   });
 
   // Audit log
-  await db.auditLog.create({
-    data: {
-      tenantId: user.tenantId,
-      userId: user.id,
-      action: 'CREATE_ACCOMMODATION',
-      resource: 'IepAccommodation',
-      resourceId: accommodation.id,
-      metadata: { studentId: body.studentId, type: body.type },
-    },
+  await appendImmutableAuditLog({
+    tenantId: user.tenantId,
+    userId: user.id,
+    action: 'CREATE_ACCOMMODATION',
+    resource: 'IepAccommodation',
+    resourceId: accommodation.id,
+    metadata: { studentId: body.studentId, type: body.type },
   });
 
   return NextResponse.json({ data: accommodation }, { status: 201 });
