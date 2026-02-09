@@ -20,9 +20,12 @@ export const GET = withApiHandler(async (req: NextRequest) => {
     throw new ValidationError('Missing required parameter: studentId');
   }
 
-  if (subject && !['MATH', 'SCIENCE', 'LANGUAGE_ARTS'].includes(subject)) {
-    throw new ValidationError('Invalid subject. Must be MATH, SCIENCE, or LANGUAGE_ARTS');
-  }
+    if (subject && !['MATH', 'SCIENCE', 'LANGUAGE_ARTS', 'FINANCIAL_LITERACY'].includes(subject)) {
+      return NextResponse.json(
+        { error: 'Invalid subject. Must be MATH, SCIENCE, or LANGUAGE_ARTS' },
+        { status: 400 }
+      );
+    }
 
   const warmup = await generateDailyWarmup(
     studentId,

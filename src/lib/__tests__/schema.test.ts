@@ -267,7 +267,7 @@ describe('Prisma schema — enums', () => {
 
   it('Subject has 3 subjects', () => {
     const values = Object.values(PrismaExports.Subject);
-    expect(values).toEqual(['MATH', 'SCIENCE', 'LANGUAGE_ARTS']);
+    expect(values).toEqual(['MATH', 'SCIENCE', 'LANGUAGE_ARTS', 'FINANCIAL_LITERACY']);
   });
 
   it('FiveRPhase has 5 phases in correct order', () => {

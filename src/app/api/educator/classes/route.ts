@@ -8,7 +8,7 @@ import { ForbiddenError } from '@/lib/api-errors';
 const createClassSchema = z.object({
   schoolId: z.string().min(1),
   name: z.string().min(1).max(200),
-  subject: z.enum(['MATH', 'SCIENCE', 'LANGUAGE_ARTS']),
+  subject: z.enum(['MATH', 'SCIENCE', 'LANGUAGE_ARTS', 'FINANCIAL_LITERACY']),
   gradeLevel: z.number().int().min(1).max(12),
   academicYear: z.string().min(1),
 });

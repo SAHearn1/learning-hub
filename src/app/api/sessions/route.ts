@@ -7,7 +7,7 @@ import { requireUser } from '@/lib/auth';
 import { NotFoundError, PaymentRequiredError } from '@/lib/api-errors';
 
 const createSessionSchema = z.object({
-  subject: z.enum(['MATH', 'SCIENCE', 'LANGUAGE_ARTS']),
+  subject: z.enum(['MATH', 'SCIENCE', 'LANGUAGE_ARTS', 'FINANCIAL_LITERACY']),
   engagementMode: z.enum(['FORWARD', 'REVERSE', 'ERROR_ANALYSIS', 'MULTIPLE_PATHWAYS', 'PROBLEM_POSING']).default('FORWARD'),
 });
 

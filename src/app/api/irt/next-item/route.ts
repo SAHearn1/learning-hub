@@ -3,7 +3,7 @@
  * POST /api/irt/next-item
  * Body: {
  *   studentId: string,
- *   subject: 'MATH' | 'SCIENCE' | 'LANGUAGE_ARTS',
+ *   subject: 'MATH' | 'SCIENCE' | 'LANGUAGE_ARTS' | 'FINANCIAL_LITERACY',
  *   currentTheta?: number,
  *   excludeAssessmentIds?: string[],
  *   bloomsLevelDistribution?: Record<BloomsLevel, number>
@@ -17,19 +17,37 @@ import { ValidationError, NotFoundError } from '@/lib/api-errors';
 import { selectNextItem, getStudentAbility } from '@/lib/irt';
 import type { Subject, BloomsLevel } from '@prisma/client';
 
-export const POST = withApiHandler(async (req: NextRequest) => {
-  const body = await req.json();
-  const {
-    studentId,
-    subject,
-    currentTheta,
-    excludeAssessmentIds,
-    bloomsLevelDistribution,
-  } = body;
+export async function POST(request: NextRequest) {
+  try {
+    const body = await request.json();
+    const {
+      studentId,
+      subject,
+      currentTheta,
+      excludeAssessmentIds,
+      bloomsLevelDistribution,
+    } = body;
 
-  if (!studentId || !subject) {
-    throw new ValidationError('Missing required parameters: studentId and subject');
-  }
+    if (!studentId || !subject) {
+      return NextResponse.json(
+        { error: 'Missing required parameters: studentId and subject' },
+        { status: 400 }
+      );
+    }
+
+    if (!['MATH', 'SCIENCE', 'LANGUAGE_ARTS', 'FINANCIAL_LITERACY'].includes(subject)) {
+      return NextResponse.json(
+        { error: 'Invalid subject. Must be MATH, SCIENCE, or LANGUAGE_ARTS' },
+        { status: 400 }
+      );
+    }
+
+    // Get student's current theta if not provided
+    let theta = currentTheta;
+    if (theta === undefined) {
+      const ability = await getStudentAbility(studentId, subject as Subject);
+      theta = ability?.theta ?? 0;
+    }
 
   if (!['MATH', 'SCIENCE', 'LANGUAGE_ARTS'].includes(subject)) {
     throw new ValidationError('Invalid subject. Must be MATH, SCIENCE, or LANGUAGE_ARTS');

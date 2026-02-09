@@ -1,0 +1,1662 @@
+{
+  "bankVersion": "mvp-seed-v1",
+  "description": "Seed problem bank for high-school financial literacy aligned to Bloom's taxonomy, 5Rs, and engagement modes.",
+  "items": [
+    {
+      "subject": "FINANCIAL_LITERACY",
+      "gradeLevel": [
+        9,
+        10,
+        11,
+        12
+      ],
+      "topicKey": "budgeting_cash_flow",
+      "blooms": "REMEMBER",
+      "fiveR": "ROOT",
+      "mode": "FORWARD",
+      "prompt": "List two fixed expenses and two variable expenses in a monthly budget.",
+      "answer": "Fixed expenses include costs like rent and insurance; variable expenses include groceries and entertainment.",
+      "rationale": "Fixed costs are usually predictable month to month, while variable costs can change based on choices and usage.",
+      "citations": [
+        {
+          "sourcePath": "content/14-financial-literacy/chapters.md",
+          "chapter": "14",
+          "sectionHeading": "Budgeting and Cash Flow"
+        }
+      ]
+    },
+    {
+      "subject": "FINANCIAL_LITERACY",
+      "gradeLevel": [
+        9,
+        10,
+        11,
+        12
+      ],
+      "topicKey": "budgeting_cash_flow",
+      "blooms": "UNDERSTAND",
+      "fiveR": "REGULATE",
+      "mode": "REVERSE",
+      "prompt": "Explain why a budget should include a savings category before discretionary spending.",
+      "answer": "Savings should be planned first to make sure goals are funded instead of only saving what is left over.",
+      "rationale": "A pay-yourself-first approach reduces the chance that all income is spent on optional purchases.",
+      "citations": [
+        {
+          "sourcePath": "content/14-financial-literacy/chapters.md",
+          "chapter": "14",
+          "sectionHeading": "Budgeting and Cash Flow"
+        }
+      ]
+    },
+    {
+      "subject": "FINANCIAL_LITERACY",
+      "gradeLevel": [
+        9,
+        10,
+        11,
+        12
+      ],
+      "topicKey": "budgeting_cash_flow",
+      "blooms": "APPLY",
+      "fiveR": "REFLECT",
+      "mode": "ERROR_ANALYSIS",
+      "prompt": "A student earns $220 biweekly and spends $60 on transport, $50 on food, and $40 on phone costs each pay period. How much can they allocate to savings each pay period?",
+      "answer": "$70.",
+      "rationale": "Income minus expenses is 220 - (60 + 50 + 40) = 70, which can be directed to savings.",
+      "citations": [
+        {
+          "sourcePath": "content/14-financial-literacy/chapters.md",
+          "chapter": "14",
+          "sectionHeading": "Budgeting and Cash Flow"
+        }
+      ]
+    },
+    {
+      "subject": "FINANCIAL_LITERACY",
+      "gradeLevel": [
+        9,
+        10,
+        11,
+        12
+      ],
+      "topicKey": "budgeting_cash_flow",
+      "blooms": "ANALYZE",
+      "fiveR": "RESTORE",
+      "mode": "MULTIPLE_PATHWAYS",
+      "prompt": "Compare these two plans: Plan A saves 10% of each paycheck automatically, Plan B saves only if money is left at month end. Which plan is more reliable and why?",
+      "answer": "Plan A is more reliable because automatic saving happens before optional spending decisions.",
+      "rationale": "Automation reduces behavioral errors and creates consistency in cash-flow planning.",
+      "citations": [
+        {
+          "sourcePath": "content/14-financial-literacy/chapters.md",
+          "chapter": "14",
+          "sectionHeading": "Budgeting and Cash Flow"
+        }
+      ]
+    },
+    {
+      "subject": "FINANCIAL_LITERACY",
+      "gradeLevel": [
+        9,
+        10,
+        11,
+        12
+      ],
+      "topicKey": "budgeting_cash_flow",
+      "blooms": "EVALUATE",
+      "fiveR": "RECONNECT",
+      "mode": "PROBLEM_POSING",
+      "prompt": "A classmate says, 'If your budget balances, every category is equally important.' Evaluate this claim.",
+      "answer": "The claim is incomplete because essential needs and safety buffers (like emergency savings) should be prioritized over wants.",
+      "rationale": "Balanced totals do not guarantee healthy priorities; sequencing and category hierarchy matter.",
+      "citations": [
+        {
+          "sourcePath": "content/14-financial-literacy/chapters.md",
+          "chapter": "14",
+          "sectionHeading": "Budgeting and Cash Flow"
+        }
+      ]
+    },
+    {
+      "subject": "FINANCIAL_LITERACY",
+      "gradeLevel": [
+        9,
+        10,
+        11,
+        12
+      ],
+      "topicKey": "budgeting_cash_flow",
+      "blooms": "CREATE",
+      "fiveR": "REFLECT",
+      "mode": "FORWARD",
+      "prompt": "Design a one-week cash-flow plan for a teen with $120 income that includes needs, wants, and savings.",
+      "answer": "Sample valid plan: Needs $60, Wants $30, Savings $30, with spending caps per day.",
+      "rationale": "A create-level response builds a workable structure with categories and realistic limits rather than only calculating totals.",
+      "citations": [
+        {
+          "sourcePath": "content/14-financial-literacy/chapters.md",
+          "chapter": "14",
+          "sectionHeading": "Budgeting and Cash Flow"
+        }
+      ]
+    },
+    {
+      "subject": "FINANCIAL_LITERACY",
+      "gradeLevel": [
+        9,
+        10,
+        11,
+        12
+      ],
+      "topicKey": "banking_payment_systems",
+      "blooms": "REMEMBER",
+      "fiveR": "ROOT",
+      "mode": "FORWARD",
+      "prompt": "Name one key difference between a checking account and a savings account.",
+      "answer": "Checking is mainly for transactions; savings is mainly for storing money and often earns more interest.",
+      "rationale": "Function and access differ: checking emphasizes frequent payments while savings emphasizes accumulation.",
+      "citations": [
+        {
+          "sourcePath": "content/14-financial-literacy/chapters.md",
+          "chapter": "14",
+          "sectionHeading": "Banking and Payment Systems"
+        }
+      ]
+    },
+    {
+      "subject": "FINANCIAL_LITERACY",
+      "gradeLevel": [
+        9,
+        10,
+        11,
+        12
+      ],
+      "topicKey": "banking_payment_systems",
+      "blooms": "UNDERSTAND",
+      "fiveR": "REGULATE",
+      "mode": "REVERSE",
+      "prompt": "Why might a bank charge an overdraft fee, and how can a student avoid it?",
+      "answer": "An overdraft fee can occur when spending exceeds account balance; students can avoid it by tracking balances and enabling alerts.",
+      "rationale": "Overdrafts reflect negative balances; monitoring and alerts reduce accidental overspending.",
+      "citations": [
+        {
+          "sourcePath": "content/14-financial-literacy/chapters.md",
+          "chapter": "14",
+          "sectionHeading": "Banking and Payment Systems"
+        }
+      ]
+    },
+    {
+      "subject": "FINANCIAL_LITERACY",
+      "gradeLevel": [
+        9,
+        10,
+        11,
+        12
+      ],
+      "topicKey": "banking_payment_systems",
+      "blooms": "APPLY",
+      "fiveR": "REFLECT",
+      "mode": "ERROR_ANALYSIS",
+      "prompt": "A debit purchase of $18.75 is made from a checking account with $42.10. What new balance should appear before other activity?",
+      "answer": "$23.35.",
+      "rationale": "Subtract purchase from balance: 42.10 - 18.75 = 23.35.",
+      "citations": [
+        {
+          "sourcePath": "content/14-financial-literacy/chapters.md",
+          "chapter": "14",
+          "sectionHeading": "Banking and Payment Systems"
+        }
+      ]
+    },
+    {
+      "subject": "FINANCIAL_LITERACY",
+      "gradeLevel": [
+        9,
+        10,
+        11,
+        12
+      ],
+      "topicKey": "banking_payment_systems",
+      "blooms": "ANALYZE",
+      "fiveR": "RESTORE",
+      "mode": "MULTIPLE_PATHWAYS",
+      "prompt": "Two accounts are offered: Account X has no monthly fee but no ATM refunds; Account Y has a $6 fee but refunds up to $10 in ATM fees. For someone paying $12 monthly ATM fees, which is cheaper?",
+      "answer": "Account Y, with effective monthly cost of $8 versus $12 for Account X's ATM costs.",
+      "rationale": "Total monthly cost comparison identifies which structure better fits usage patterns.",
+      "citations": [
+        {
+          "sourcePath": "content/14-financial-literacy/chapters.md",
+          "chapter": "14",
+          "sectionHeading": "Banking and Payment Systems"
+        }
+      ]
+    },
+    {
+      "subject": "FINANCIAL_LITERACY",
+      "gradeLevel": [
+        9,
+        10,
+        11,
+        12
+      ],
+      "topicKey": "banking_payment_systems",
+      "blooms": "EVALUATE",
+      "fiveR": "RECONNECT",
+      "mode": "PROBLEM_POSING",
+      "prompt": "A friend says, 'Peer-to-peer payment apps are always safer than bank transfers.' Evaluate this statement.",
+      "answer": "It is not always true; safety depends on user protections, verification practices, and fraud policies.",
+      "rationale": "Risk varies by platform settings, recipient verification, and dispute processes.",
+      "citations": [
+        {
+          "sourcePath": "content/14-financial-literacy/chapters.md",
+          "chapter": "14",
+          "sectionHeading": "Banking and Payment Systems"
+        }
+      ]
+    },
+    {
+      "subject": "FINANCIAL_LITERACY",
+      "gradeLevel": [
+        9,
+        10,
+        11,
+        12
+      ],
+      "topicKey": "banking_payment_systems",
+      "blooms": "CREATE",
+      "fiveR": "REFLECT",
+      "mode": "FORWARD",
+      "prompt": "Create a checklist for safely using digital payment apps in school and community settings.",
+      "answer": "Valid checklist includes account verification, strong passwords, multi-factor authentication, recipient confirmation, and scam red-flag checks.",
+      "rationale": "A strong response converts security principles into concrete repeatable habits.",
+      "citations": [
+        {
+          "sourcePath": "content/14-financial-literacy/chapters.md",
+          "chapter": "14",
+          "sectionHeading": "Banking and Payment Systems"
+        }
+      ]
+    },
+    {
+      "subject": "FINANCIAL_LITERACY",
+      "gradeLevel": [
+        9,
+        10,
+        11,
+        12
+      ],
+      "topicKey": "saving_emergency_funds",
+      "blooms": "REMEMBER",
+      "fiveR": "ROOT",
+      "mode": "FORWARD",
+      "prompt": "What is an emergency fund?",
+      "answer": "Money set aside for unexpected necessary expenses like urgent repairs or medical costs.",
+      "rationale": "Emergency funds are not for routine discretionary spending; they buffer financial shocks.",
+      "citations": [
+        {
+          "sourcePath": "content/14-financial-literacy/chapters.md",
+          "chapter": "14",
+          "sectionHeading": "Saving and Emergency Funds"
+        }
+      ]
+    },
+    {
+      "subject": "FINANCIAL_LITERACY",
+      "gradeLevel": [
+        9,
+        10,
+        11,
+        12
+      ],
+      "topicKey": "saving_emergency_funds",
+      "blooms": "UNDERSTAND",
+      "fiveR": "REGULATE",
+      "mode": "REVERSE",
+      "prompt": "Explain why emergency funds are often kept in highly liquid accounts.",
+      "answer": "Liquid accounts allow quick access without selling investments or paying penalties.",
+      "rationale": "Emergency spending requires speed and stability more than high return.",
+      "citations": [
+        {
+          "sourcePath": "content/14-financial-literacy/chapters.md",
+          "chapter": "14",
+          "sectionHeading": "Saving and Emergency Funds"
+        }
+      ]
+    },
+    {
+      "subject": "FINANCIAL_LITERACY",
+      "gradeLevel": [
+        9,
+        10,
+        11,
+        12
+      ],
+      "topicKey": "saving_emergency_funds",
+      "blooms": "APPLY",
+      "fiveR": "REFLECT",
+      "mode": "ERROR_ANALYSIS",
+      "prompt": "If a student saves $25 weekly, how much is saved in 12 weeks?",
+      "answer": "$300.",
+      "rationale": "25 \u00d7 12 = 300.",
+      "citations": [
+        {
+          "sourcePath": "content/14-financial-literacy/chapters.md",
+          "chapter": "14",
+          "sectionHeading": "Saving and Emergency Funds"
+        }
+      ]
+    },
+    {
+      "subject": "FINANCIAL_LITERACY",
+      "gradeLevel": [
+        9,
+        10,
+        11,
+        12
+      ],
+      "topicKey": "saving_emergency_funds",
+      "blooms": "ANALYZE",
+      "fiveR": "RESTORE",
+      "mode": "MULTIPLE_PATHWAYS",
+      "prompt": "Compare saving 5% versus 15% of income for the same earner over time.",
+      "answer": "Saving 15% builds reserves faster and improves shock resilience, though it may require tighter spending control.",
+      "rationale": "Higher savings rates increase flexibility and reduce vulnerability to unexpected costs.",
+      "citations": [
+        {
+          "sourcePath": "content/14-financial-literacy/chapters.md",
+          "chapter": "14",
+          "sectionHeading": "Saving and Emergency Funds"
+        }
+      ]
+    },
+    {
+      "subject": "FINANCIAL_LITERACY",
+      "gradeLevel": [
+        9,
+        10,
+        11,
+        12
+      ],
+      "topicKey": "saving_emergency_funds",
+      "blooms": "EVALUATE",
+      "fiveR": "RECONNECT",
+      "mode": "PROBLEM_POSING",
+      "prompt": "Evaluate this claim: 'You should invest your emergency fund in volatile assets to maximize returns.'",
+      "answer": "This is generally poor risk management because emergency funds prioritize stability and access, not maximum growth.",
+      "rationale": "Emergency reserves should preserve value and liquidity during stressful periods.",
+      "citations": [
+        {
+          "sourcePath": "content/14-financial-literacy/chapters.md",
+          "chapter": "14",
+          "sectionHeading": "Saving and Emergency Funds"
+        }
+      ]
+    },
+    {
+      "subject": "FINANCIAL_LITERACY",
+      "gradeLevel": [
+        9,
+        10,
+        11,
+        12
+      ],
+      "topicKey": "saving_emergency_funds",
+      "blooms": "CREATE",
+      "fiveR": "REFLECT",
+      "mode": "FORWARD",
+      "prompt": "Design a 3-month emergency-fund plan for a teen earning variable weekly income.",
+      "answer": "Valid plan includes baseline target amount, percentage-based deposits, and fallback rules for low-income weeks.",
+      "rationale": "Create-level planning requires adaptive rules, not one fixed deposit assumption.",
+      "citations": [
+        {
+          "sourcePath": "content/14-financial-literacy/chapters.md",
+          "chapter": "14",
+          "sectionHeading": "Saving and Emergency Funds"
+        }
+      ]
+    },
+    {
+      "subject": "FINANCIAL_LITERACY",
+      "gradeLevel": [
+        9,
+        10,
+        11,
+        12
+      ],
+      "topicKey": "credit_scores_reports",
+      "blooms": "REMEMBER",
+      "fiveR": "ROOT",
+      "mode": "FORWARD",
+      "prompt": "List two factors that commonly affect credit scores.",
+      "answer": "Payment history and credit utilization.",
+      "rationale": "These are major components in common scoring models.",
+      "citations": [
+        {
+          "sourcePath": "content/14-financial-literacy/chapters.md",
+          "chapter": "14",
+          "sectionHeading": "Credit Scores and Reports"
+        }
+      ]
+    },
+    {
+      "subject": "FINANCIAL_LITERACY",
+      "gradeLevel": [
+        9,
+        10,
+        11,
+        12
+      ],
+      "topicKey": "credit_scores_reports",
+      "blooms": "UNDERSTAND",
+      "fiveR": "REGULATE",
+      "mode": "REVERSE",
+      "prompt": "Why is checking your credit report important even if you do not use credit cards often?",
+      "answer": "It helps detect errors or identity theft that can affect future borrowing.",
+      "rationale": "Monitoring supports early correction before major applications.",
+      "citations": [
+        {
+          "sourcePath": "content/14-financial-literacy/chapters.md",
+          "chapter": "14",
+          "sectionHeading": "Credit Scores and Reports"
+        }
+      ]
+    },
+    {
+      "subject": "FINANCIAL_LITERACY",
+      "gradeLevel": [
+        9,
+        10,
+        11,
+        12
+      ],
+      "topicKey": "credit_scores_reports",
+      "blooms": "APPLY",
+      "fiveR": "REFLECT",
+      "mode": "ERROR_ANALYSIS",
+      "prompt": "A card has a $1,000 limit and a $280 balance. What is the utilization rate?",
+      "answer": "28%.",
+      "rationale": "Utilization = balance \u00f7 limit = 280/1000.",
+      "citations": [
+        {
+          "sourcePath": "content/14-financial-literacy/chapters.md",
+          "chapter": "14",
+          "sectionHeading": "Credit Scores and Reports"
+        }
+      ]
+    },
+    {
+      "subject": "FINANCIAL_LITERACY",
+      "gradeLevel": [
+        9,
+        10,
+        11,
+        12
+      ],
+      "topicKey": "credit_scores_reports",
+      "blooms": "ANALYZE",
+      "fiveR": "RESTORE",
+      "mode": "MULTIPLE_PATHWAYS",
+      "prompt": "Compare two borrowers: A pays on time but uses 80% utilization; B uses 20% utilization but misses payments. Who likely has stronger credit health and why?",
+      "answer": "Borrower A may still face issues, but missed payments often damage credit more severely; consistent on-time payment is critical.",
+      "rationale": "Payment history is heavily weighted, while utilization also matters.",
+      "citations": [
+        {
+          "sourcePath": "content/14-financial-literacy/chapters.md",
+          "chapter": "14",
+          "sectionHeading": "Credit Scores and Reports"
+        }
+      ]
+    },
+    {
+      "subject": "FINANCIAL_LITERACY",
+      "gradeLevel": [
+        9,
+        10,
+        11,
+        12
+      ],
+      "topicKey": "credit_scores_reports",
+      "blooms": "EVALUATE",
+      "fiveR": "RECONNECT",
+      "mode": "PROBLEM_POSING",
+      "prompt": "Evaluate the statement: 'Closing your oldest credit account always improves your credit score.'",
+      "answer": "It is often incorrect because closing older accounts can reduce average account age and total available credit.",
+      "rationale": "Changes can increase utilization and shorten history, potentially lowering scores.",
+      "citations": [
+        {
+          "sourcePath": "content/14-financial-literacy/chapters.md",
+          "chapter": "14",
+          "sectionHeading": "Credit Scores and Reports"
+        }
+      ]
+    },
+    {
+      "subject": "FINANCIAL_LITERACY",
+      "gradeLevel": [
+        9,
+        10,
+        11,
+        12
+      ],
+      "topicKey": "credit_scores_reports",
+      "blooms": "CREATE",
+      "fiveR": "REFLECT",
+      "mode": "FORWARD",
+      "prompt": "Create a monthly routine for maintaining credit-report accuracy and healthy credit habits.",
+      "answer": "Valid routine includes statement review, on-time autopay safeguards, utilization checks, and periodic credit-report review.",
+      "rationale": "A complete routine combines prevention, monitoring, and correction steps.",
+      "citations": [
+        {
+          "sourcePath": "content/14-financial-literacy/chapters.md",
+          "chapter": "14",
+          "sectionHeading": "Credit Scores and Reports"
+        }
+      ]
+    },
+    {
+      "subject": "FINANCIAL_LITERACY",
+      "gradeLevel": [
+        9,
+        10,
+        11,
+        12
+      ],
+      "topicKey": "loans_interest",
+      "blooms": "REMEMBER",
+      "fiveR": "ROOT",
+      "mode": "FORWARD",
+      "prompt": "Define principal in the context of a loan.",
+      "answer": "Principal is the original amount borrowed before interest.",
+      "rationale": "Interest charges are calculated from the principal balance.",
+      "citations": [
+        {
+          "sourcePath": "content/14-financial-literacy/chapters.md",
+          "chapter": "14",
+          "sectionHeading": "Loans and Interest"
+        }
+      ]
+    },
+    {
+      "subject": "FINANCIAL_LITERACY",
+      "gradeLevel": [
+        9,
+        10,
+        11,
+        12
+      ],
+      "topicKey": "loans_interest",
+      "blooms": "UNDERSTAND",
+      "fiveR": "REGULATE",
+      "mode": "REVERSE",
+      "prompt": "Explain APR in one sentence.",
+      "answer": "APR is the annualized borrowing cost including interest and certain fees, expressed as a percentage.",
+      "rationale": "APR helps compare loan offers beyond nominal interest rates.",
+      "citations": [
+        {
+          "sourcePath": "content/14-financial-literacy/chapters.md",
+          "chapter": "14",
+          "sectionHeading": "Loans and Interest"
+        }
+      ]
+    },
+    {
+      "subject": "FINANCIAL_LITERACY",
+      "gradeLevel": [
+        9,
+        10,
+        11,
+        12
+      ],
+      "topicKey": "loans_interest",
+      "blooms": "APPLY",
+      "fiveR": "REFLECT",
+      "mode": "ERROR_ANALYSIS",
+      "prompt": "Find simple interest on $500 at 6% annual rate for 2 years.",
+      "answer": "$60.",
+      "rationale": "I = PRT = 500 \u00d7 0.06 \u00d7 2.",
+      "citations": [
+        {
+          "sourcePath": "content/14-financial-literacy/chapters.md",
+          "chapter": "14",
+          "sectionHeading": "Loans and Interest"
+        }
+      ]
+    },
+    {
+      "subject": "FINANCIAL_LITERACY",
+      "gradeLevel": [
+        9,
+        10,
+        11,
+        12
+      ],
+      "topicKey": "loans_interest",
+      "blooms": "ANALYZE",
+      "fiveR": "RESTORE",
+      "mode": "MULTIPLE_PATHWAYS",
+      "prompt": "Compare a 3-year and 5-year loan for the same principal and APR: what tradeoff usually appears?",
+      "answer": "The 5-year loan usually has lower monthly payments but higher total interest paid.",
+      "rationale": "Longer repayment reduces monthly burden while extending interest accumulation.",
+      "citations": [
+        {
+          "sourcePath": "content/14-financial-literacy/chapters.md",
+          "chapter": "14",
+          "sectionHeading": "Loans and Interest"
+        }
+      ]
+    },
+    {
+      "subject": "FINANCIAL_LITERACY",
+      "gradeLevel": [
+        9,
+        10,
+        11,
+        12
+      ],
+      "topicKey": "loans_interest",
+      "blooms": "EVALUATE",
+      "fiveR": "RECONNECT",
+      "mode": "PROBLEM_POSING",
+      "prompt": "A claim says, 'Only interest rate matters when choosing a loan.' Evaluate this claim.",
+      "answer": "The claim is incomplete because fees, term length, prepayment rules, and total repayment also matter.",
+      "rationale": "Loan quality must be judged by full cost structure and flexibility.",
+      "citations": [
+        {
+          "sourcePath": "content/14-financial-literacy/chapters.md",
+          "chapter": "14",
+          "sectionHeading": "Loans and Interest"
+        }
+      ]
+    },
+    {
+      "subject": "FINANCIAL_LITERACY",
+      "gradeLevel": [
+        9,
+        10,
+        11,
+        12
+      ],
+      "topicKey": "loans_interest",
+      "blooms": "CREATE",
+      "fiveR": "REFLECT",
+      "mode": "FORWARD",
+      "prompt": "Create a decision rule for choosing between two student-friendly loan offers.",
+      "answer": "Valid rule compares APR, total repayment, monthly affordability, and penalty terms before selecting.",
+      "rationale": "Create-level responses formalize criteria instead of relying on one metric.",
+      "citations": [
+        {
+          "sourcePath": "content/14-financial-literacy/chapters.md",
+          "chapter": "14",
+          "sectionHeading": "Loans and Interest"
+        }
+      ]
+    },
+    {
+      "subject": "FINANCIAL_LITERACY",
+      "gradeLevel": [
+        9,
+        10,
+        11,
+        12
+      ],
+      "topicKey": "taxes_paychecks",
+      "blooms": "REMEMBER",
+      "fiveR": "ROOT",
+      "mode": "FORWARD",
+      "prompt": "What is the difference between gross pay and net pay?",
+      "answer": "Gross pay is earnings before deductions; net pay is take-home pay after deductions.",
+      "rationale": "Paycheck literacy starts with understanding deduction effects.",
+      "citations": [
+        {
+          "sourcePath": "content/14-financial-literacy/chapters.md",
+          "chapter": "14",
+          "sectionHeading": "Taxes and Paychecks"
+        }
+      ]
+    },
+    {
+      "subject": "FINANCIAL_LITERACY",
+      "gradeLevel": [
+        9,
+        10,
+        11,
+        12
+      ],
+      "topicKey": "taxes_paychecks",
+      "blooms": "UNDERSTAND",
+      "fiveR": "REGULATE",
+      "mode": "REVERSE",
+      "prompt": "Why might taxes be withheld from a teen worker's paycheck?",
+      "answer": "Employers withhold taxes to prepay tax obligations required by law.",
+      "rationale": "Withholding reduces large tax bills at filing time.",
+      "citations": [
+        {
+          "sourcePath": "content/14-financial-literacy/chapters.md",
+          "chapter": "14",
+          "sectionHeading": "Taxes and Paychecks"
+        }
+      ]
+    },
+    {
+      "subject": "FINANCIAL_LITERACY",
+      "gradeLevel": [
+        9,
+        10,
+        11,
+        12
+      ],
+      "topicKey": "taxes_paychecks",
+      "blooms": "APPLY",
+      "fiveR": "REFLECT",
+      "mode": "ERROR_ANALYSIS",
+      "prompt": "A paycheck shows gross pay $320 and deductions totaling $58. What is net pay?",
+      "answer": "$262.",
+      "rationale": "Net pay = gross pay - deductions.",
+      "citations": [
+        {
+          "sourcePath": "content/14-financial-literacy/chapters.md",
+          "chapter": "14",
+          "sectionHeading": "Taxes and Paychecks"
+        }
+      ]
+    },
+    {
+      "subject": "FINANCIAL_LITERACY",
+      "gradeLevel": [
+        9,
+        10,
+        11,
+        12
+      ],
+      "topicKey": "taxes_paychecks",
+      "blooms": "ANALYZE",
+      "fiveR": "RESTORE",
+      "mode": "MULTIPLE_PATHWAYS",
+      "prompt": "Compare hourly pay of $14 with no benefits vs $13 with transit support worth $40 monthly for a worker doing 40 hours monthly.",
+      "answer": "$13 plus transit support yields effective monthly value of $560 versus $560 for $14 without support, making them roughly equal in this scenario.",
+      "rationale": "Total compensation includes non-cash benefits, not just hourly wage.",
+      "citations": [
+        {
+          "sourcePath": "content/14-financial-literacy/chapters.md",
+          "chapter": "14",
+          "sectionHeading": "Taxes and Paychecks"
+        }
+      ]
+    },
+    {
+      "subject": "FINANCIAL_LITERACY",
+      "gradeLevel": [
+        9,
+        10,
+        11,
+        12
+      ],
+      "topicKey": "taxes_paychecks",
+      "blooms": "EVALUATE",
+      "fiveR": "RECONNECT",
+      "mode": "PROBLEM_POSING",
+      "prompt": "Evaluate: 'If taxes are withheld, you never need to file taxes.'",
+      "answer": "Not always true; filing may still be required or beneficial for refunds/credits.",
+      "rationale": "Withholding does not automatically satisfy all filing situations.",
+      "citations": [
+        {
+          "sourcePath": "content/14-financial-literacy/chapters.md",
+          "chapter": "14",
+          "sectionHeading": "Taxes and Paychecks"
+        }
+      ]
+    },
+    {
+      "subject": "FINANCIAL_LITERACY",
+      "gradeLevel": [
+        9,
+        10,
+        11,
+        12
+      ],
+      "topicKey": "taxes_paychecks",
+      "blooms": "CREATE",
+      "fiveR": "REFLECT",
+      "mode": "FORWARD",
+      "prompt": "Design a simple paycheck review template a student can use each pay period.",
+      "answer": "Valid template checks hours, rate, gross pay, each deduction, net pay, and savings transfer.",
+      "rationale": "A structured review improves error detection and planning consistency.",
+      "citations": [
+        {
+          "sourcePath": "content/14-financial-literacy/chapters.md",
+          "chapter": "14",
+          "sectionHeading": "Taxes and Paychecks"
+        }
+      ]
+    },
+    {
+      "subject": "FINANCIAL_LITERACY",
+      "gradeLevel": [
+        9,
+        10,
+        11,
+        12
+      ],
+      "topicKey": "insurance_risk_management",
+      "blooms": "REMEMBER",
+      "fiveR": "ROOT",
+      "mode": "FORWARD",
+      "prompt": "What is a deductible?",
+      "answer": "The amount paid out of pocket before insurance coverage begins for covered claims.",
+      "rationale": "Deductibles shift part of risk cost to policyholders.",
+      "citations": [
+        {
+          "sourcePath": "content/14-financial-literacy/chapters.md",
+          "chapter": "14",
+          "sectionHeading": "Insurance and Risk Management"
+        }
+      ]
+    },
+    {
+      "subject": "FINANCIAL_LITERACY",
+      "gradeLevel": [
+        9,
+        10,
+        11,
+        12
+      ],
+      "topicKey": "insurance_risk_management",
+      "blooms": "UNDERSTAND",
+      "fiveR": "REGULATE",
+      "mode": "REVERSE",
+      "prompt": "Why do insurance companies use premiums?",
+      "answer": "Premiums pool contributions from many policyholders to fund covered losses.",
+      "rationale": "Insurance works through risk pooling and probability.",
+      "citations": [
+        {
+          "sourcePath": "content/14-financial-literacy/chapters.md",
+          "chapter": "14",
+          "sectionHeading": "Insurance and Risk Management"
+        }
+      ]
+    },
+    {
+      "subject": "FINANCIAL_LITERACY",
+      "gradeLevel": [
+        9,
+        10,
+        11,
+        12
+      ],
+      "topicKey": "insurance_risk_management",
+      "blooms": "APPLY",
+      "fiveR": "REFLECT",
+      "mode": "ERROR_ANALYSIS",
+      "prompt": "A policy has a $500 deductible and a covered claim of $1,400. How much does the insurer pay (ignoring other limits)?",
+      "answer": "$900.",
+      "rationale": "Insurer payment is claim minus deductible.",
+      "citations": [
+        {
+          "sourcePath": "content/14-financial-literacy/chapters.md",
+          "chapter": "14",
+          "sectionHeading": "Insurance and Risk Management"
+        }
+      ]
+    },
+    {
+      "subject": "FINANCIAL_LITERACY",
+      "gradeLevel": [
+        9,
+        10,
+        11,
+        12
+      ],
+      "topicKey": "insurance_risk_management",
+      "blooms": "ANALYZE",
+      "fiveR": "RESTORE",
+      "mode": "MULTIPLE_PATHWAYS",
+      "prompt": "Compare low-premium/high-deductible vs high-premium/low-deductible plans for someone with frequent claims.",
+      "answer": "Frequent claimants may prefer high-premium/low-deductible plans to reduce repeated out-of-pocket costs.",
+      "rationale": "Expected usage frequency affects total annual cost.",
+      "citations": [
+        {
+          "sourcePath": "content/14-financial-literacy/chapters.md",
+          "chapter": "14",
+          "sectionHeading": "Insurance and Risk Management"
+        }
+      ]
+    },
+    {
+      "subject": "FINANCIAL_LITERACY",
+      "gradeLevel": [
+        9,
+        10,
+        11,
+        12
+      ],
+      "topicKey": "insurance_risk_management",
+      "blooms": "EVALUATE",
+      "fiveR": "RECONNECT",
+      "mode": "PROBLEM_POSING",
+      "prompt": "Evaluate: 'The cheapest monthly premium is always the best insurance choice.'",
+      "answer": "Not necessarily; low premiums may mean high deductibles, narrower coverage, or exclusions.",
+      "rationale": "Best value depends on total expected cost and protection adequacy.",
+      "citations": [
+        {
+          "sourcePath": "content/14-financial-literacy/chapters.md",
+          "chapter": "14",
+          "sectionHeading": "Insurance and Risk Management"
+        }
+      ]
+    },
+    {
+      "subject": "FINANCIAL_LITERACY",
+      "gradeLevel": [
+        9,
+        10,
+        11,
+        12
+      ],
+      "topicKey": "insurance_risk_management",
+      "blooms": "CREATE",
+      "fiveR": "REFLECT",
+      "mode": "FORWARD",
+      "prompt": "Create a checklist for comparing two insurance plans for a family scenario.",
+      "answer": "Valid checklist includes premium, deductible, coverage limits, exclusions, network/service access, and annual out-of-pocket maximum.",
+      "rationale": "Strong comparison frameworks prevent single-price decision errors.",
+      "citations": [
+        {
+          "sourcePath": "content/14-financial-literacy/chapters.md",
+          "chapter": "14",
+          "sectionHeading": "Insurance and Risk Management"
+        }
+      ]
+    },
+    {
+      "subject": "FINANCIAL_LITERACY",
+      "gradeLevel": [
+        9,
+        10,
+        11,
+        12
+      ],
+      "topicKey": "investing_fundamentals",
+      "blooms": "REMEMBER",
+      "fiveR": "ROOT",
+      "mode": "FORWARD",
+      "prompt": "What is diversification?",
+      "answer": "Spreading investments across assets to reduce exposure to any single investment risk.",
+      "rationale": "Diversification helps manage unsystematic risk.",
+      "citations": [
+        {
+          "sourcePath": "content/14-financial-literacy/chapters.md",
+          "chapter": "14",
+          "sectionHeading": "Investing Fundamentals"
+        }
+      ]
+    },
+    {
+      "subject": "FINANCIAL_LITERACY",
+      "gradeLevel": [
+        9,
+        10,
+        11,
+        12
+      ],
+      "topicKey": "investing_fundamentals",
+      "blooms": "UNDERSTAND",
+      "fiveR": "REGULATE",
+      "mode": "REVERSE",
+      "prompt": "Why is long-term investing often emphasized for broad-market portfolios?",
+      "answer": "Long horizons can smooth short-term volatility and allow compounding to work.",
+      "rationale": "Time in market generally improves resilience to short-term swings.",
+      "citations": [
+        {
+          "sourcePath": "content/14-financial-literacy/chapters.md",
+          "chapter": "14",
+          "sectionHeading": "Investing Fundamentals"
+        }
+      ]
+    },
+    {
+      "subject": "FINANCIAL_LITERACY",
+      "gradeLevel": [
+        9,
+        10,
+        11,
+        12
+      ],
+      "topicKey": "investing_fundamentals",
+      "blooms": "APPLY",
+      "fiveR": "REFLECT",
+      "mode": "ERROR_ANALYSIS",
+      "prompt": "If $200 is invested monthly for 6 months, how much principal is contributed?",
+      "answer": "$1,200.",
+      "rationale": "Principal contribution is monthly amount times number of months.",
+      "citations": [
+        {
+          "sourcePath": "content/14-financial-literacy/chapters.md",
+          "chapter": "14",
+          "sectionHeading": "Investing Fundamentals"
+        }
+      ]
+    },
+    {
+      "subject": "FINANCIAL_LITERACY",
+      "gradeLevel": [
+        9,
+        10,
+        11,
+        12
+      ],
+      "topicKey": "investing_fundamentals",
+      "blooms": "ANALYZE",
+      "fiveR": "RESTORE",
+      "mode": "MULTIPLE_PATHWAYS",
+      "prompt": "Compare investing in one company stock vs a broad index fund.",
+      "answer": "A broad index fund usually has lower concentration risk because it holds many companies.",
+      "rationale": "Diversification reduces dependence on one firm's outcomes.",
+      "citations": [
+        {
+          "sourcePath": "content/14-financial-literacy/chapters.md",
+          "chapter": "14",
+          "sectionHeading": "Investing Fundamentals"
+        }
+      ]
+    },
+    {
+      "subject": "FINANCIAL_LITERACY",
+      "gradeLevel": [
+        9,
+        10,
+        11,
+        12
+      ],
+      "topicKey": "investing_fundamentals",
+      "blooms": "EVALUATE",
+      "fiveR": "RECONNECT",
+      "mode": "PROBLEM_POSING",
+      "prompt": "Evaluate: 'High return is guaranteed if you hold any investment long enough.'",
+      "answer": "False; investing involves risk and returns are not guaranteed.",
+      "rationale": "Time horizon reduces some risks but cannot remove all market and economic uncertainty.",
+      "citations": [
+        {
+          "sourcePath": "content/14-financial-literacy/chapters.md",
+          "chapter": "14",
+          "sectionHeading": "Investing Fundamentals"
+        }
+      ]
+    },
+    {
+      "subject": "FINANCIAL_LITERACY",
+      "gradeLevel": [
+        9,
+        10,
+        11,
+        12
+      ],
+      "topicKey": "investing_fundamentals",
+      "blooms": "CREATE",
+      "fiveR": "REFLECT",
+      "mode": "FORWARD",
+      "prompt": "Create a beginner investment policy statement for a high-school simulation portfolio.",
+      "answer": "Valid IPS includes goal, time horizon, risk tolerance, diversification rule, contribution schedule, and rebalancing guideline.",
+      "rationale": "A create-level artifact translates principles into decision rules.",
+      "citations": [
+        {
+          "sourcePath": "content/14-financial-literacy/chapters.md",
+          "chapter": "14",
+          "sectionHeading": "Investing Fundamentals"
+        }
+      ]
+    },
+    {
+      "subject": "FINANCIAL_LITERACY",
+      "gradeLevel": [
+        9,
+        10,
+        11,
+        12
+      ],
+      "topicKey": "consumer_rights_fraud_prevention",
+      "blooms": "REMEMBER",
+      "fiveR": "ROOT",
+      "mode": "FORWARD",
+      "prompt": "Name one red flag of a financial scam.",
+      "answer": "Urgent pressure to act immediately without verification.",
+      "rationale": "Scammers often use urgency to bypass critical thinking.",
+      "citations": [
+        {
+          "sourcePath": "content/14-financial-literacy/chapters.md",
+          "chapter": "14",
+          "sectionHeading": "Consumer Rights and Fraud Prevention"
+        }
+      ]
+    },
+    {
+      "subject": "FINANCIAL_LITERACY",
+      "gradeLevel": [
+        9,
+        10,
+        11,
+        12
+      ],
+      "topicKey": "consumer_rights_fraud_prevention",
+      "blooms": "UNDERSTAND",
+      "fiveR": "REGULATE",
+      "mode": "REVERSE",
+      "prompt": "Why should consumers read key contract terms before signing?",
+      "answer": "To understand obligations, fees, cancellation terms, and penalties.",
+      "rationale": "Contract literacy reduces avoidable disputes and surprise charges.",
+      "citations": [
+        {
+          "sourcePath": "content/14-financial-literacy/chapters.md",
+          "chapter": "14",
+          "sectionHeading": "Consumer Rights and Fraud Prevention"
+        }
+      ]
+    },
+    {
+      "subject": "FINANCIAL_LITERACY",
+      "gradeLevel": [
+        9,
+        10,
+        11,
+        12
+      ],
+      "topicKey": "consumer_rights_fraud_prevention",
+      "blooms": "APPLY",
+      "fiveR": "REFLECT",
+      "mode": "ERROR_ANALYSIS",
+      "prompt": "A seller offers a 'limited-time' deal requiring wire transfer only and refuses written terms. What should you do first?",
+      "answer": "Pause and verify legitimacy through independent channels before sending any money.",
+      "rationale": "Multiple fraud red flags are present: urgency, irreversible payment method, and no documentation.",
+      "citations": [
+        {
+          "sourcePath": "content/14-financial-literacy/chapters.md",
+          "chapter": "14",
+          "sectionHeading": "Consumer Rights and Fraud Prevention"
+        }
+      ]
+    },
+    {
+      "subject": "FINANCIAL_LITERACY",
+      "gradeLevel": [
+        9,
+        10,
+        11,
+        12
+      ],
+      "topicKey": "consumer_rights_fraud_prevention",
+      "blooms": "ANALYZE",
+      "fiveR": "RESTORE",
+      "mode": "MULTIPLE_PATHWAYS",
+      "prompt": "Compare dispute protections for credit cards and cash payments in many cases.",
+      "answer": "Credit cards often provide stronger dispute mechanisms than cash, which is difficult to recover once paid.",
+      "rationale": "Payment method choice affects recourse options after fraud or non-delivery.",
+      "citations": [
+        {
+          "sourcePath": "content/14-financial-literacy/chapters.md",
+          "chapter": "14",
+          "sectionHeading": "Consumer Rights and Fraud Prevention"
+        }
+      ]
+    },
+    {
+      "subject": "FINANCIAL_LITERACY",
+      "gradeLevel": [
+        9,
+        10,
+        11,
+        12
+      ],
+      "topicKey": "consumer_rights_fraud_prevention",
+      "blooms": "EVALUATE",
+      "fiveR": "RECONNECT",
+      "mode": "PROBLEM_POSING",
+      "prompt": "Evaluate: 'If a website looks professional, it is safe to enter payment details.'",
+      "answer": "Not necessarily; appearance alone does not confirm legitimacy or security.",
+      "rationale": "Verification should include URL checks, security indicators, and independent reviews.",
+      "citations": [
+        {
+          "sourcePath": "content/14-financial-literacy/chapters.md",
+          "chapter": "14",
+          "sectionHeading": "Consumer Rights and Fraud Prevention"
+        }
+      ]
+    },
+    {
+      "subject": "FINANCIAL_LITERACY",
+      "gradeLevel": [
+        9,
+        10,
+        11,
+        12
+      ],
+      "topicKey": "consumer_rights_fraud_prevention",
+      "blooms": "CREATE",
+      "fiveR": "REFLECT",
+      "mode": "FORWARD",
+      "prompt": "Create a personal anti-fraud protocol for online purchases.",
+      "answer": "Valid protocol includes seller verification, secure payment choices, privacy checks, and transaction documentation.",
+      "rationale": "A protocol improves consistency under pressure and lowers fraud risk.",
+      "citations": [
+        {
+          "sourcePath": "content/14-financial-literacy/chapters.md",
+          "chapter": "14",
+          "sectionHeading": "Consumer Rights and Fraud Prevention"
+        }
+      ]
+    },
+    {
+      "subject": "FINANCIAL_LITERACY",
+      "gradeLevel": [
+        9,
+        10,
+        11,
+        12
+      ],
+      "topicKey": "career_income_opportunity_cost",
+      "blooms": "REMEMBER",
+      "fiveR": "ROOT",
+      "mode": "FORWARD",
+      "prompt": "What is opportunity cost?",
+      "answer": "The value of the next best alternative you give up when choosing an option.",
+      "rationale": "Every resource decision has tradeoffs.",
+      "citations": [
+        {
+          "sourcePath": "content/14-financial-literacy/chapters.md",
+          "chapter": "14",
+          "sectionHeading": "Career, Income, and Opportunity Cost"
+        }
+      ]
+    },
+    {
+      "subject": "FINANCIAL_LITERACY",
+      "gradeLevel": [
+        9,
+        10,
+        11,
+        12
+      ],
+      "topicKey": "career_income_opportunity_cost",
+      "blooms": "UNDERSTAND",
+      "fiveR": "REGULATE",
+      "mode": "REVERSE",
+      "prompt": "Why do skills and credentials often influence income over time?",
+      "answer": "They can improve productivity and access to higher-paying roles.",
+      "rationale": "Labor markets typically reward scarce, in-demand competencies.",
+      "citations": [
+        {
+          "sourcePath": "content/14-financial-literacy/chapters.md",
+          "chapter": "14",
+          "sectionHeading": "Career, Income, and Opportunity Cost"
+        }
+      ]
+    },
+    {
+      "subject": "FINANCIAL_LITERACY",
+      "gradeLevel": [
+        9,
+        10,
+        11,
+        12
+      ],
+      "topicKey": "career_income_opportunity_cost",
+      "blooms": "APPLY",
+      "fiveR": "REFLECT",
+      "mode": "ERROR_ANALYSIS",
+      "prompt": "A student can work 8 hours at $15/hour or attend a free certification workshop at the same time. What is the immediate monetary opportunity cost of attending?",
+      "answer": "$120.",
+      "rationale": "Opportunity cost in immediate wages is 8 \u00d7 15.",
+      "citations": [
+        {
+          "sourcePath": "content/14-financial-literacy/chapters.md",
+          "chapter": "14",
+          "sectionHeading": "Career, Income, and Opportunity Cost"
+        }
+      ]
+    },
+    {
+      "subject": "FINANCIAL_LITERACY",
+      "gradeLevel": [
+        9,
+        10,
+        11,
+        12
+      ],
+      "topicKey": "career_income_opportunity_cost",
+      "blooms": "ANALYZE",
+      "fiveR": "RESTORE",
+      "mode": "MULTIPLE_PATHWAYS",
+      "prompt": "Compare two pathways: immediate full-time work after high school vs a 2-year training program with later higher wages.",
+      "answer": "The training path may have short-term income sacrifice but potential long-term earnings gains.",
+      "rationale": "Comparisons require timeline-based cost-benefit analysis.",
+      "citations": [
+        {
+          "sourcePath": "content/14-financial-literacy/chapters.md",
+          "chapter": "14",
+          "sectionHeading": "Career, Income, and Opportunity Cost"
+        }
+      ]
+    },
+    {
+      "subject": "FINANCIAL_LITERACY",
+      "gradeLevel": [
+        9,
+        10,
+        11,
+        12
+      ],
+      "topicKey": "career_income_opportunity_cost",
+      "blooms": "EVALUATE",
+      "fiveR": "RECONNECT",
+      "mode": "PROBLEM_POSING",
+      "prompt": "Evaluate: 'Highest starting salary always means best career choice.'",
+      "answer": "Not always; benefits, growth potential, fit, stability, and wellbeing also matter.",
+      "rationale": "Career decisions are multi-criteria, not single-metric.",
+      "citations": [
+        {
+          "sourcePath": "content/14-financial-literacy/chapters.md",
+          "chapter": "14",
+          "sectionHeading": "Career, Income, and Opportunity Cost"
+        }
+      ]
+    },
+    {
+      "subject": "FINANCIAL_LITERACY",
+      "gradeLevel": [
+        9,
+        10,
+        11,
+        12
+      ],
+      "topicKey": "career_income_opportunity_cost",
+      "blooms": "CREATE",
+      "fiveR": "REFLECT",
+      "mode": "FORWARD",
+      "prompt": "Create a decision matrix for choosing among three postsecondary/work pathways.",
+      "answer": "Valid matrix includes criteria weights (cost, earnings, time, interest, flexibility) and scored options.",
+      "rationale": "A matrix formalizes tradeoff reasoning and transparency.",
+      "citations": [
+        {
+          "sourcePath": "content/14-financial-literacy/chapters.md",
+          "chapter": "14",
+          "sectionHeading": "Career, Income, and Opportunity Cost"
+        }
+      ]
+    },
+    {
+      "subject": "FINANCIAL_LITERACY",
+      "gradeLevel": [
+        9,
+        10,
+        11,
+        12
+      ],
+      "topicKey": "entrepreneurship_small_business_finance",
+      "blooms": "REMEMBER",
+      "fiveR": "ROOT",
+      "mode": "FORWARD",
+      "prompt": "Define break-even point.",
+      "answer": "The sales level where total revenue equals total costs.",
+      "rationale": "At break-even, profit is zero.",
+      "citations": [
+        {
+          "sourcePath": "content/14-financial-literacy/chapters.md",
+          "chapter": "14",
+          "sectionHeading": "Entrepreneurship and Small Business Finance"
+        }
+      ]
+    },
+    {
+      "subject": "FINANCIAL_LITERACY",
+      "gradeLevel": [
+        9,
+        10,
+        11,
+        12
+      ],
+      "topicKey": "entrepreneurship_small_business_finance",
+      "blooms": "UNDERSTAND",
+      "fiveR": "REGULATE",
+      "mode": "REVERSE",
+      "prompt": "Why is separating personal and business expenses important?",
+      "answer": "It improves financial clarity, accounting accuracy, and legal/tax organization.",
+      "rationale": "Blended expenses make performance tracking unreliable.",
+      "citations": [
+        {
+          "sourcePath": "content/14-financial-literacy/chapters.md",
+          "chapter": "14",
+          "sectionHeading": "Entrepreneurship and Small Business Finance"
+        }
+      ]
+    },
+    {
+      "subject": "FINANCIAL_LITERACY",
+      "gradeLevel": [
+        9,
+        10,
+        11,
+        12
+      ],
+      "topicKey": "entrepreneurship_small_business_finance",
+      "blooms": "APPLY",
+      "fiveR": "REFLECT",
+      "mode": "ERROR_ANALYSIS",
+      "prompt": "A student business has fixed costs of $90, variable cost $3 per item, and price $8 per item. How many items must be sold to break even?",
+      "answer": "18 items.",
+      "rationale": "Break-even units = fixed costs \u00f7 contribution margin = 90 \u00f7 (8-3) = 18.",
+      "citations": [
+        {
+          "sourcePath": "content/14-financial-literacy/chapters.md",
+          "chapter": "14",
+          "sectionHeading": "Entrepreneurship and Small Business Finance"
+        }
+      ]
+    },
+    {
+      "subject": "FINANCIAL_LITERACY",
+      "gradeLevel": [
+        9,
+        10,
+        11,
+        12
+      ],
+      "topicKey": "entrepreneurship_small_business_finance",
+      "blooms": "ANALYZE",
+      "fiveR": "RESTORE",
+      "mode": "MULTIPLE_PATHWAYS",
+      "prompt": "Compare raising price vs reducing variable cost to improve margin.",
+      "answer": "Both can improve margin; best choice depends on demand sensitivity and operational feasibility.",
+      "rationale": "Financial and market effects must be evaluated together.",
+      "citations": [
+        {
+          "sourcePath": "content/14-financial-literacy/chapters.md",
+          "chapter": "14",
+          "sectionHeading": "Entrepreneurship and Small Business Finance"
+        }
+      ]
+    },
+    {
+      "subject": "FINANCIAL_LITERACY",
+      "gradeLevel": [
+        9,
+        10,
+        11,
+        12
+      ],
+      "topicKey": "entrepreneurship_small_business_finance",
+      "blooms": "EVALUATE",
+      "fiveR": "RECONNECT",
+      "mode": "PROBLEM_POSING",
+      "prompt": "Evaluate: 'If revenue grows, profit always grows.'",
+      "answer": "False; costs can grow faster than revenue, reducing or eliminating profit.",
+      "rationale": "Profit depends on both revenue and cost structure.",
+      "citations": [
+        {
+          "sourcePath": "content/14-financial-literacy/chapters.md",
+          "chapter": "14",
+          "sectionHeading": "Entrepreneurship and Small Business Finance"
+        }
+      ]
+    },
+    {
+      "subject": "FINANCIAL_LITERACY",
+      "gradeLevel": [
+        9,
+        10,
+        11,
+        12
+      ],
+      "topicKey": "entrepreneurship_small_business_finance",
+      "blooms": "CREATE",
+      "fiveR": "REFLECT",
+      "mode": "FORWARD",
+      "prompt": "Create a one-page micro-business financial plan for a school garden product.",
+      "answer": "Valid plan includes product, price, expected units, fixed/variable costs, break-even target, and risk controls.",
+      "rationale": "A full plan integrates forecasting with cost discipline.",
+      "citations": [
+        {
+          "sourcePath": "content/14-financial-literacy/chapters.md",
+          "chapter": "14",
+          "sectionHeading": "Entrepreneurship and Small Business Finance"
+        }
+      ]
+    },
+    {
+      "subject": "FINANCIAL_LITERACY",
+      "gradeLevel": [
+        9,
+        10,
+        11,
+        12
+      ],
+      "topicKey": "giving_community_wealth_goals",
+      "blooms": "REMEMBER",
+      "fiveR": "ROOT",
+      "mode": "FORWARD",
+      "prompt": "What does values-based financial planning mean?",
+      "answer": "Aligning spending, saving, and giving choices with personal and community values.",
+      "rationale": "Financial decisions reflect priorities, not only math.",
+      "citations": [
+        {
+          "sourcePath": "content/14-financial-literacy/chapters.md",
+          "chapter": "14",
+          "sectionHeading": "Giving, Community Wealth, and Financial Goals"
+        }
+      ]
+    },
+    {
+      "subject": "FINANCIAL_LITERACY",
+      "gradeLevel": [
+        9,
+        10,
+        11,
+        12
+      ],
+      "topicKey": "giving_community_wealth_goals",
+      "blooms": "UNDERSTAND",
+      "fiveR": "REGULATE",
+      "mode": "REVERSE",
+      "prompt": "Why might someone include giving in a budget?",
+      "answer": "To intentionally support causes or community needs while maintaining financial balance.",
+      "rationale": "Planned giving avoids impulsive overcommitment and supports consistency.",
+      "citations": [
+        {
+          "sourcePath": "content/14-financial-literacy/chapters.md",
+          "chapter": "14",
+          "sectionHeading": "Giving, Community Wealth, and Financial Goals"
+        }
+      ]
+    },
+    {
+      "subject": "FINANCIAL_LITERACY",
+      "gradeLevel": [
+        9,
+        10,
+        11,
+        12
+      ],
+      "topicKey": "giving_community_wealth_goals",
+      "blooms": "APPLY",
+      "fiveR": "REFLECT",
+      "mode": "ERROR_ANALYSIS",
+      "prompt": "A student budgets $180 monthly income and sets 5% for giving. How much is allocated?",
+      "answer": "$9.",
+      "rationale": "Giving amount = 0.05 \u00d7 180.",
+      "citations": [
+        {
+          "sourcePath": "content/14-financial-literacy/chapters.md",
+          "chapter": "14",
+          "sectionHeading": "Giving, Community Wealth, and Financial Goals"
+        }
+      ]
+    },
+    {
+      "subject": "FINANCIAL_LITERACY",
+      "gradeLevel": [
+        9,
+        10,
+        11,
+        12
+      ],
+      "topicKey": "giving_community_wealth_goals",
+      "blooms": "ANALYZE",
+      "fiveR": "RESTORE",
+      "mode": "MULTIPLE_PATHWAYS",
+      "prompt": "Compare one-time giving vs recurring small monthly giving.",
+      "answer": "Recurring giving can improve consistency and planning for both giver and recipient organizations.",
+      "rationale": "Predictable contributions support long-term program stability.",
+      "citations": [
+        {
+          "sourcePath": "content/14-financial-literacy/chapters.md",
+          "chapter": "14",
+          "sectionHeading": "Giving, Community Wealth, and Financial Goals"
+        }
+      ]
+    },
+    {
+      "subject": "FINANCIAL_LITERACY",
+      "gradeLevel": [
+        9,
+        10,
+        11,
+        12
+      ],
+      "topicKey": "giving_community_wealth_goals",
+      "blooms": "EVALUATE",
+      "fiveR": "RECONNECT",
+      "mode": "PROBLEM_POSING",
+      "prompt": "Evaluate: 'People should only give after they are wealthy.'",
+      "answer": "The claim is too narrow; sustainable giving can happen at many income levels when planned responsibly.",
+      "rationale": "Impact and habits can start with small, consistent contributions.",
+      "citations": [
+        {
+          "sourcePath": "content/14-financial-literacy/chapters.md",
+          "chapter": "14",
+          "sectionHeading": "Giving, Community Wealth, and Financial Goals"
+        }
+      ]
+    },
+    {
+      "subject": "FINANCIAL_LITERACY",
+      "gradeLevel": [
+        9,
+        10,
+        11,
+        12
+      ],
+      "topicKey": "giving_community_wealth_goals",
+      "blooms": "CREATE",
+      "fiveR": "REFLECT",
+      "mode": "FORWARD",
+      "prompt": "Create a 6-month goal plan that balances saving, spending, and giving for a high-school learner.",
+      "answer": "Valid plan sets measurable targets, monthly percentages, check-in milestones, and adjustment rules.",
+      "rationale": "A complete goal plan includes monitoring and adaptation, not just initial targets.",
+      "citations": [
+        {
+          "sourcePath": "content/14-financial-literacy/chapters.md",
+          "chapter": "14",
+          "sectionHeading": "Giving, Community Wealth, and Financial Goals"
+        }
+      ]
+    }
+  ]
+}

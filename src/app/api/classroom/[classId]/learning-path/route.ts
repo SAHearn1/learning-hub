@@ -30,9 +30,10 @@ const updateLearningPathSchema = z.object({
  * - Platform admins can access all classrooms
  */
 export const GET = withClassroomAccess(
-  async (req: NextRequest, user: AuthenticatedUser, context?: { params: Record<string, string> }) => {
+  async (req: NextRequest, user: AuthenticatedUser, context?: { params: Promise<Record<string, string>> }) => {
     try {
-      const classId = context?.params?.classId;
+      const params = context?.params ? await context.params : undefined;
+      const classId = params?.classId;
 
       if (!classId) {
         return NextResponse.json({ error: 'Class ID is required' }, { status: 400 });
@@ -145,9 +146,10 @@ export const GET = withClassroomAccess(
  * - Platform admins can modify all classrooms
  */
 export const PATCH = withClassroomAccess(
-  async (req: NextRequest, user: AuthenticatedUser, context?: { params: Record<string, string> }) => {
+  async (req: NextRequest, user: AuthenticatedUser, context?: { params: Promise<Record<string, string>> }) => {
     try {
-      const classId = context?.params?.classId;
+      const params = context?.params ? await context.params : undefined;
+      const classId = params?.classId;
 
       if (!classId) {
         return NextResponse.json({ error: 'Class ID is required' }, { status: 400 });
@@ -223,9 +225,10 @@ export const PATCH = withClassroomAccess(
  * Accessible by: EDUCATOR (for their own classrooms), SCHOOL_ADMIN, DISTRICT_ADMIN, PLATFORM_ADMIN
  */
 export const POST = withClassroomAccess(
-  async (req: NextRequest, user: AuthenticatedUser, context?: { params: Record<string, string> }) => {
+  async (req: NextRequest, user: AuthenticatedUser, context?: { params: Promise<Record<string, string>> }) => {
     try {
-      const classId = context?.params?.classId;
+      const params = context?.params ? await context.params : undefined;
+      const classId = params?.classId;
 
       if (!classId) {
         return NextResponse.json({ error: 'Class ID is required' }, { status: 400 });

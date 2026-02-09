@@ -7,6 +7,10 @@ export interface SearchResult {
   text: string;
   score: number;
   filename: string;
+  sourcePath?: string;
+  sectionHeading?: string;
+  chunkIndex?: number;
+  totalChunks?: number;
   subject?: string;
   gradeLevel?: number;
   standardCodes?: string[];
@@ -14,10 +18,11 @@ export interface SearchResult {
 
 const searchCache = new Map<string, SearchResult[]>();
 
-function cacheKey(query: string, options: { subject?: string; gradeLevel?: number; topK?: number; minScore?: number }): string {
+function cacheKey(query: string, options: { subject?: string; subjects?: string[]; gradeLevel?: number; topK?: number; minScore?: number }): string {
   return JSON.stringify({
     query: query.trim().toLowerCase(),
     subject: options.subject,
+    subjects: options.subjects?.slice().sort(),
     gradeLevel: options.gradeLevel,
     topK: options.topK,
     minScore: options.minScore,
@@ -33,6 +38,7 @@ export async function searchCurriculum(
   query: string,
   options: {
     subject?: string;
+    subjects?: string[];
     gradeLevel?: number;
     topK?: number;
     minScore?: number;
@@ -60,6 +66,7 @@ export async function searchCurriculum(
       const hybridResults = await searchCurriculumHybrid(query, embedding, {
         topK,
         subject: options.subject,
+        subjects: options.subjects,
         gradeLevel: options.gradeLevel,
       });
 
@@ -69,6 +76,7 @@ export async function searchCurriculum(
           text: r.text,
           score: r.hybridScore,
           filename: r.filename,
+          sourcePath: r.filename,
           subject: r.subject,
           gradeLevel: r.gradeLevel,
           standardCodes: r.standardCodes,
@@ -77,6 +85,7 @@ export async function searchCurriculum(
       const results = await queryVectors(embedding, {
         topK,
         subject: options.subject,
+        subjects: options.subjects,
         gradeLevel: options.gradeLevel,
       });
 
@@ -86,6 +95,10 @@ export async function searchCurriculum(
           text: r.metadata.text,
           score: r.score,
           filename: r.metadata.filename,
+          sourcePath: (r.metadata as any).sourcePath || r.metadata.filename,
+          sectionHeading: (r.metadata as any).sectionHeading || (r.metadata as any).section,
+          chunkIndex: r.metadata.chunkIndex,
+          totalChunks: r.metadata.totalChunks,
           subject: r.metadata.subject,
           gradeLevel: r.metadata.gradeLevel,
           standardCodes: r.metadata.standardCodes,

@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 
-type Subject = 'MATH' | 'SCIENCE' | 'LANGUAGE_ARTS';
+type Subject = 'MATH' | 'SCIENCE' | 'LANGUAGE_ARTS' | 'FINANCIAL_LITERACY';
 
 interface ContextData {
   studentId: string;

@@ -1,7 +1,7 @@
 /**
  * IRT Calibration Endpoint
  * POST /api/irt/calibrate
- * Body: { subject: 'MATH' | 'SCIENCE' | 'LANGUAGE_ARTS', minResponses?: number }
+ * Body: { subject: 'MATH' | 'SCIENCE' | 'LANGUAGE_ARTS' | 'FINANCIAL_LITERACY', minResponses?: number }
  * Calibrates all items and updates student abilities for a subject
  */
 
@@ -18,9 +18,12 @@ export const POST = withApiHandler(async (req: NextRequest) => {
     throw new ValidationError('Missing required parameter: subject');
   }
 
-  if (!['MATH', 'SCIENCE', 'LANGUAGE_ARTS'].includes(subject)) {
-    throw new ValidationError('Invalid subject. Must be MATH, SCIENCE, or LANGUAGE_ARTS');
-  }
+    if (!['MATH', 'SCIENCE', 'LANGUAGE_ARTS', 'FINANCIAL_LITERACY'].includes(subject)) {
+      return NextResponse.json(
+        { error: 'Invalid subject. Must be MATH, SCIENCE, or LANGUAGE_ARTS' },
+        { status: 400 }
+      );
+    }
 
   // Calibrate items
   const calibrationResults = await calibrateAllItems(subject, minResponses);
