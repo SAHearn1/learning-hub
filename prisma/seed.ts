@@ -246,11 +246,14 @@ async function main() {
     },
   });
 
-  const parent = await prisma.parent.upsert({
+  await prisma.parent.upsert({
     where: { userId: parentUser.id },
-    update: {},
+    update: {
+      childrenIds: students.length > 0 ? [students[0].user.id] : [],
+    },
     create: {
       userId: parentUser.id,
+      childrenIds: students.length > 0 ? [students[0].user.id] : [],
       communicationPrefs: {
         email: true,
         sms: false,
@@ -258,26 +261,6 @@ async function main() {
       },
     },
   });
-
-  // Link parent to Alex Martinez (first student)
-  if (students.length > 0) {
-    await prisma.parentStudentRelationship.upsert({
-      where: {
-        parentId_studentId: {
-          parentId: parent.id,
-          studentId: students[0].student.id,
-        },
-      },
-      update: {},
-      create: {
-        tenantId: tenant.id,
-        parentId: parent.id,
-        studentId: students[0].student.id,
-        relationshipType: 'PARENT',
-        isPrimary: true,
-      },
-    });
-  }
 
   console.log(`✅ Parent created: ${parentUser.firstName} ${parentUser.lastName}`);
 
