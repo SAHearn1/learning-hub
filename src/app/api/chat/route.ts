@@ -3,8 +3,7 @@ import { auth } from '@clerk/nextjs/server';
 import { db } from '@/lib/db';
 import { anthropic, AI_MODELS } from '@/lib/ai/client';
 import { buildMasterSystemPrompt } from '@/lib/ai/prompts/master-system-prompt';
-import { generateEmbedding } from '@/lib/pinecone/embeddings';
-import { queryPinecone } from '@/lib/pinecone/client';
+import { searchCurriculum, formatCurriculumContext } from '@/lib/vector-search';
 import { enforceUsageLimits, UsageLimitError } from '@/lib/usage-limits';
 import { detectDysregulation, updateRegulationLevel } from '@/lib/regulation/detector';
 import { classifySentiment, formatInterventionMessage } from '@/lib/regulation/sentiment-classifier';
@@ -280,21 +279,14 @@ export async function POST(req: NextRequest) {
       // Note: We don't have citations for cached RAG results
       // This is acceptable since citations are for transparency, not caching
     } else {
-      // Generate embedding for the user's query
-      const queryEmbedding = await generateEmbedding(body.message);
-
-      // Query Pinecone for relevant curriculum content
-      const filter: Record<string, any> = {
+      const results = await searchCurriculum(body.message, {
         subject: session.subject,
-      };
+        gradeLevel: user.student.gradeLevel ?? undefined,
+        topK: 5,
+        minScore: 0.3,
+      });
 
-      // Add grade level filter if available
-      if (user.student.gradeLevel) {
-        filter.gradeLevel = user.student.gradeLevel;
-      }
-
-      const matches = await queryPinecone(queryEmbedding, 5, filter);
-      ragMetrics.retrieved = matches.length;
+      ragMetrics.retrieved = results.length;
       ragMetrics.durationMs = Date.now() - ragStartTime;
 
       // Extract citations from matches
@@ -317,13 +309,11 @@ export async function POST(req: NextRequest) {
 
         // Cache the formatted RAG context
         await cacheSet(ragCacheKey, curriculumContext, CACHE_TTL.CURRICULUM);
-
-        console.log(`RAG: Retrieved ${matches.length} curriculum contexts in ${ragMetrics.durationMs}ms for session ${session.id}`);
+        console.log(`RAG: Retrieved ${results.length} curriculum contexts in ${ragMetrics.durationMs}ms for session ${session.id}`);
       }
     }
   } catch (error) {
     console.error(`RAG retrieval error for session ${session.id}:`, error);
-    // Continue without RAG context if Pinecone fails
     curriculumContext = '';
     citations = [];
   }
