@@ -5,7 +5,7 @@
  * Integrates FSRS algorithm with database persistence.
  */
 
-import { prisma } from "@/lib/db/prisma";
+import { db as prisma } from "@/lib/db";
 import type { Subject, ConceptType, ReviewState as PrismaReviewState } from "@prisma/client";
 import {
   scheduleCard,
