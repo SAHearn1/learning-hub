@@ -1,7 +1,7 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   output: "standalone",
-  serverComponentsExternalPackages: [
+  serverExternalPackages: [
     'dd-trace',
     '@datadog/libdatadog',
     '@datadog/openfeature-node-server',
