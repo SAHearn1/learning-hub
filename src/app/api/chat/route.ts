@@ -11,6 +11,9 @@ import { analyzeThinkingQuality } from '@/lib/trace/tracker';
 import { z } from 'zod';
 import { anonymizeForLlmWithMap, reattachPii } from '@/lib/privacy';
 import { appendImmutableAuditLog } from '@/lib/audit';
+import { getCachedUserProfile, getCachedSession, invalidateSessionCache } from '@/lib/redis/cached-queries';
+import { cacheGet, cacheSet, contentHash, CACHE_TTL, CACHE_KEY } from '@/lib/redis/cache';
+import { captureException, recordMetric } from '@/lib/monitoring';
 
 const chatRequestSchema = z.object({
   sessionId: z.string().min(1),
@@ -34,18 +37,12 @@ export async function POST(req: NextRequest) {
     return new Response(JSON.stringify({ error: message }), { status: 400 });
   }
 
-  const user = await db.user.findUnique({
-    where: { clerkUserId: clerkId },
-    include: { student: { include: { iepAccommodations: { where: { active: true } } } } },
-  });
+  const user = await getCachedUserProfile(clerkId);
   if (!user?.student) {
     return new Response(JSON.stringify({ error: 'Student profile not found' }), { status: 404 });
   }
 
-  const session = await db.session.findUnique({
-    where: { id: body.sessionId },
-    include: { messages: { orderBy: { createdAt: 'asc' }, take: 50 } },
-  });
+  const session = await getCachedSession(body.sessionId);
   if (!session) {
     return new Response(JSON.stringify({ error: 'Session not found' }), { status: 404 });
   }
@@ -65,7 +62,7 @@ export async function POST(req: NextRequest) {
     throw error;
   }
 
-  // Save user message
+  // Save user message and invalidate session cache
   const userMessage = await db.message.create({
     data: {
       sessionId: session.id,
@@ -73,6 +70,7 @@ export async function POST(req: NextRequest) {
       content: body.message,
     },
   });
+  await invalidateSessionCache(session.id);
 
   // Check for dysregulation signals
   const messageHistory = session.messages.map((m) => ({
@@ -110,44 +108,57 @@ export async function POST(req: NextRequest) {
     .map(m => `${m.role}: ${m.content}`)
     .join('\n');
 
-  // RAG: Retrieve relevant curriculum context from Pinecone
+  // RAG: Retrieve relevant curriculum context (with Redis cache)
   let curriculumContext = '';
   let ragMetrics = { retrieved: 0, durationMs: 0 };
-  
+
   try {
     const ragStartTime = Date.now();
-    
-    // Generate embedding for the user's query
-    const queryEmbedding = await generateEmbedding(body.message);
-    
-    // Query Pinecone for relevant curriculum content
-    const filter: Record<string, any> = {
-      subject: session.subject,
-    };
-    
-    // Add grade level filter if available
-    if (user.student.gradeLevel) {
-      filter.gradeLevel = user.student.gradeLevel;
-    }
-    
-    const matches = await queryPinecone(queryEmbedding, 5, filter);
-    ragMetrics.retrieved = matches.length;
-    ragMetrics.durationMs = Date.now() - ragStartTime;
-    
-    // Format retrieved context
-    if (matches.length > 0) {
-      curriculumContext = matches
-        .map((match, idx) => {
-          const metadata = match.metadata as Record<string, any> || {};
-          const content = metadata.content || metadata.text || 'No content available';
-          const source = metadata.source || metadata.title || 'Unknown source';
-          const score = match.score?.toFixed(3) || 'N/A';
-          
-          return `[Context ${idx + 1}] (Relevance: ${score})\nSource: ${source}\n${content}`;
-        })
-        .join('\n\n---\n\n');
-      
-      console.log(`RAG: Retrieved ${matches.length} curriculum contexts in ${ragMetrics.durationMs}ms for session ${session.id}`);
+    const grade = String(user.student.gradeLevel ?? 'any');
+    const ragCacheKey = CACHE_KEY.curriculum(session.subject, grade, contentHash(body.message));
+
+    // Check cache first
+    const cachedRag = await cacheGet<string>(ragCacheKey);
+    if (cachedRag) {
+      curriculumContext = cachedRag;
+      ragMetrics.durationMs = Date.now() - ragStartTime;
+      ragMetrics.retrieved = -1; // indicates cache hit
+    } else {
+      // Generate embedding for the user's query
+      const queryEmbedding = await generateEmbedding(body.message);
+
+      // Query Pinecone for relevant curriculum content
+      const filter: Record<string, any> = {
+        subject: session.subject,
+      };
+
+      // Add grade level filter if available
+      if (user.student.gradeLevel) {
+        filter.gradeLevel = user.student.gradeLevel;
+      }
+
+      const matches = await queryPinecone(queryEmbedding, 5, filter);
+      ragMetrics.retrieved = matches.length;
+      ragMetrics.durationMs = Date.now() - ragStartTime;
+
+      // Format retrieved context
+      if (matches.length > 0) {
+        curriculumContext = matches
+          .map((match, idx) => {
+            const metadata = match.metadata as Record<string, any> || {};
+            const content = metadata.content || metadata.text || 'No content available';
+            const source = metadata.source || metadata.title || 'Unknown source';
+            const score = match.score?.toFixed(3) || 'N/A';
+
+            return `[Context ${idx + 1}] (Relevance: ${score})\nSource: ${source}\n${content}`;
+          })
+          .join('\n\n---\n\n');
+
+        // Cache the formatted RAG context
+        await cacheSet(ragCacheKey, curriculumContext, CACHE_TTL.CURRICULUM);
+
+        console.log(`RAG: Retrieved ${matches.length} curriculum contexts in ${ragMetrics.durationMs}ms for session ${session.id}`);
+      }
     }
   } catch (error) {
     console.error(`RAG retrieval error for session ${session.id}:`, error);
@@ -216,7 +227,7 @@ export async function POST(req: NextRequest) {
 
         const restoredAssistantText = reattachPii(fullText, anonymizedInput.tokenMap);
 
-        // Save assistant message
+        // Save assistant message and invalidate session cache
         await db.message.create({
           data: {
             sessionId: session.id,
@@ -224,6 +235,7 @@ export async function POST(req: NextRequest) {
             content: restoredAssistantText,
           },
         });
+        await invalidateSessionCache(session.id);
 
         // Track thinking quality with TRACE protocol (async, don't block response)
         if (body.message.length > MIN_MESSAGE_LENGTH_FOR_TRACE) {
@@ -279,7 +291,10 @@ export async function POST(req: NextRequest) {
               }
             })
             .catch((error) => {
-              console.error('Error tracking TRACE data:', error);
+              captureException(error, {
+                tags: { endpoint: 'chat', phase: 'trace_analysis' },
+                extra: { sessionId: session.id },
+              });
             });
         }
 
@@ -308,6 +323,12 @@ export async function POST(req: NextRequest) {
           },
         });
 
+        // Record latency metric for monitoring dashboards
+        await recordMetric('chat.latency_ms', latencyMs, {
+          model: AI_MODELS.primary,
+          subject: session.subject,
+        });
+
 
         await appendImmutableAuditLog({
           tenantId: user.tenantId,
@@ -323,6 +344,12 @@ export async function POST(req: NextRequest) {
         controller.enqueue(encoder.encode(`data: ${JSON.stringify({ done: true })}\n\n`));
         controller.close();
       } catch (err) {
+        await captureException(err, {
+          tags: { endpoint: 'chat', phase: 'stream' },
+          extra: { sessionId: session.id },
+          userId: user.id,
+          tenantId: user.tenantId,
+        });
         const errorMessage = err instanceof Error ? err.message : 'Stream error';
         controller.enqueue(encoder.encode(`data: ${JSON.stringify({ error: errorMessage })}\n\n`));
         controller.close();
