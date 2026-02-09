@@ -13,38 +13,46 @@ export default defineConfig({
     ['junit', { outputFile: 'test-results/junit.xml' }],
   ],
   use: {
-    baseURL: process.env.BASE_URL || 'http://localhost:3000',
+    baseURL: process.env.NEXT_PUBLIC_APP_URL || process.env.BASE_URL || 'http://localhost:3000',
     trace: 'on-first-retry',
     screenshot: 'only-on-failure',
     video: 'retain-on-failure',
   },
   projects: [
     {
+      name: 'setup',
+      testMatch: /.*setup\.ts/,
+    },
+    {
       name: 'chromium',
       use: { ...devices['Desktop Chrome'] },
+      dependencies: ['setup'],
     },
     {
       name: 'firefox',
       use: { ...devices['Desktop Firefox'] },
+      dependencies: ['setup'],
     },
     {
       name: 'webkit',
       use: { ...devices['Desktop Safari'] },
+      dependencies: ['setup'],
     },
     {
       name: 'mobile',
       use: { ...devices['iPhone 13'] },
+      dependencies: ['setup'],
     },
     {
       name: 'a11y-chromium',
       testMatch: /.*a11y.*\.spec\.ts/,
-      use: { 
+      use: {
         ...devices['Desktop Chrome'],
-        // Enable accessibility testing features
         contextOptions: {
           reducedMotion: 'reduce',
         },
       },
+      dependencies: ['setup'],
     },
   ],
   webServer: {
