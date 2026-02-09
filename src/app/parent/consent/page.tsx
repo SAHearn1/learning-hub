@@ -212,7 +212,7 @@ export default function ParentalConsentPage() {
             {student.consentStatus === 'WITHDRAWN' && (
               <div className="mt-4 p-4 bg-orange-50 border border-orange-200 rounded-md">
                 <p className="text-sm text-orange-800">
-                  Consent has been withdrawn. Your child's access has been suspended. You can
+                  Consent has been withdrawn. Your child&apos;s access has been suspended. You can
                   re-grant consent at any time.
                 </p>
               </div>
@@ -232,7 +232,7 @@ export default function ParentalConsentPage() {
 
               <div className="prose prose-sm max-w-none mb-6">
                 <h3 className="text-lg font-semibold mb-3">
-                  Children's Online Privacy Protection Act (COPPA) Consent
+                  Children&apos;s Online Privacy Protection Act (COPPA) Consent
                 </h3>
 
                 <div className="bg-gray-50 p-4 rounded-md mb-4">
@@ -281,17 +281,17 @@ export default function ParentalConsentPage() {
                     Your Rights:
                   </h4>
                   <ul className="list-disc list-inside space-y-1 text-sm text-blue-800">
-                    <li>Review your child's data at any time</li>
+                    <li>Review your child&apos;s data at any time</li>
                     <li>Withdraw consent and request data deletion</li>
                     <li>
-                      Refuse collection beyond what's necessary for the service
+                      Refuse collection beyond what&apos;s necessary for the service
                     </li>
                   </ul>
                 </div>
 
                 <p className="text-sm text-gray-600 mt-4">
                   By granting consent, you agree to the collection, use, and disclosure of your
-                  child's information as described in our{' '}
+                  child&apos;s information as described in our{' '}
                   <a href="/privacy-policy" className="text-blue-600 underline">
                     Privacy Policy
                   </a>
