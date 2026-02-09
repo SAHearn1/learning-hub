@@ -5,7 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { BRAND } from '@/brand/brand';
 
-type Subject = 'MATH' | 'SCIENCE' | 'LANGUAGE_ARTS';
+type Subject = 'MATH' | 'SCIENCE' | 'LANGUAGE_ARTS' | 'FINANCIAL_LITERACY';
 type EngagementMode = 'FORWARD' | 'REVERSE' | 'ERROR_ANALYSIS' | 'MULTIPLE_PATHWAYS' | 'PROBLEM_POSING';
 
 interface SessionSetupProps {
@@ -30,6 +30,11 @@ const SUBJECT_DETAILS: Record<Subject, { name: string; color: string; descriptio
     name: BRAND.subjects.LANGUAGE_ARTS.name,
     color: BRAND.subjects.LANGUAGE_ARTS.color,
     description: 'Build reading, writing, and communication skills',
+  },
+  FINANCIAL_LITERACY: {
+    name: BRAND.subjects.FINANCIAL_LITERACY.name,
+    color: BRAND.subjects.FINANCIAL_LITERACY.color,
+    description: 'Learn budgeting, saving, credit, and investing habits',
   },
 };
 
@@ -86,7 +91,7 @@ export function SessionSetup({ onStart, isLoading, startError, onClearError }: S
       {/* Subject Selection */}
       <div>
         <h2 className="mb-3 text-lg font-semibold text-neutral-800">Choose a Subject</h2>
-        <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
           {(Object.entries(SUBJECT_DETAILS) as [Subject, typeof SUBJECT_DETAILS[Subject]][]).map(
             ([key, subject]) => (
               <button

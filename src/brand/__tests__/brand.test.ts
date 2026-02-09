@@ -29,12 +29,7 @@ describe('BRAND', () => {
 
   describe('subjects', () => {
     it('defines 4 subjects', () => {
-      expect(Object.keys(BRAND.subjects)).toEqual([
-        'MATH',
-        'SCIENCE',
-        'LANGUAGE_ARTS',
-        'FINANCIAL_LITERACY',
-      ]);
+      expect(Object.keys(BRAND.subjects)).toEqual(['MATH', 'SCIENCE', 'LANGUAGE_ARTS', 'FINANCIAL_LITERACY']);
     });
 
     it('each subject has name, shortName, icon, and color', () => {

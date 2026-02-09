@@ -3,7 +3,7 @@
  * POST /api/irt/next-item
  * Body: {
  *   studentId: string,
- *   subject: 'MATH' | 'SCIENCE' | 'LANGUAGE_ARTS',
+ *   subject: 'MATH' | 'SCIENCE' | 'LANGUAGE_ARTS' | 'FINANCIAL_LITERACY',
  *   currentTheta?: number,
  *   excludeAssessmentIds?: string[],
  *   bloomsLevelDistribution?: Record<BloomsLevel, number>
@@ -33,7 +33,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    if (!['MATH', 'SCIENCE', 'LANGUAGE_ARTS'].includes(subject)) {
+    if (!['MATH', 'SCIENCE', 'LANGUAGE_ARTS', 'FINANCIAL_LITERACY'].includes(subject)) {
       return NextResponse.json(
         { error: 'Invalid subject. Must be MATH, SCIENCE, or LANGUAGE_ARTS' },
         { status: 400 }

@@ -187,7 +187,7 @@ export function calibrateItem2PL(
  * Calibrate all items in database that have sufficient response data
  */
 export async function calibrateAllItems(
-  subject: "MATH" | "SCIENCE" | "LANGUAGE_ARTS",
+  subject: "MATH" | "SCIENCE" | "LANGUAGE_ARTS" | "FINANCIAL_LITERACY",
   minResponses: number = 30
 ): Promise<{ calibrated: number; skipped: number }> {
   // Get all assessments with responses
@@ -294,7 +294,7 @@ export async function calibrateAllItems(
  * Batch update student abilities based on their assessment history
  */
 export async function batchUpdateStudentAbilities(
-  subject: "MATH" | "SCIENCE" | "LANGUAGE_ARTS"
+  subject: "MATH" | "SCIENCE" | "LANGUAGE_ARTS" | "FINANCIAL_LITERACY"
 ): Promise<number> {
   // Get all students with assessments in this subject
   const students = await prisma.student.findMany({

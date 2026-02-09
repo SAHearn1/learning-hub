@@ -64,8 +64,8 @@ export const BRAND = {
     },
     FINANCIAL_LITERACY: {
       name: 'Financial Literacy',
-      shortName: 'FinLit',
-      icon: 'dollar-sign',
+      shortName: 'Fin Lit',
+      icon: 'finance-icon',
       color: '#F59E0B',
     },
   },

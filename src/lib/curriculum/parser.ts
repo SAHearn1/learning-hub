@@ -15,7 +15,8 @@ export interface ParsedCurriculumChunk {
     filename: string;
     documentType: 'curriculum';
     subject: string;
-    gradeLevel: number;
+    gradeLevel: number | number[];
+    gradeBand?: string;
     standardCodes: string[];
     chunkIndex: number;
     totalChunks: number;
@@ -61,7 +62,8 @@ function inferSubject(metadata: Record<string, unknown>, content: string): strin
   const scan = content.toLowerCase();
   if (scan.includes('mathematics') || scan.includes('math')) return 'MATH';
   if (scan.includes('science')) return 'SCIENCE';
-  if (scan.includes('english language arts') || scan.includes('ela')) return 'ELA';
+  if (scan.includes('financial literacy') || scan.includes('budget') || scan.includes('invest')) return 'FINANCIAL_LITERACY';
+  if (scan.includes('english language arts') || scan.includes('ela')) return 'LANGUAGE_ARTS';
   if (scan.includes('social studies')) return 'SOCIAL_STUDIES';
   return 'INTERDISCIPLINARY';
 }
@@ -89,7 +91,7 @@ export async function parseCurriculumFile(
   }
 
   const subject = inferSubject(metadata, content);
-  const gradeLevel = inferGradeLevel(file.path, typeof metadata.gradeLevel === 'number' ? metadata.gradeLevel : 0);
+  const gradeLevel = typeof metadata.gradeLevel === 'number' || Array.isArray(metadata.gradeLevel) ? metadata.gradeLevel as number | number[] : inferGradeLevel(file.path, 0);
   const standardCodes = Array.isArray(metadata.standardCodes)
     ? metadata.standardCodes.filter((code): code is string => typeof code === 'string')
     : [];
@@ -112,6 +114,7 @@ export async function parseCurriculumFile(
       documentType: 'curriculum',
       subject,
       gradeLevel,
+      ...(typeof metadata.gradeBand === 'string' ? { gradeBand: metadata.gradeBand } : {}),
       standardCodes,
       chunkIndex: index,
       totalChunks: chunks.length,
