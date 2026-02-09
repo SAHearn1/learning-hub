@@ -54,7 +54,7 @@ export async function GET(
   const progressEntries = await db.progress.findMany({
     where: {
       studentId,
-      ...(subject ? { standard: { subject: subject as 'MATH' | 'SCIENCE' | 'LANGUAGE_ARTS' } } : {}),
+      ...(subject ? { standard: { subject: subject as 'MATH' | 'SCIENCE' | 'LANGUAGE_ARTS' | 'FINANCIAL_LITERACY' } } : {}),
     },
     include: { standard: true },
     orderBy: { updatedAt: 'desc' },

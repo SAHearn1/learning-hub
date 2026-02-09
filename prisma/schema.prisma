@@ -420,6 +420,7 @@ enum Subject {
   MATH
   SCIENCE
   LANGUAGE_ARTS
+  FINANCIAL_LITERACY
 }
 
 enum FiveRPhase {
