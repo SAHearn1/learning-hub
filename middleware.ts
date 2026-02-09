@@ -47,6 +47,14 @@ const pruneRateLimitStore = (now: number) => {
   }
 };
 
+/**
+ * Rate limiter using in-memory sliding window.
+ *
+ * For multi-instance deployments, the server-side Redis rate limiter
+ * (`src/lib/redis/cache.ts#rateLimitCheck`) provides distributed
+ * enforcement. This in-memory fallback keeps the Edge middleware
+ * functional without a Redis dependency (Edge Runtime cannot use ioredis).
+ */
 const enforceRateLimit = (request: NextRequest) => {
   const pathname = request.nextUrl.pathname;
   if (!isApiRoute(pathname) || isWebhookRoute(pathname)) {
