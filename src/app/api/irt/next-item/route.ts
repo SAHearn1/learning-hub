@@ -12,55 +12,40 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server';
-import { withApiHandler } from '@/lib/api-handler';
-import { ValidationError, NotFoundError } from '@/lib/api-errors';
+import { NotFoundError } from '@/lib/api-errors';
 import { selectNextItem, getStudentAbility } from '@/lib/irt';
 import type { Subject, BloomsLevel } from '@prisma/client';
 
 export async function POST(request: NextRequest) {
-  try {
-    const body = await request.json();
-    const {
-      studentId,
-      subject,
-      currentTheta,
-      excludeAssessmentIds,
-      bloomsLevelDistribution,
-    } = body;
+  const body = await request.json();
+  const {
+    studentId,
+    subject,
+    currentTheta,
+    excludeAssessmentIds,
+    bloomsLevelDistribution,
+  } = body;
 
-    if (!studentId || !subject) {
-      return NextResponse.json(
-        { error: 'Missing required parameters: studentId and subject' },
-        { status: 400 }
-      );
-    }
-
-    if (!['MATH', 'SCIENCE', 'LANGUAGE_ARTS', 'FINANCIAL_LITERACY'].includes(subject)) {
-      return NextResponse.json(
-        { error: 'Invalid subject. Must be MATH, SCIENCE, or LANGUAGE_ARTS' },
-        { status: 400 }
-      );
-    }
-
-    // Get student's current theta if not provided
-    let theta = currentTheta;
-    if (theta === undefined) {
-      const ability = await getStudentAbility(studentId, subject as Subject);
-      theta = ability?.theta ?? 0;
-    }
-
-  if (!['MATH', 'SCIENCE', 'LANGUAGE_ARTS'].includes(subject)) {
-    throw new ValidationError('Invalid subject. Must be MATH, SCIENCE, or LANGUAGE_ARTS');
+  if (!studentId || !subject) {
+    return NextResponse.json(
+      { error: 'Missing required parameters: studentId and subject' },
+      { status: 400 }
+    );
   }
 
-  // Get student's current theta if not provided
+  if (!['MATH', 'SCIENCE', 'LANGUAGE_ARTS', 'FINANCIAL_LITERACY'].includes(subject)) {
+    return NextResponse.json(
+      { error: 'Invalid subject. Must be MATH, SCIENCE, LANGUAGE_ARTS, or FINANCIAL_LITERACY' },
+      { status: 400 }
+    );
+  }
+
   let theta = currentTheta;
   if (theta === undefined) {
     const ability = await getStudentAbility(studentId, subject as Subject);
     theta = ability?.theta ?? 0;
   }
 
-  // Select next item
   const selectedItem = await selectNextItem({
     studentId,
     subject: subject as Subject,
@@ -74,4 +59,4 @@ export async function POST(request: NextRequest) {
   }
 
   return NextResponse.json(selectedItem);
-});
+}

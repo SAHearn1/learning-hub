@@ -46,6 +46,6 @@ export async function POST(req: NextRequest) {
     await db.ingestLog.update({ where: { id: log.id }, data: { status: 'FAILURE', errorMessage, durationMs: Date.now() - startTime } });
     return NextResponse.json({ error: 'Ingestion failed', message: errorMessage, logId: log.id }, { status: 500 });
   }
-});
+}
 
 export async function GET() { return NextResponse.json({ status: 'ok' }); }
