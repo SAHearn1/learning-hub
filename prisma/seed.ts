@@ -246,11 +246,9 @@ async function main() {
     },
   });
 
-  await prisma.parent.upsert({
+  const parent = await prisma.parent.upsert({
     where: { userId: parentUser.id },
-    update: {
-      childrenIds: students.length > 0 ? [students[0].user.id] : [],
-    },
+    update: {},
     create: {
       userId: parentUser.id,
       childrenIds: students.length > 0 ? [students[0].user.id] : [],
@@ -275,7 +273,7 @@ async function main() {
       email: 'admin@demo.rootwork.edu',
       firstName: 'Robert',
       lastName: 'Admin',
-      role: 'ADMIN',
+      role: 'PLATFORM_ADMIN',
       dateOfBirth: new Date('1975-07-10'),
       isMinor: false,
     },
