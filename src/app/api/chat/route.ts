@@ -79,7 +79,7 @@ function isPersonalTradeAdviceRequest(message: string): boolean {
 
 
 export async function POST(req: NextRequest) {
-  const user = await requireUser(req);
+  const user = await requireUser();
 
   if (!user.student) {
     throw new NotFoundError('Student profile not found');
