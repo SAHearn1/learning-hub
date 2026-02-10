@@ -35,7 +35,8 @@
     "compliance:check": "node scripts/validate-compliance.mjs",
     "vercel-build": "prisma generate && next build",
     "ops:parallel": "node ./scripts/parallel-task-agents.mjs",
-    "ops:doctor": "node ./scripts/ops-doctor.mjs"
+    "ops:doctor": "node ./scripts/ops-doctor.mjs",
+    "db:seed:check": "node scripts/validate-seed-schema-sync.mjs"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.30.0",
