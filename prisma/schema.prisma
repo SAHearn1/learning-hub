@@ -758,6 +758,15 @@ model IngestLog {
   @@index([source])
 }
 
+model PlatformConfig {
+  key                 String   @id @default("default")
+  ingestionEnabled    Boolean  @default(true)
+  ingestionDisabledAt DateTime?
+  ingestionReason     String?
+  createdAt           DateTime @default(now())
+  updatedAt           DateTime @updatedAt
+}
+
 enum IngestStatus {
   PENDING
   SUCCESS

@@ -3,7 +3,7 @@ import { withApiHandler } from '@/lib/api-handler';
 import { requireRole } from '@/lib/auth';
 
 export const POST = withApiHandler(async (req, ctx) => {
-  await requireRole(['PLATFORM_ADMIN', 'DISTRICT_ADMIN', 'SCHOOL_ADMIN']);
+  await requireRole(['PLATFORM_ADMIN']);
 
   const body = await req.json();
 
