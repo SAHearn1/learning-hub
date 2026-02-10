@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/lib/db';
+import { getCurrentUser } from '@/lib/auth';
 import { z } from 'zod';
 import fs from 'node:fs/promises';
 import path from 'node:path';
@@ -27,10 +28,47 @@ export async function POST(req: NextRequest) {
   const startTime = Date.now();
   const webhookSecret = process.env.N8N_WEBHOOK_SECRET;
   if (!webhookSecret) return NextResponse.json({ error: 'Webhook not configured' }, { status: 500 });
-  if (req.headers.get('authorization') !== `Bearer ${webhookSecret}`) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+
+  const authHeader = req.headers.get('authorization');
+  if (authHeader !== `Bearer ${webhookSecret}`) {
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  }
 
   const body = await req.json();
   const payload = ingestPayloadSchema.parse(body);
+
+  const config = await db.platformConfig.upsert({
+    where: { key: 'default' },
+    create: { key: 'default' },
+    update: {},
+  });
+
+  if (!config.ingestionEnabled) {
+    if (payload.source === 'MANUAL') {
+      const user = await getCurrentUser();
+      if (!user || user.role !== 'PLATFORM_ADMIN') {
+        return NextResponse.json(
+          {
+            error: 'Ingestion disabled',
+            message: 'Manual ingestion is restricted to platform admins while ingestion is disabled.',
+            reason: config.ingestionReason,
+            disabledAt: config.ingestionDisabledAt,
+          },
+          { status: 403 }
+        );
+      }
+    } else {
+      return NextResponse.json(
+        {
+          error: 'Ingestion disabled',
+          message: 'Curriculum ingestion is currently disabled by platform configuration.',
+          reason: config.ingestionReason,
+          disabledAt: config.ingestionDisabledAt,
+        },
+        { status: 503 }
+      );
+    }
+  }
   const log = await db.ingestLog.create({ data: { status: 'PROCESSING', source: payload.source, payload: payload as any, processedFiles: 0 } });
 
   try {
