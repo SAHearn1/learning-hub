@@ -170,10 +170,10 @@ export async function POST(req: NextRequest) {
           sentiment,
           regulationPassed: nextFiveRState.regulationPassed,
         })),
-        metadata: {
+        metadata: JSON.parse(JSON.stringify({
           ...(session.metadata as Record<string, unknown> ?? {}),
           fiveRState: nextFiveRState,
-        },
+        })),
       },
     });
   }
