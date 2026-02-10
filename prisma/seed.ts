@@ -547,7 +547,6 @@ async function main() {
     key: string;
     name: string;
     learningObjectives: string[];
-    fiveRsAlignment?: Record<string, string>;
   };
 
   const finlitTopics: FinlitTopic[] = [
@@ -558,7 +557,6 @@ async function main() {
         'Explain how education and career choices influence lifetime income.',
         'Compare salary, wages, and gig income including tradeoffs.',
       ],
-      fiveRsAlignment: { ROOT: 'Career identity and goals', REFLECT: 'Income decision making' },
     },
     {
       key: 'finlit-ch-ii-budgeting-cash-flow',
@@ -567,7 +565,6 @@ async function main() {
         'Create a monthly zero-based budget using fixed and variable expenses.',
         'Analyze spending patterns and adjust categories to meet savings goals.',
       ],
-      fiveRsAlignment: { REGULATE: 'Impulse spending awareness', RESTORE: 'Budget review cycle' },
     },
     {
       key: 'finlit-ch-iii-banking-services',
@@ -584,7 +581,6 @@ async function main() {
         'Set short- and long-term savings goals using SMART criteria.',
         'Calculate emergency fund targets based on monthly expenses.',
       ],
-      fiveRsAlignment: { ROOT: 'Needs vs wants baseline', RECONNECT: 'Savings habits transfer' },
     },
     {
       key: 'finlit-ch-v-credit-and-debt',
@@ -601,7 +597,6 @@ async function main() {
         'Compute simple and compound interest for common loan products.',
         'Compare total borrowing costs across loan terms and rates.',
       ],
-      fiveRsAlignment: { REFLECT: 'Cost-of-credit reasoning' },
     },
     {
       key: 'finlit-ch-vii-consumer-skills',
@@ -618,7 +613,6 @@ async function main() {
         'Explain how insurance pools risk and why deductibles affect premiums.',
         'Match insurance products to real-world risk scenarios.',
       ],
-      fiveRsAlignment: { REGULATE: 'Risk perception and emotional decisions' },
     },
     {
       key: 'finlit-ch-ix-taxes-paychecks',
@@ -635,7 +629,6 @@ async function main() {
         'Differentiate stocks, bonds, mutual funds, and ETFs.',
         'Explain diversification and risk-return tradeoffs for beginners.',
       ],
-      fiveRsAlignment: { RECONNECT: 'Long-term wealth building habits' },
     },
     {
       key: 'finlit-ch-xi-retirement-planning',
@@ -652,7 +645,6 @@ async function main() {
         'Apply a structured process to make major financial decisions.',
         'Build a personal financial action plan for the next 12 months.',
       ],
-      fiveRsAlignment: { ROOT: 'Values and priorities', RECONNECT: 'Action plan and accountability' },
     },
   ];
 
@@ -679,7 +671,6 @@ async function main() {
           'Planning for education, housing, and future goals',
         ],
         estimatedDuration: 50,
-        fiveRsAlignment: finlitTopic.fiveRsAlignment ?? null,
       },
       create: {
         id: topicId,
@@ -700,7 +691,6 @@ async function main() {
           'Planning for education, housing, and future goals',
         ],
         estimatedDuration: 50,
-        fiveRsAlignment: finlitTopic.fiveRsAlignment ?? null,
       },
     });
 
