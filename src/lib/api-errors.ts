@@ -79,3 +79,13 @@ export class RateLimitError extends AppError {
     this.name = 'RateLimitError';
   }
 }
+
+export class InternalServerError extends AppError {
+  constructor(message = 'Internal server error', details?: unknown) {
+    super(message, 500, 'INTERNAL_ERROR', details);
+    this.name = 'InternalServerError';
+  }
+}
+
+// Alias for backward compatibility
+export const BadRequestError = ValidationError;
