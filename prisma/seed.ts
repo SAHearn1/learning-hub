@@ -543,7 +543,14 @@ async function main() {
   // ═══════════════════════════════════════════════════════════════
   console.log('Creating financial literacy topics...');
 
-  const finlitTopics = [
+  type FinlitTopic = {
+    key: string;
+    name: string;
+    learningObjectives: string[];
+    fiveRsAlignment?: Record<string, string>;
+  };
+
+  const finlitTopics: FinlitTopic[] = [
     {
       key: 'finlit-ch-i-income-career-planning',
       name: 'Ch. I: Income and Career Planning',
@@ -647,7 +654,7 @@ async function main() {
       ],
       fiveRsAlignment: { ROOT: 'Values and priorities', RECONNECT: 'Action plan and accountability' },
     },
-  ] as const;
+  ];
 
   for (const finlitTopic of finlitTopics) {
     const topicId = `topic-${finlitTopic.key}`;
