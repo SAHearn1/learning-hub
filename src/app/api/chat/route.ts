@@ -163,13 +163,13 @@ export async function POST(req: NextRequest) {
       where: { id: session.id },
       data: {
         currentPhase: nextPhase,
-        regulationState: {
+        regulationState: JSON.parse(JSON.stringify({
           level: newRegulationLevel,
           signals: regulationCheck.signals,
           interventionCount: (currentRegulationState?.interventionCount ?? 0) + (regulationCheck.severity === 'high' ? 1 : 0),
           sentiment,
           regulationPassed: nextFiveRState.regulationPassed,
-        },
+        })),
         metadata: {
           ...(session.metadata as Record<string, unknown> ?? {}),
           fiveRState: nextFiveRState,
