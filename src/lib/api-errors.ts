@@ -89,3 +89,4 @@ export class InternalServerError extends AppError {
 
 // Alias for backward compatibility
 export const BadRequestError = ValidationError;
+export const UnauthorizedError = AuthenticationError;
