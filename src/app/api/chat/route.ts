@@ -79,10 +79,7 @@ function isPersonalTradeAdviceRequest(message: string): boolean {
 
 
 export async function POST(req: NextRequest) {
-  const { userId: clerkId } = auth();
-  if (!clerkId) {
-    return new Response(JSON.stringify({ error: 'Unauthorized' }), { status: 401 });
-  }
+  const user = await requireUser(req);
 
   if (!user.student) {
     throw new NotFoundError('Student profile not found');
