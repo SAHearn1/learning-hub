@@ -8,6 +8,6 @@ Import these JSON files into your n8n instance to deploy the AI work agent workf
 
 ## Naming Convention
 
-Files should follow the pattern: `<agent-name>-<workflow-description>.json`
+Files follow the pattern: `[Agent Type] — [Function] — [Version].json`
 
-Example: `research-agent-web-search.json`
+Example: `Research Agent — Web + Drive Brief — v1.json`

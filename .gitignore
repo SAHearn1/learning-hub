@@ -3,10 +3,13 @@
 .env.local
 .env.*.local
 
-# Credentials
+# Credentials and secrets
 credentials/
+secrets/
 *.credentials
 credentials.json
+*.key
+*.pem
 
 # Node
 node_modules/
@@ -35,7 +38,6 @@ yarn-debug.log*
 yarn-error.log*
 
 # misc
-*.pem
 
 # vercel
 .vercel

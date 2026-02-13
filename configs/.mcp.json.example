@@ -1,9 +1,14 @@
 {
   "mcpServers": {
-    "n8n": {
-      "url": "http://localhost:5678/mcp",
-      "headers": {
-        "Authorization": "Bearer YOUR_N8N_API_KEY"
+    "n8n-mcp": {
+      "command": "npx",
+      "args": ["n8n-mcp"],
+      "env": {
+        "MCP_MODE": "stdio",
+        "LOG_LEVEL": "error",
+        "DISABLE_CONSOLE_OUTPUT": "true",
+        "N8N_API_URL": "https://YOUR_INSTANCE.app.n8n.cloud",
+        "N8N_API_KEY": "YOUR_N8N_API_KEY_HERE"
       }
     }
   }

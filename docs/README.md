@@ -8,3 +8,5 @@ Architecture documentation index for the AI work agent factory.
 - Agent interaction diagrams
 - n8n-MCP integration guide
 - Deployment and operations runbook
+- Security and compliance documentation
+- ADR (Architecture Decision Records)

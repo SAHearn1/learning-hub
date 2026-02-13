@@ -11,9 +11,16 @@ Credentials documentation and configuration templates.
 ## Required Credentials
 
 | Service | Purpose | Env Variable |
-|---------|---------|-------------|
-| n8n | Workflow automation platform | `N8N_API_KEY` |
-| OpenAI / Anthropic | LLM provider for AI Agent nodes | `LLM_API_KEY` |
+|---------|---------|--------------|
+| n8n Cloud | Workflow automation platform | `N8N_API_URL`, `N8N_API_KEY` |
+| Anthropic Claude | AI reasoning engine | `ANTHROPIC_API_KEY` |
+| Telegram Bot | Command interface & approval | `TELEGRAM_BOT_TOKEN` |
+| Google Workspace | Drive, Docs, Calendar, Gmail | OAuth credentials |
+| Notion | Operational databases | `NOTION_API_KEY` |
+| YouTube Data API v3 | Video publishing | `YOUTUBE_API_KEY` |
+| InVideo AI | Video generation | `INVIDEO_API_KEY` |
+| ElevenLabs | AI voiceover | `ELEVENLABS_API_KEY` |
+| Stripe | Payments | `STRIPE_API_KEY` |
 
 ## Setup
 
