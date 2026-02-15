@@ -334,9 +334,59 @@ export async function POST(req: NextRequest) {
     citations = [];
   }
 
+  // Enrich context with pre-selected topic data (from curriculum explore flow)
+  const sessionMetadata = session.metadata as Record<string, unknown> | null;
+  const preselectedTopicId = sessionMetadata?.topicId as string | undefined;
+  let preselectedTopicContext = '';
+
+  if (preselectedTopicId) {
+    try {
+      const topic = await db.topic.findUnique({
+        where: { id: preselectedTopicId },
+        select: {
+          name: true,
+          description: true,
+          conceptualUnderstanding: true,
+          commonMisconceptions: true,
+          learningObjectives: { select: { description: true, bloomsLevel: true } },
+        },
+      });
+
+      if (topic) {
+        const parts = [
+          `## Pre-selected Topic: ${topic.name}`,
+          topic.description,
+          '',
+          '### Key Concepts',
+          topic.conceptualUnderstanding,
+        ];
+
+        if (topic.learningObjectives.length > 0) {
+          parts.push('', '### Learning Objectives');
+          topic.learningObjectives.forEach(obj => {
+            parts.push(`- [${obj.bloomsLevel}] ${obj.description}`);
+          });
+        }
+
+        if (topic.commonMisconceptions.length > 0) {
+          parts.push('', '### Common Misconceptions to Address');
+          topic.commonMisconceptions.forEach(m => {
+            parts.push(`- ${m}`);
+          });
+        }
+
+        preselectedTopicContext = parts.join('\n');
+      }
+    } catch (error) {
+      console.error('Error fetching pre-selected topic:', error);
+    }
+  }
+
   const usedFinlitContext = citations.some(c => c.subject === FINLIT_SUBJECT);
-  // Combine curriculum context for the topic context
-  const combinedTopicContext = curriculumContext;
+  // Combine curriculum context with pre-selected topic context
+  const combinedTopicContext = preselectedTopicContext
+    ? `${preselectedTopicContext}\n\n${curriculumContext}`
+    : curriculumContext;
 
   const finlitSafetyInstructions = usedFinlitContext || isFinlitSession || messageSuggestsFinlit(body.message)
     ? `\n\n### Financial Literacy Safety\n- Financial literacy content is educational only, not financial advice.\n- Do not recommend specific trades, stocks, or timing decisions.\n- Do not predict security prices.\n- Cite relevant FINANCIAL_LITERACY sources when available.\n- If no financial literacy sources are available, ask a clarifying question before giving specific guidance.`

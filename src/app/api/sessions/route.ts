@@ -9,6 +9,7 @@ import { NotFoundError, PaymentRequiredError } from '@/lib/api-errors';
 const createSessionSchema = z.object({
   subject: z.enum(['MATH', 'SCIENCE', 'LANGUAGE_ARTS', 'FINANCIAL_LITERACY']),
   engagementMode: z.enum(['FORWARD', 'REVERSE', 'ERROR_ANALYSIS', 'MULTIPLE_PATHWAYS', 'PROBLEM_POSING']).default('FORWARD'),
+  topicId: z.string().optional(),
 });
 
 export const POST = withApiHandler(async (req) => {
@@ -29,6 +30,18 @@ export const POST = withApiHandler(async (req) => {
     throw error;
   }
 
+  // If a topicId was provided, validate it exists and capture its name
+  let topicMeta: { topicId: string; topicName: string } | undefined;
+  if (body.topicId) {
+    const topic = await db.topic.findUnique({
+      where: { id: body.topicId },
+      select: { id: true, name: true },
+    });
+    if (topic) {
+      topicMeta = { topicId: topic.id, topicName: topic.name };
+    }
+  }
+
   const session = await db.session.create({
     data: {
       tenantId: user.tenantId,
@@ -38,6 +51,7 @@ export const POST = withApiHandler(async (req) => {
       engagementMode: body.engagementMode,
       regulationState: { level: 70, signals: [], interventionCount: 0 },
       metadata: {
+        ...(topicMeta && { topicId: topicMeta.topicId, topicName: topicMeta.topicName }),
         fiveRState: {
           currentPhase: 'ROOT',
           phaseHistory: [

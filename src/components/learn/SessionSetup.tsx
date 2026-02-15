@@ -8,11 +8,19 @@ import { BRAND } from '@/brand/brand';
 type Subject = 'MATH' | 'SCIENCE' | 'LANGUAGE_ARTS' | 'FINANCIAL_LITERACY';
 type EngagementMode = 'FORWARD' | 'REVERSE' | 'ERROR_ANALYSIS' | 'MULTIPLE_PATHWAYS' | 'PROBLEM_POSING';
 
+interface PreselectedTopic {
+  id: string;
+  name: string;
+  subject: Subject;
+  description: string;
+}
+
 interface SessionSetupProps {
   onStart: (subject: Subject, mode: EngagementMode) => void;
   isLoading: boolean;
   startError?: string | null;
   onClearError?: () => void;
+  preselectedTopic?: PreselectedTopic | null;
 }
 
 const SUBJECT_DETAILS: Record<Subject, { name: string; color: string; description: string }> = {
@@ -75,8 +83,8 @@ function formatRelativeTime(dateStr: string): string {
   return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
 }
 
-export function SessionSetup({ onStart, isLoading, startError, onClearError }: SessionSetupProps) {
-  const [selectedSubject, setSelectedSubject] = useState<Subject | null>(null);
+export function SessionSetup({ onStart, isLoading, startError, onClearError, preselectedTopic }: SessionSetupProps) {
+  const [selectedSubject, setSelectedSubject] = useState<Subject | null>(preselectedTopic?.subject ?? null);
   const [selectedMode, setSelectedMode] = useState<EngagementMode>('FORWARD');
 
   // TODO: Wire up session history fetching
@@ -88,18 +96,32 @@ export function SessionSetup({ onStart, isLoading, startError, onClearError }: S
       <div className="text-center">
         <h1 className="text-3xl font-bold text-neutral-900">Start a Learning Session</h1>
         <p className="mt-2 text-neutral-600">
-          Choose your subject and how you&apos;d like to learn today.
+          {preselectedTopic
+            ? 'Choose how you\u2019d like to explore this topic.'
+            : 'Choose your subject and how you\u2019d like to learn today.'}
         </p>
       </div>
 
+      {/* Topic Banner */}
+      {preselectedTopic && (
+        <div className="rounded-lg border border-primary-200 bg-primary-50 px-5 py-4">
+          <p className="text-xs font-medium uppercase tracking-wide text-primary-600">Topic</p>
+          <p className="mt-1 text-lg font-semibold text-neutral-900">{preselectedTopic.name}</p>
+          <p className="mt-1 text-sm text-neutral-600">{preselectedTopic.description}</p>
+        </div>
+      )}
+
       {/* Subject Selection */}
       <div>
-        <h2 className="mb-3 text-lg font-semibold text-neutral-800">Choose a Subject</h2>
+        <h2 className="mb-3 text-lg font-semibold text-neutral-800">
+          {preselectedTopic ? 'Subject' : 'Choose a Subject'}
+        </h2>
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
           {(Object.entries(SUBJECT_DETAILS) as [Subject, typeof SUBJECT_DETAILS[Subject]][]).map(
             ([key, subject]) => (
               <button
                 key={key}
+                disabled={!!preselectedTopic}
                 onClick={() => {
                   onClearError?.();
                   setSelectedSubject(key);
@@ -107,7 +129,9 @@ export function SessionSetup({ onStart, isLoading, startError, onClearError }: S
                 className={`rounded-lg border-2 p-4 text-left transition-all ${
                   selectedSubject === key
                     ? 'border-current shadow-md'
-                    : 'border-neutral-200 hover:border-neutral-300'
+                    : preselectedTopic
+                      ? 'border-neutral-100 opacity-50'
+                      : 'border-neutral-200 hover:border-neutral-300'
                 }`}
                 style={selectedSubject === key ? { borderColor: subject.color, color: subject.color } : undefined}
               >

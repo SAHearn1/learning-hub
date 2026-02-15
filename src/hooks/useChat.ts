@@ -15,7 +15,7 @@ export interface SessionSummary {
 
 interface UseChatReturn {
   sendMessage: (content: string) => Promise<void>;
-  createSession: (subject: 'MATH' | 'SCIENCE' | 'LANGUAGE_ARTS' | 'FINANCIAL_LITERACY', mode?: string) => Promise<string | null>;
+  createSession: (subject: 'MATH' | 'SCIENCE' | 'LANGUAGE_ARTS' | 'FINANCIAL_LITERACY', mode?: string, topicId?: string) => Promise<string | null>;
   endSession: () => Promise<void>;
   updatePhase: (phase: string) => Promise<void>;
   updateEngagementMode: (mode: string) => Promise<void>;
@@ -185,13 +185,14 @@ export function useChat(): UseChatReturn {
   const createSession = useCallback(async (
     subject: 'MATH' | 'SCIENCE' | 'LANGUAGE_ARTS' | 'FINANCIAL_LITERACY',
     mode: string = 'FORWARD',
+    topicId?: string,
   ): Promise<string | null> => {
     setLoading(true);
     try {
       const response = await fetch('/api/sessions', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ subject, engagementMode: mode }),
+        body: JSON.stringify({ subject, engagementMode: mode, ...(topicId && { topicId }) }),
       });
 
       if (!response.ok) {
