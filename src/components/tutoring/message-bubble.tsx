@@ -18,7 +18,7 @@ interface MessageBubbleProps {
   onInterventionReady?: () => void;
 }
 
-export function MessageBubble({ role, content, timestamp, className, messageId, onInterventionReady }: MessageBubbleProps) {
+export function MessageBubble({ role, content, timestamp, metadata, className, messageId, onInterventionReady }: MessageBubbleProps) {
   const [isReady, setIsReady] = useState(false);
   const isSystem = role === 'SYSTEM';
   const isAssistant = role === 'ASSISTANT';

@@ -3,7 +3,12 @@
  * Automated enforcement of data retention policies
  */
 
-import { prisma } from '@/lib/db';
+import { prisma as prismaClient } from '@/lib/db';
+
+// TODO: Add missing fields to Prisma schema (deletedAt, updatedAt on Session,
+// isAnonymized/studentId on Assessment, consentGrantedAt/consentArchived on User,
+// archived on AuditLog) then remove this cast
+const prisma = prismaClient as any;
 import { logger } from '@/lib/logger';
 import { createAuditLog } from '@/lib/audit';
 

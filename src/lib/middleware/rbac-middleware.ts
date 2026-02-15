@@ -281,7 +281,7 @@ export function compose(...middlewares: ((handler: RouteHandler) => RouteHandler
   return (handler: AuthenticatedRouteHandler) => {
     return middlewares.reduceRight(
       (wrapped, middleware) => middleware(wrapped as RouteHandler),
-      handler as RouteHandler
+      handler as unknown as RouteHandler
     );
   };
 }

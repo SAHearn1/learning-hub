@@ -387,7 +387,7 @@ export async function POST(req: NextRequest) {
         sessionId: session.id,
         role: 'ASSISTANT',
         content: refusalMessage,
-        metadata: citations.length > 0 ? { citations } : null,
+        metadata: citations.length > 0 ? JSON.parse(JSON.stringify({ citations })) : undefined,
       },
     });
     await invalidateSessionCache(session.id);
@@ -443,7 +443,7 @@ export async function POST(req: NextRequest) {
             sessionId: session.id,
             role: 'ASSISTANT',
             content: restoredAssistantText,
-            metadata: citations.length > 0 ? { citations } : null,
+            metadata: citations.length > 0 ? JSON.parse(JSON.stringify({ citations })) : undefined,
           },
         });
         await invalidateSessionCache(session.id);

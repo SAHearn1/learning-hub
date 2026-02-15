@@ -180,7 +180,7 @@ export function updateGlicko2Rating(
   }
 
   // Convert to Glicko-2 scale
-  const { mu, phi } = currentRating;
+  const { mu, phi } = toGlicko2Scale(currentRating.rating, currentRating.ratingDeviation);
 
   // Step 3: Calculate variance
   const v = calculateVariance(mu, results);

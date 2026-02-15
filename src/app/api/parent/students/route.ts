@@ -18,34 +18,25 @@ export const GET = withApiHandler(async (req: NextRequest) => {
     throw new ForbiddenError();
   }
 
-  // Get parent record with children
+  // Get parent record
   const parentRecord = await db.parent.findUnique({
     where: { userId: user.id },
-    include: {
-      children: {
-        include: {
-          user: {
-            select: {
-              id: true,
-              firstName: true,
-              lastName: true,
-              email: true,
-              isMinor: true,
-              dateOfBirth: true,
-              consentStatus: true,
-              consentGrantedAt: true,
-            },
-          },
-        },
-      },
-    },
   });
 
-  if (!parentRecord) {
+  if (!parentRecord || parentRecord.childrenIds.length === 0) {
     return NextResponse.json({ students: [] });
   }
 
-  const students = parentRecord.children.map((child) => child.user);
+  // Fetch students by their IDs stored in childrenIds
+  const students = await db.user.findMany({
+    where: { id: { in: parentRecord.childrenIds } },
+    select: {
+      id: true,
+      firstName: true,
+      lastName: true,
+      email: true,
+    },
+  });
 
   return NextResponse.json({ students });
 });

@@ -21,6 +21,7 @@ import {
   submitReview,
   SubmitReviewSchema,
 } from '@/lib/ai/hitl/suggestion-service';
+import { appendImmutableAuditLog } from '@/lib/audit';
 
 // ---------------------------------------------------------------------------
 // Constants
@@ -55,16 +56,22 @@ export const GET = withApiHandler(async (req) => {
     const result = await getCompletedReviews(user.tenantId, page, limit);
 
     // Enrich reviews with student names
-    const studentIds = [...new Set(result.data.map((r) => r.studentId))];
+    const studentIds = [...new Set(result.data.map((r: any) => r.studentId))];
     const students = await db.student.findMany({
-      where: { id: { in: studentIds } },
-      include: { user: { select: { firstName: true, lastName: true } } },
+      where: { id: { in: studentIds as string[] } },
     });
+    // Look up user names separately
+    const userIds = students.map((s) => s.userId);
+    const users = await db.user.findMany({
+      where: { id: { in: userIds } },
+      select: { id: true, firstName: true, lastName: true },
+    });
+    const userMap = new Map(users.map((u) => [u.id, `${u.firstName} ${u.lastName}`]));
     const studentMap = new Map(
-      students.map((s) => [s.id, `${s.user.firstName} ${s.user.lastName}`]),
+      students.map((s) => [s.id, userMap.get(s.userId) ?? 'Unknown Student']),
     );
 
-    const enriched = result.data.map((review) => ({
+    const enriched = result.data.map((review: any) => ({
       ...review,
       studentName: studentMap.get(review.studentId) ?? 'Unknown Student',
     }));
@@ -91,16 +98,21 @@ export const GET = withApiHandler(async (req) => {
   const result = await getReviewQueue(user.tenantId, filters);
 
   // Enrich reviews with student names
-  const studentIds = [...new Set(result.data.map((r) => r.studentId))];
+  const studentIds = [...new Set(result.data.map((r: any) => r.studentId))];
   const students = await db.student.findMany({
-    where: { id: { in: studentIds } },
-    include: { user: { select: { firstName: true, lastName: true } } },
+    where: { id: { in: studentIds as string[] } },
   });
+  const userIds = students.map((s) => s.userId);
+  const users = await db.user.findMany({
+    where: { id: { in: userIds } },
+    select: { id: true, firstName: true, lastName: true },
+  });
+  const userMap = new Map(users.map((u) => [u.id, `${u.firstName} ${u.lastName}`]));
   const studentMap = new Map(
-    students.map((s) => [s.id, `${s.user.firstName} ${s.user.lastName}`]),
+    students.map((s) => [s.id, userMap.get(s.userId) ?? 'Unknown Student']),
   );
 
-  const enriched = result.data.map((review) => ({
+  const enriched = result.data.map((review: any) => ({
     ...review,
     studentName: studentMap.get(review.studentId) ?? 'Unknown Student',
   }));
@@ -129,7 +141,8 @@ export const POST = withApiHandler(async (req) => {
   const body = PostBodySchema.parse(await req.json());
 
   // Verify the review exists and belongs to the same tenant
-  const existing = await db.aiSuggestionReview.findUnique({
+  // TODO: Add AiSuggestionReview model to Prisma schema
+  const existing = await (db as any).aiSuggestionReview.findUnique({
     where: { id: body.reviewId },
   });
 
@@ -164,20 +177,18 @@ export const POST = withApiHandler(async (req) => {
   );
 
   // Create audit log entry
-  await db.auditLog.create({
-    data: {
-      tenantId: user.tenantId,
-      userId: user.id,
-      action: `REVIEW_${body.decision.toUpperCase()}`,
-      resource: 'AiSuggestionReview',
-      resourceId: body.reviewId,
-      metadata: {
-        suggestionType: existing.suggestionType,
-        studentId: existing.studentId,
-        decision: body.decision,
-        hasEdits: !!body.editedContent,
-        hasNotes: !!body.notes,
-      },
+  await appendImmutableAuditLog({
+    tenantId: user.tenantId,
+    userId: user.id,
+    action: `REVIEW_${body.decision.toUpperCase()}`,
+    resource: 'AiSuggestionReview',
+    resourceId: body.reviewId,
+    metadata: {
+      suggestionType: existing.suggestionType,
+      studentId: existing.studentId,
+      decision: body.decision,
+      hasEdits: !!body.editedContent,
+      hasNotes: !!body.notes,
     },
   });
 

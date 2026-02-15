@@ -3,6 +3,7 @@ import { z } from 'zod';
 import { requireUser } from '@/lib/auth';
 import { db } from '@/lib/db';
 import { canManageMinorConsent, requiresGuardianForDataRequest } from '@/lib/compliance';
+import { appendImmutableAuditLog } from '@/lib/audit';
 
 const dataRightsSchema = z.object({
   requestType: z.enum(['EXPORT', 'DELETE']),
@@ -49,17 +50,15 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'A parent/admin role is required for minor data requests' }, { status: 403 });
     }
 
-    await db.auditLog.create({
-      data: {
-        tenantId: subject.tenantId,
-        userId: actor.id,
-        action: 'DATA_RIGHTS_REQUESTED',
-        resource: 'User',
-        resourceId: subject.id,
-        metadata: {
-          requestType: payload.requestType,
-          reason: payload.reason,
-        },
+    await appendImmutableAuditLog({
+      tenantId: subject.tenantId,
+      userId: actor.id,
+      action: 'DATA_RIGHTS_REQUESTED',
+      resource: 'User',
+      resourceId: subject.id,
+      metadata: {
+        requestType: payload.requestType,
+        reason: payload.reason,
       },
     });
 

@@ -7,6 +7,14 @@
 
 import { db as prisma } from "@/lib/db";
 import type { Subject, ConceptType, ReviewState as PrismaReviewState } from "@prisma/client";
+import { ReviewRating as PrismaReviewRating } from "@prisma/client";
+
+const FSRS_TO_PRISMA_RATING: Record<number, PrismaReviewRating> = {
+  1: PrismaReviewRating.AGAIN,
+  2: PrismaReviewRating.HARD,
+  3: PrismaReviewRating.GOOD,
+  4: PrismaReviewRating.EASY,
+};
 import {
   scheduleCard,
   getNextReviewDate,
@@ -176,7 +184,7 @@ export async function submitReview(
   await prisma.reviewHistory.create({
     data: {
       scheduleId,
-      rating,
+      rating: FSRS_TO_PRISMA_RATING[rating as number],
       state: schedule.state,
       reviewedAt: now,
       elapsedDays: schedulingInfo.reviewLog.elapsedDays,

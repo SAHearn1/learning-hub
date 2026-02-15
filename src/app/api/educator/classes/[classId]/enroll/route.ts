@@ -11,9 +11,9 @@ const enrollSchema = z.object({
 
 export const POST = withApiHandler(async (
   req: NextRequest,
-  { params }: { params: Promise<{ classId: string }> },
+  ctx,
 ) => {
-  const { classId } = await params;
+  const classId = ctx.params.classId;
   const user = await requireUser();
 
   if (!['EDUCATOR', 'SCHOOL_ADMIN', 'DISTRICT_ADMIN'].includes(user.role)) {

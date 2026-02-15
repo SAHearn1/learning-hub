@@ -8,10 +8,13 @@ import { z } from 'zod';
 const createTopicSchema = z.object({
   name: z.string().min(1),
   subject: z.enum(['MATH', 'SCIENCE', 'LANGUAGE_ARTS', 'FINANCIAL_LITERACY']),
-  gradeLevel: z.array(z.string()),
+  gradeLevel: z.array(z.coerce.number().int()),
   description: z.string(),
+  conceptualUnderstanding: z.string().default(''),
+  commonMisconceptions: z.array(z.string()).default([]),
+  realWorldConnections: z.array(z.string()).default([]),
   learningObjectives: z.array(z.string()).optional().default([]),
-  estimatedDuration: z.number().optional(),
+  estimatedDuration: z.number().int().default(30),
 });
 
 /**
@@ -27,7 +30,7 @@ export const GET = withApiHandler(async (req: NextRequest) => {
   const topics = await db.topic.findMany({
     where: {
       ...(subject && { subject: subject as any }),
-      ...(gradeLevel && { gradeLevel: { has: gradeLevel } }),
+      ...(gradeLevel && { gradeLevel: { has: parseInt(gradeLevel, 10) } }),
     },
     select: {
       id: true,
@@ -63,8 +66,17 @@ export const POST = withApiHandler(async (req: NextRequest) => {
   const body = await req.json();
   const data = createTopicSchema.parse(body);
 
+  const { learningObjectives, ...topicData } = data;
   const topic = await db.topic.create({
-    data,
+    data: {
+      ...topicData,
+      learningObjectives: learningObjectives.length > 0 ? {
+        create: learningObjectives.map((obj: string) => ({
+          description: obj,
+          bloomsLevel: 'UNDERSTAND' as const,
+        })),
+      } : undefined,
+    },
   });
 
   return NextResponse.json(

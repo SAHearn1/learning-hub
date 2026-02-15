@@ -70,7 +70,7 @@ export async function indexIepDocument(
   // Upsert in batches to respect Pinecone limits
   for (let i = 0; i < vectors.length; i += UPSERT_BATCH_SIZE) {
     const batch = vectors.slice(i, i + UPSERT_BATCH_SIZE);
-    await index.upsert(batch);
+    await index.upsert({ records: batch });
   }
 
   console.log(

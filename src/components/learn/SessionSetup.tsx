@@ -79,6 +79,10 @@ export function SessionSetup({ onStart, isLoading, startError, onClearError }: S
   const [selectedSubject, setSelectedSubject] = useState<Subject | null>(null);
   const [selectedMode, setSelectedMode] = useState<EngagementMode>('FORWARD');
 
+  // TODO: Wire up session history fetching
+  const historyLoading = true;
+  const recentSessions: Array<{ id: string; subject: Subject; engagementMode: EngagementMode; startedAt: string }> = [];
+
   return (
     <div className="mx-auto max-w-3xl space-y-8">
       <div className="text-center">

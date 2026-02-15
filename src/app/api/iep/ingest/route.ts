@@ -3,6 +3,7 @@ import { auth } from '@clerk/nextjs/server';
 import { z } from 'zod';
 import { db } from '@/lib/db';
 import { ingestIepDocument } from '@/lib/rag/iep-ingest-api';
+import { appendImmutableAuditLog } from '@/lib/audit';
 
 // =================================================================
 // IEP Document Ingestion API
@@ -83,23 +84,21 @@ export async function POST(req: NextRequest) {
     });
 
     // Log the action for FERPA compliance auditing
-    await db.auditLog.create({
-      data: {
-        tenantId: user.tenantId,
-        userId: user.id,
-        action: 'IEP_DOCUMENT_INGESTED',
-        resource: 'IepDocument',
-        resourceId: result.documentId,
-        metadata: {
-          studentId: body.studentId,
-          chunksCreated: result.chunksCreated,
-          processingTimeMs: result.processingTimeMs,
-          sections: result.sections,
-          gradeLevel: body.metadata.gradeLevel,
-          school: body.metadata.school,
-        },
-        ipAddress: req.headers.get('x-forwarded-for') ?? req.headers.get('x-real-ip') ?? null,
+    await appendImmutableAuditLog({
+      tenantId: user.tenantId,
+      userId: user.id,
+      action: 'IEP_DOCUMENT_INGESTED',
+      resource: 'IepDocument',
+      resourceId: result.documentId,
+      metadata: {
+        studentId: body.studentId,
+        chunksCreated: result.chunksCreated,
+        processingTimeMs: result.processingTimeMs,
+        sections: result.sections,
+        gradeLevel: body.metadata.gradeLevel,
+        school: body.metadata.school,
       },
+      ipAddress: req.headers.get('x-forwarded-for') ?? req.headers.get('x-real-ip') ?? null,
     });
 
     return NextResponse.json({
@@ -116,18 +115,16 @@ export async function POST(req: NextRequest) {
     console.error('IEP ingestion failed:', errorMessage);
 
     // Log the failed attempt
-    await db.auditLog.create({
-      data: {
-        tenantId: user.tenantId,
-        userId: user.id,
-        action: 'IEP_DOCUMENT_INGEST_FAILED',
-        resource: 'IepDocument',
-        metadata: {
-          studentId: body.studentId,
-          error: errorMessage,
-        },
-        ipAddress: req.headers.get('x-forwarded-for') ?? req.headers.get('x-real-ip') ?? null,
+    await appendImmutableAuditLog({
+      tenantId: user.tenantId,
+      userId: user.id,
+      action: 'IEP_DOCUMENT_INGEST_FAILED',
+      resource: 'IepDocument',
+      metadata: {
+        studentId: body.studentId,
+        error: errorMessage,
       },
+      ipAddress: req.headers.get('x-forwarded-for') ?? req.headers.get('x-real-ip') ?? null,
     });
 
     return NextResponse.json(

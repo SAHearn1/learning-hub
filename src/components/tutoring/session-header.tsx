@@ -19,6 +19,7 @@ const SUBJECT_LABELS: Record<Subject, string> = {
   MATH: 'Mathematics',
   SCIENCE: 'Science',
   LANGUAGE_ARTS: 'Language Arts',
+  FINANCIAL_LITERACY: 'Financial Literacy',
 };
 
 export function SessionHeader({

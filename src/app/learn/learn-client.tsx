@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import type { Message, FiveRPhase, EngagementMode, Subject } from '@prisma/client';
+import type { ChatMessageMetadata } from '@/types/chat';
 import { ChatInterface } from '@/components/tutoring/chat-interface';
 import { SessionHeader } from '@/components/tutoring/session-header';
 import { PhaseIndicator } from '@/components/tutoring/phase-indicator';
@@ -126,6 +127,7 @@ export function LearnClient({ session, messages, regulationLevel, studentId }: L
             initialMessages={messages.map((msg) => ({
               ...msg,
               createdAt: new Date(msg.createdAt),
+              metadata: msg.metadata as ChatMessageMetadata | null,
             }))}
             currentPhase={currentPhase}
             currentMode={currentMode}

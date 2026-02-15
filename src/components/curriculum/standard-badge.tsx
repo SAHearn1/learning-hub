@@ -2,11 +2,12 @@ import { Badge } from '@/components/ui/badge';
 import { StandardFramework, Subject } from '@prisma/client';
 import * as Tooltip from '@radix-ui/react-tooltip';
 
-const SUBJECT_COLORS = {
+const SUBJECT_COLORS: Record<Subject, string> = {
   MATH: 'bg-blue-50 text-blue-700 border-blue-200 hover:bg-blue-100',
   SCIENCE: 'bg-green-50 text-green-700 border-green-200 hover:bg-green-100',
   LANGUAGE_ARTS: 'bg-purple-50 text-purple-700 border-purple-200 hover:bg-purple-100',
-} as const;
+  FINANCIAL_LITERACY: 'bg-amber-50 text-amber-700 border-amber-200 hover:bg-amber-100',
+};
 
 interface StandardBadgeProps {
   code: string;

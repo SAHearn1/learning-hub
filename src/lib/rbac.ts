@@ -34,17 +34,11 @@ export function assertTenantAccess(actorRole: UserRole, actorTenantId: string, r
  * Checks if an educator owns/teaches a specific classroom
  */
 export async function isClassroomOwner(educatorUserId: string, classId: string): Promise<boolean> {
-  const educator = await db.educator.findUnique({
-    where: { userId: educatorUserId },
-    include: {
-      teachingClasses: {
-        where: { id: classId },
-        select: { id: true },
-      },
-    },
+  const count = await db.class.count({
+    where: { id: classId, educatorId: educatorUserId },
   });
 
-  return (educator?.teachingClasses?.length ?? 0) > 0;
+  return count > 0;
 }
 
 /**
@@ -61,16 +55,12 @@ export async function assertClassroomOwnership(educatorUserId: string, classId: 
  * Gets all classroom IDs that an educator owns
  */
 export async function getEducatorClassroomIds(educatorUserId: string): Promise<string[]> {
-  const educator = await db.educator.findUnique({
-    where: { userId: educatorUserId },
-    include: {
-      teachingClasses: {
-        select: { id: true },
-      },
-    },
+  const classes = await db.class.findMany({
+    where: { educatorId: educatorUserId },
+    select: { id: true },
   });
 
-  return educator?.teachingClasses?.map((c) => c.id) ?? [];
+  return classes.map((c: { id: string }) => c.id);
 }
 
 // ============================================================================

@@ -100,7 +100,7 @@ export async function searchCurriculum(
           chunkIndex: r.metadata.chunkIndex,
           totalChunks: r.metadata.totalChunks,
           subject: r.metadata.subject,
-          gradeLevel: r.metadata.gradeLevel,
+          gradeLevel: Array.isArray(r.metadata.gradeLevel) ? r.metadata.gradeLevel[0] : r.metadata.gradeLevel,
           standardCodes: r.metadata.standardCodes,
         }));
     } else {

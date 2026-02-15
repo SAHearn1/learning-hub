@@ -7,7 +7,10 @@
  */
 
 import { z } from 'zod';
-import { db } from '@/lib/db';
+import { db as prismaDb } from '@/lib/db';
+
+// TODO: Add AiSuggestionReview model to Prisma schema and remove this cast
+const db = prismaDb as any;
 
 // ---------------------------------------------------------------------------
 // Zod Schemas
@@ -274,7 +277,7 @@ export async function getReviewStats(tenantId: string) {
   // Calculate average review time in minutes
   let avgReviewTimeMinutes = 0;
   if (allReviewedToday.length > 0) {
-    const totalMs = allReviewedToday.reduce((sum, review) => {
+    const totalMs = allReviewedToday.reduce((sum: number, review: any) => {
       if (review.reviewedAt) {
         return sum + (review.reviewedAt.getTime() - review.createdAt.getTime());
       }

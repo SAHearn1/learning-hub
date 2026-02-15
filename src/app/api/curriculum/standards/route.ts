@@ -7,11 +7,11 @@ import { z } from 'zod';
 
 const createStandardSchema = z.object({
   code: z.string().min(1),
-  framework: z.enum(['CCSS', 'GEORGIA', 'NGSS', 'CUSTOM']),
-  subject: z.enum(['MATH', 'SCIENCE', 'ELA', 'SOCIAL_STUDIES', 'OTHER']),
-  gradeLevel: z.array(z.string()),
-  domain: z.string().optional(),
-  cluster: z.string().optional(),
+  framework: z.enum(['COMMON_CORE', 'GEORGIA', 'NGSS']),
+  subject: z.enum(['MATH', 'SCIENCE', 'LANGUAGE_ARTS', 'FINANCIAL_LITERACY']),
+  gradeLevel: z.array(z.coerce.number().int()),
+  domain: z.string(),
+  cluster: z.string(),
   description: z.string(),
   fullText: z.string(),
 });
@@ -31,7 +31,7 @@ export const GET = withApiHandler(async (req: NextRequest) => {
     where: {
       ...(framework && { framework: framework as any }),
       ...(subject && { subject: subject as any }),
-      ...(gradeLevel && { gradeLevel: { has: gradeLevel } }),
+      ...(gradeLevel && { gradeLevel: { has: parseInt(gradeLevel, 10) } }),
     },
     select: {
       id: true,

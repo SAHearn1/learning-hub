@@ -460,7 +460,7 @@ async function sendDatadogEvent(alert: AlertRule, value: number, context?: Recor
  */
 async function sendSentryEvent(alert: AlertRule, value: number, context?: Record<string, any>) {
   if (typeof window === 'undefined') {
-    const Sentry = await import('@sentry/nextjs');
+    const Sentry = await import('@sentry/nextjs') as any;
     Sentry.captureMessage(alert.name, {
       level: alert.severity === AlertSeverity.CRITICAL ? 'fatal' :
              alert.severity === AlertSeverity.ERROR ? 'error' :
