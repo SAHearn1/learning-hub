@@ -7,6 +7,7 @@ export type NavItem = {
 
 export const studentNavItems: readonly NavItem[] = [
   { label: 'Learn', href: '/learn', icon: 'book-open' },
+  { label: 'Explore', href: '/explore', icon: 'compass' },
   {
     label: 'Financial Literacy',
     href: '/learn?subject=FINANCIAL_LITERACY',
