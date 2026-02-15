@@ -3,13 +3,17 @@ import { db } from '@/lib/db';
 import { AuthenticationError, ForbiddenError } from '@/lib/api-errors';
 
 export async function getCurrentUser() {
-  const { userId } = auth();
+  const { userId } = await auth();
   if (!userId) return null;
 
   const user = await db.user.findUnique({
     where: { clerkUserId: userId },
     include: {
-      student: true,
+      student: {
+        include: {
+          iepAccommodations: { where: { active: true } },
+        },
+      },
       educator: true,
       parent: true,
       tenant: true,

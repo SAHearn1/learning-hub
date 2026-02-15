@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback } from 'react';
+import { useCallback, useState } from 'react';
 import { useSessionStore } from '@/stores/session-store';
 import { useRegulationStore } from '@/stores/regulation-store';
 import { useChat } from '@/hooks/useChat';
@@ -9,6 +9,7 @@ import { SessionHeader } from '@/components/learn/SessionHeader';
 import { ChatMessageList } from '@/components/learn/ChatMessageList';
 import { ChatInput } from '@/components/learn/ChatInput';
 import { CalmCorner } from '@/components/learn/CalmCorner';
+import type { SessionSummary as SessionSummaryData } from '@/hooks/useChat';
 
 type Subject = 'MATH' | 'SCIENCE' | 'LANGUAGE_ARTS' | 'FINANCIAL_LITERACY';
 type EngagementMode = 'FORWARD' | 'REVERSE' | 'ERROR_ANALYSIS' | 'MULTIPLE_PATHWAYS' | 'PROBLEM_POSING';

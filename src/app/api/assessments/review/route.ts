@@ -18,7 +18,7 @@ const reviewSchema = z.object({
 const ALLOWED_ROLES = ['EDUCATOR', 'SCHOOL_ADMIN', 'DISTRICT_ADMIN', 'PLATFORM_ADMIN'] as const;
 
 async function requireReviewer() {
-  const { userId: clerkId } = auth();
+  const { userId: clerkId } = await auth();
   if (!clerkId) {
     throw new AuthenticationError();
   }

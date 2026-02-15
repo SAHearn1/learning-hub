@@ -19,7 +19,7 @@ const checkoutSchema = z.object({
 });
 
 export const POST = withApiHandler(async (req: NextRequest) => {
-  const { userId: clerkId } = auth();
+  const { userId: clerkId } = await auth();
   if (!clerkId) {
     throw new AuthenticationError('Unauthorized');
   }

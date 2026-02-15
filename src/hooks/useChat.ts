@@ -5,6 +5,14 @@ import { useSessionStore } from '@/stores/session-store';
 import { useRegulationStore } from '@/stores/regulation-store';
 import { detectDysregulation, detectTRACEStep, type TRACEStep } from '@/lib/regulation/detect-dysregulation';
 
+export interface SessionSummary {
+  subject: string;
+  duration: string;
+  messageCount: number;
+  userMessageCount: number;
+  phasesVisited: string[];
+}
+
 interface UseChatReturn {
   sendMessage: (content: string) => Promise<void>;
   createSession: (subject: 'MATH' | 'SCIENCE' | 'LANGUAGE_ARTS' | 'FINANCIAL_LITERACY', mode?: string) => Promise<string | null>;

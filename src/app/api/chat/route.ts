@@ -335,9 +335,6 @@ export async function POST(req: NextRequest) {
   }
 
   const usedFinlitContext = citations.some(c => c.subject === FINLIT_SUBJECT);
-  // Update guardrail context with retrieved RAG content for post-generation checks
-  guardrailContext.ragContext = [curriculumContext, iepContext].filter(Boolean).join('\n\n');
-
   // Combine curriculum context for the topic context
   const combinedTopicContext = curriculumContext;
 

@@ -30,7 +30,7 @@ async function getTopicData(topicId: string) {
   if (!topic) return null;
 
   // Try to get user progress if logged in
-  const { userId: clerkId } = auth();
+  const { userId: clerkId } = await auth();
   let userProgress = null;
 
   if (clerkId) {

@@ -6,7 +6,7 @@ import { withApiHandler } from '@/lib/api-handler';
 import { AuthenticationError, NotFoundError } from '@/lib/api-errors';
 
 export const POST = withApiHandler(async () => {
-  const { userId: clerkId } = auth();
+  const { userId: clerkId } = await auth();
   if (!clerkId) {
     throw new AuthenticationError('Unauthorized');
   }

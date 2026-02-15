@@ -8,7 +8,7 @@ import { BloomsTaxonomy } from '@/components/progress/blooms-taxonomy';
 import { ExportButton } from '@/components/progress/export-button';
 
 async function getProgressData() {
-  const { userId: clerkId } = auth();
+  const { userId: clerkId } = await auth();
   if (!clerkId) return null;
 
   const user = await db.user.findUnique({

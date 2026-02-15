@@ -18,7 +18,7 @@ async function getCurriculumData() {
   });
 
   // Try to get user progress if logged in
-  const { userId: clerkId } = auth();
+  const { userId: clerkId } = await auth();
   let userProgress: { topicId: string; masteryLevel: number }[] = [];
 
   if (clerkId) {
