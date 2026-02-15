@@ -36,3 +36,7 @@ Fix the TypeScript/Prisma JSON typing issue in `src/app/api/chat/route.ts` and r
 2. `npm run test`
 3. `npm run test:integration`
 4. Required CI checks referenced in policy docs (lint, type-check, tests, security/compliance checks)
+
+## Follow-up Planning Artifact
+
+- Detailed execution plan: `docs/status/build-remediation-task-list-2026-02-15.md`
