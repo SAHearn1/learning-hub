@@ -1,4 +1,5 @@
-import { test } from '@playwright/test';
+import { test as baseTest } from '@playwright/test';
+import { test as authTest } from '../fixtures/auth.fixture';
 import { setupAccessibilityChecks, checkAccessibility } from '../utils/a11y-helpers';
 
 const publicPages = [
@@ -9,13 +10,13 @@ const publicPages = [
   { name: 'Contact', path: '/contact' },
 ];
 
-test.describe('Public Pages - Accessibility @a11y', () => {
-  test.beforeEach(async ({ page }) => {
+baseTest.describe('Public Pages - Accessibility @a11y', () => {
+  baseTest.beforeEach(async ({ page }) => {
     await setupAccessibilityChecks(page);
   });
 
   for (const { name, path } of publicPages) {
-    test(`${name} page - WCAG 2.1 AA compliance`, async ({ page }) => {
+    baseTest(`${name} page - WCAG 2.1 AA compliance`, async ({ page }) => {
       await page.goto(path);
       await page.waitForLoadState('networkidle');
       await checkAccessibility(page);
@@ -23,28 +24,44 @@ test.describe('Public Pages - Accessibility @a11y', () => {
   }
 });
 
-// Note: Authenticated pages will be tested once authentication fixtures are implemented
-test.describe('Authenticated Pages - Accessibility @a11y', () => {
-  test.beforeEach(async ({ page }) => {
+authTest.describe('Student Dashboard - Accessibility @a11y', () => {
+  authTest.use({ authenticatedStudent: undefined });
+
+  authTest.beforeEach(async ({ page }) => {
     await setupAccessibilityChecks(page);
   });
 
-  // TODO: Enable these tests once authentication fixtures are ready
-  test.skip('Student Dashboard - WCAG 2.1 AA compliance', async ({ page }) => {
-    // await authenticateAsStudent(page);
+  authTest('Student Dashboard - WCAG 2.1 AA compliance', async ({ page }) => {
     await page.goto('/learn');
+    await page.waitForLoadState('networkidle');
     await checkAccessibility(page);
   });
+});
 
-  test.skip('Educator Dashboard - WCAG 2.1 AA compliance', async ({ page }) => {
-    // await authenticateAsEducator(page);
-    await page.goto('/teach');
-    await checkAccessibility(page);
+authTest.describe('Educator Dashboard - Accessibility @a11y', () => {
+  authTest.use({ authenticatedEducator: undefined });
+
+  authTest.beforeEach(async ({ page }) => {
+    await setupAccessibilityChecks(page);
   });
 
-  test.skip('Parent Dashboard - WCAG 2.1 AA compliance', async ({ page }) => {
-    // await authenticateAsParent(page);
-    await page.goto('/parent');
+  authTest('Educator Dashboard - WCAG 2.1 AA compliance', async ({ page }) => {
+    await page.goto('/educator/dashboard');
+    await page.waitForLoadState('networkidle');
+    await checkAccessibility(page);
+  });
+});
+
+authTest.describe('Parent Dashboard - Accessibility @a11y', () => {
+  authTest.use({ authenticatedParent: undefined });
+
+  authTest.beforeEach(async ({ page }) => {
+    await setupAccessibilityChecks(page);
+  });
+
+  authTest('Parent Dashboard - WCAG 2.1 AA compliance', async ({ page }) => {
+    await page.goto('/parent/dashboard');
+    await page.waitForLoadState('networkidle');
     await checkAccessibility(page);
   });
 });

@@ -1,5 +1,6 @@
 import { Page } from '@playwright/test';
-import { clerkClient } from '@clerk/nextjs/server';
+import { clerk } from '@clerk/testing/playwright';
+import { createClerkClient } from '@clerk/backend';
 
 export type UserRole = 'STUDENT' | 'EDUCATOR' | 'PARENT' | 'SCHOOL_ADMIN';
 
@@ -8,37 +9,54 @@ interface TestUser {
   email: string;
   password: string;
   role: UserRole;
+  firstName: string;
+  lastName: string;
+  dbRole: string;
 }
 
 export const TEST_USERS: Record<UserRole, TestUser> = {
   STUDENT: {
     clerkUserId: '',
     email: 'student.test@rootwork.edu',
-    password: 'Test123!@#',
+    password: 'RwFw$E2e_Ts9!xQp',
     role: 'STUDENT',
+    firstName: 'Alex',
+    lastName: 'TestStudent',
+    dbRole: 'STUDENT',
   },
   EDUCATOR: {
     clerkUserId: '',
     email: 'educator.test@rootwork.edu',
-    password: 'Test123!@#',
+    password: 'RwFw$E2e_Ts9!xQp',
     role: 'EDUCATOR',
+    firstName: 'Sarah',
+    lastName: 'TestEducator',
+    dbRole: 'EDUCATOR',
   },
   PARENT: {
     clerkUserId: '',
     email: 'parent.test@rootwork.edu',
-    password: 'Test123!@#',
+    password: 'RwFw$E2e_Ts9!xQp',
     role: 'PARENT',
+    firstName: 'Maria',
+    lastName: 'TestParent',
+    dbRole: 'PARENT',
   },
   SCHOOL_ADMIN: {
     clerkUserId: '',
     email: 'admin.test@rootwork.edu',
-    password: 'Test123!@#',
+    password: 'RwFw$E2e_Ts9!xQp',
     role: 'SCHOOL_ADMIN',
+    firstName: 'Robert',
+    lastName: 'TestAdmin',
+    dbRole: 'PLATFORM_ADMIN',
   },
 };
 
 export async function setupTestUsers() {
-  const client = await clerkClient();
+  const client = createClerkClient({
+    secretKey: process.env.CLERK_SECRET_KEY!,
+  });
 
   for (const [role, userData] of Object.entries(TEST_USERS)) {
     try {
@@ -49,23 +67,23 @@ export async function setupTestUsers() {
       const existingUser = existingUsers.data[0];
       if (existingUser) {
         TEST_USERS[role as UserRole].clerkUserId = existingUser.id;
-        console.log(`Test user exists: ${userData.email}`);
+        console.log(`Test user exists: ${userData.email} (${existingUser.id})`);
         continue;
       }
 
       const user = await client.users.createUser({
         emailAddress: [userData.email],
         password: userData.password,
-        firstName: role,
-        lastName: 'Test',
+        firstName: userData.firstName,
+        lastName: userData.lastName,
         publicMetadata: {
-          role: userData.role,
+          role: userData.dbRole,
           tenantId: process.env.E2E_TEST_TENANT_ID ?? 'test-tenant-id',
         },
       });
 
       TEST_USERS[role as UserRole].clerkUserId = user.id;
-      console.log(`Created test user: ${userData.email}`);
+      console.log(`Created test user: ${userData.email} (${user.id})`);
     } catch (error) {
       console.error(`Error creating test user ${userData.email}:`, error);
     }
@@ -75,40 +93,17 @@ export async function setupTestUsers() {
 export async function loginAs(page: Page, role: UserRole) {
   const user = TEST_USERS[role];
 
-  await page.goto('/sign-in');
-  await page.fill('input[name="identifier"]', user.email);
-  await page.click('button[type="submit"]');
-
-  await page.waitForSelector('input[name="password"]');
-  await page.fill('input[name="password"]', user.password);
-  await page.click('button[type="submit"]');
-
-  await page.waitForURL(/\/(dashboard|learn|educator|parent)/);
-}
-
-export async function getSessionToken(role: UserRole): Promise<string> {
-  const client = await clerkClient();
-  const user = TEST_USERS[role];
-
-  if (!user.clerkUserId) {
-    throw new Error(`Clerk user ID for ${role} is not set. Run setupTestUsers first.`);
-  }
-
-  const sessions = await client.sessions.getSessionList({
-    userId: user.clerkUserId,
+  await page.goto('/');
+  await clerk.signIn({
+    page,
+    signInParams: {
+      strategy: 'password',
+      identifier: user.email,
+      password: user.password,
+    },
   });
-
-  const session = sessions.data[0];
-  if (!session) {
-    throw new Error(`No active sessions for ${role}`);
-  }
-
-  return session.id;
 }
 
 export async function logout(page: Page) {
-  await page.click('[data-testid="user-menu"]');
-  await page.click('[data-testid="sign-out"]');
-  await page.waitForURL('/');
+  await clerk.signOut({ page });
 }
-

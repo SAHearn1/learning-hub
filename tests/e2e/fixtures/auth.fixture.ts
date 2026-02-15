@@ -1,13 +1,14 @@
-import { test as base, Page } from '@playwright/test';
+import { test as base } from '@playwright/test';
+import path from 'path';
+import fs from 'fs';
 
 /**
- * Authentication fixture for Playwright tests with Clerk
- * 
- * This implementation uses Clerk session injection for E2E testing.
- * Each fixture sets up authentication for different user roles using
- * the test users created in seed data.
- * 
- * Reference: https://clerk.com/docs/testing/playwright
+ * Authentication fixtures for Playwright tests with Clerk.
+ *
+ * The global setup (global.setup.ts) signs in as each role via
+ * @clerk/testing and saves the browser state to JSON files.
+ * These fixtures load that saved state (cookies + localStorage)
+ * into the test's browser context so pages are authenticated.
  */
 
 type AuthFixtures = {
@@ -17,76 +18,78 @@ type AuthFixtures = {
   authenticatedAdmin: void;
 };
 
-/**
- * Helper function to inject Clerk session for testing
- * This simulates an authenticated user by setting Clerk's session cookie
- */
-async function setupClerkSession(page: Page, clerkUserId: string) {
-  // For E2E testing, we inject the Clerk user ID into the session
-  // In a real Clerk setup, this would use their testing tokens API
-  await page.context().addCookies([
-    {
-      name: '__session',
-      value: clerkUserId,
-      domain: 'localhost',
-      path: '/',
-      httpOnly: true,
-      secure: false,
-      sameSite: 'Lax',
-    },
-  ]);
+const clerkDir = path.join(__dirname, '../../../playwright/.clerk');
 
-  // Also set localStorage for Clerk client-side state
-  await page.addInitScript((userId: string) => {
-    // Mock Clerk session in localStorage
-    const mockClerkSession = {
-      userId: userId,
-      sessionId: `sess_${userId}`,
-      createdAt: Date.now(),
-      updatedAt: Date.now(),
-    };
-    
-    localStorage.setItem('__clerk_db_jwt', JSON.stringify({ sessionId: `sess_${userId}` }));
-    localStorage.setItem('__clerk_session', JSON.stringify(mockClerkSession));
-  }, clerkUserId);
+interface StorageState {
+  cookies: Array<{
+    name: string;
+    value: string;
+    domain: string;
+    path: string;
+    expires: number;
+    httpOnly: boolean;
+    secure: boolean;
+    sameSite: 'Strict' | 'Lax' | 'None';
+  }>;
+  origins: Array<{
+    origin: string;
+    localStorage: Array<{ name: string; value: string }>;
+  }>;
 }
 
-/**
- * Extended test with authentication fixtures
- * 
- * Usage:
- * ```typescript
- * test.use({ authenticatedStudent: undefined });
- * test('student can view progress', async ({ page }) => {
- *   await page.goto('/progress');
- *   // Test authenticated student flows
- * });
- * ```
- */
+function loadStorageState(role: string): StorageState {
+  const statePath = path.join(clerkDir, `${role}.json`);
+  if (!fs.existsSync(statePath)) {
+    throw new Error(
+      `Auth state file not found: ${statePath}. ` +
+      'Run the global setup first: npx playwright test --project=setup'
+    );
+  }
+  return JSON.parse(fs.readFileSync(statePath, 'utf-8'));
+}
+
+async function injectAuthState(page: any, role: string) {
+  const state = loadStorageState(role);
+
+  // Inject cookies from saved state
+  if (state.cookies?.length) {
+    await page.context().addCookies(state.cookies);
+  }
+
+  // Inject localStorage from saved state
+  if (state.origins?.length) {
+    for (const origin of state.origins) {
+      if (origin.localStorage?.length) {
+        await page.addInitScript((items: Array<{ name: string; value: string }>) => {
+          for (const item of items) {
+            localStorage.setItem(item.name, item.value);
+          }
+        }, origin.localStorage);
+      }
+    }
+  }
+}
+
 export const test = base.extend<AuthFixtures>({
-  authenticatedStudent: async ({ page }, use) => {
-    // Set up Clerk session for test student: Alex Martinez
-    await setupClerkSession(page, 'clerk_student_demo_001');
+  authenticatedStudent: [async ({ page }, use) => {
+    await injectAuthState(page, 'student');
     await use();
-  },
+  }, { auto: false }],
 
-  authenticatedEducator: async ({ page }, use) => {
-    // Set up Clerk session for test educator: Ms. Johnson
-    await setupClerkSession(page, 'clerk_educator_demo_001');
+  authenticatedEducator: [async ({ page }, use) => {
+    await injectAuthState(page, 'educator');
     await use();
-  },
+  }, { auto: false }],
 
-  authenticatedParent: async ({ page }, use) => {
-    // Set up Clerk session for test parent: Maria Martinez
-    await setupClerkSession(page, 'clerk_parent_demo_001');
+  authenticatedParent: [async ({ page }, use) => {
+    await injectAuthState(page, 'parent');
     await use();
-  },
+  }, { auto: false }],
 
-  authenticatedAdmin: async ({ page }, use) => {
-    // Set up Clerk session for test admin: Robert Admin
-    await setupClerkSession(page, 'clerk_admin_demo_001');
+  authenticatedAdmin: [async ({ page }, use) => {
+    await injectAuthState(page, 'admin');
     await use();
-  },
+  }, { auto: false }],
 });
 
 export { expect } from '@playwright/test';
