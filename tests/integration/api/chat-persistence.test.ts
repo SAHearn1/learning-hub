@@ -7,6 +7,12 @@ const mockTrackReasoningMove = vi.fn();
 const mockEvaluateThinkingQuality = vi.fn();
 
 const mockDb = {
+  tenant: {
+    findUnique: vi.fn(),
+  },
+  student: {
+    upsert: vi.fn(),
+  },
   session: {
     create: vi.fn(),
     findUnique: vi.fn(),
@@ -40,6 +46,16 @@ vi.mock('@/lib/assessments/reasoning-move-tracker', () => ({
 vi.mock('@/lib/db', () => ({
   db: mockDb,
 }));
+vi.mock('@/lib/compliance', () => ({
+  hasRequiredMinorConsent: vi.fn(() => true),
+}));
+vi.mock('@/lib/logger', () => ({
+  logger: { info: vi.fn(), warn: vi.fn(), error: vi.fn(), debug: vi.fn() },
+}));
+vi.mock('@/lib/api/metrics', () => ({ incrementMetric: vi.fn(), observeLatency: vi.fn() }));
+vi.mock('@/lib/monitoring', () => ({
+  captureError: vi.fn(), captureException: vi.fn(), recordMetric: vi.fn(), trackEvent: vi.fn(),
+}));
 
 describe('Chat session persistence', () => {
   beforeEach(() => {
@@ -52,6 +68,7 @@ describe('Chat session persistence', () => {
     });
 
     mockEnforceUsageLimits.mockResolvedValue(undefined);
+    mockDb.tenant.findUnique.mockResolvedValue({ id: 'tenant_1' });
   });
 
   it('creates a new session tied to the authenticated student', async () => {
