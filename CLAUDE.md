@@ -69,6 +69,8 @@ Status: Complete
   Evidence: `src/app/learn/page.tsx`, `src/app/api/chat/route.ts`
 - [x] Streaming chat interface wired.
   Evidence: `src/hooks/useChat.ts`, `src/app/api/chat/route.ts`
+- [x] Student workspace cards now map to purposeful end-to-end workflows (Learn subject handoff, Community topic launch, Calm Corner check-in persistence, Settings persistence).
+  Evidence: `src/app/learn/page.tsx`, `src/app/community/page.tsx`, `src/app/regulate/page.tsx`, `src/app/api/regulate/check-in/route.ts`, `src/app/settings/page.tsx`, `src/app/api/student/settings/route.ts`
 - [x] Add end-to-end regression test covering `/explore` -> `/learn?topic=...` -> first chat turn.
   Evidence: `tests/e2e/student/student-explore-handoff.spec.ts`
   Note: local Playwright execution timed out in this environment; execute in CI/full local browser setup.
