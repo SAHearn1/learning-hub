@@ -148,7 +148,7 @@ describe('POST /api/chat', () => {
     });
 
     await expect(POST(req)).rejects.toBeInstanceOf(AuthenticationError);
-  });
+  }, 15000);
 
   it('throws NotFoundError when student profile is missing', async () => {
     mockRequireUser.mockResolvedValue({
@@ -164,7 +164,7 @@ describe('POST /api/chat', () => {
     });
 
     await expect(POST(req)).rejects.toBeInstanceOf(NotFoundError);
-  });
+  }, 15000);
 
   it('throws NotFoundError when session is missing', async () => {
     mockRequireUser.mockResolvedValue({

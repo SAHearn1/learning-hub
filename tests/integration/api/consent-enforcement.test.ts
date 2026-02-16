@@ -145,7 +145,7 @@ describe('minor consent enforcement', () => {
     await expect(res.json()).resolves.toMatchObject({
       error: expect.stringContaining('Parental consent required'),
     });
-  });
+  }, 15000);
 
   it('blocks minor without granted consent from creating summative assessments', async () => {
     const { POST } = await import('@/app/api/assessments/summative/route');

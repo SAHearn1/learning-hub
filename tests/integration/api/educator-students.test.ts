@@ -135,13 +135,14 @@ describe('GET /api/educator/students', () => {
 
   it('returns 403 when classId belongs to a different tenant', async () => {
     const { db } = await import('@/lib/db');
+    vi.mocked(db.class.findUnique).mockReset();
     vi.mocked(db.user.findUnique).mockResolvedValueOnce({
       id: 'educator_123',
       clerkUserId: 'clerk_educator_123',
       tenantId: 'tenant_123',
       role: 'EDUCATOR',
     } as any);
-    vi.mocked(db.class.findUnique).mockResolvedValueOnce({ tenantId: 'tenant_other' } as any);
+    vi.mocked(db.class.findUnique).mockResolvedValue({ tenantId: 'tenant_other' } as any);
 
     const { GET } = await import('@/app/api/educator/students/route');
     const req = new NextRequest('http://localhost:3000/api/educator/students?classId=class_other');

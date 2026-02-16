@@ -58,6 +58,16 @@ describe('POST /api/assessments/reasoning-moves', () => {
   });
 
   it('returns 400 when missing required fields', async () => {
+    const { db } = await import('@/lib/db');
+    vi.mocked(db.user.findUnique).mockResolvedValueOnce({
+      id: 'user_1',
+      clerkUserId: 'clerk_test_user',
+      tenantId: 'tenant_1',
+      role: 'STUDENT',
+      isMinor: false,
+      consentStatus: null,
+    } as any);
+
     const { POST } = await import('@/app/api/assessments/reasoning-moves/route');
     const request = new NextRequest('http://localhost/api/assessments/reasoning-moves', {
       method: 'POST',
@@ -72,6 +82,16 @@ describe('POST /api/assessments/reasoning-moves', () => {
   });
 
   it('returns 400 for invalid reasoning move', async () => {
+    const { db } = await import('@/lib/db');
+    vi.mocked(db.user.findUnique).mockResolvedValueOnce({
+      id: 'user_1',
+      clerkUserId: 'clerk_test_user',
+      tenantId: 'tenant_1',
+      role: 'STUDENT',
+      isMinor: false,
+      consentStatus: null,
+    } as any);
+
     const { POST } = await import('@/app/api/assessments/reasoning-moves/route');
     const request = new NextRequest('http://localhost/api/assessments/reasoning-moves', {
       method: 'POST',
@@ -87,7 +107,20 @@ describe('POST /api/assessments/reasoning-moves', () => {
   });
 
   it('tracks reasoning move successfully', async () => {
+    const { db } = await import('@/lib/db');
     const { trackReasoningMove } = await import('@/lib/assessments/reasoning-move-tracker');
+    vi.mocked(db.user.findUnique).mockResolvedValueOnce({
+      id: 'user_1',
+      clerkUserId: 'clerk_test_user',
+      tenantId: 'tenant_1',
+      role: 'STUDENT',
+      isMinor: false,
+      consentStatus: null,
+    } as any);
+    vi.mocked(db.student.findUnique).mockResolvedValueOnce({
+      id: 'student-1',
+      user: { id: 'user_1', tenantId: 'tenant_1' },
+    } as any);
 
     const { POST } = await import('@/app/api/assessments/reasoning-moves/route');
     const request = new NextRequest('http://localhost/api/assessments/reasoning-moves', {
@@ -132,7 +165,20 @@ describe('GET /api/assessments/reasoning-moves', () => {
   });
 
   it('returns reasoning profile for student', async () => {
+    const { db } = await import('@/lib/db');
     const { getStudentReasoningProfile } = await import('@/lib/assessments/reasoning-move-tracker');
+    vi.mocked(db.user.findUnique).mockResolvedValueOnce({
+      id: 'user_1',
+      clerkUserId: 'clerk_test_user',
+      tenantId: 'tenant_1',
+      role: 'STUDENT',
+      isMinor: false,
+      consentStatus: null,
+    } as any);
+    vi.mocked(db.student.findUnique).mockResolvedValueOnce({
+      id: 'student-1',
+      user: { id: 'user_1', tenantId: 'tenant_1' },
+    } as any);
     const mockProfile = {
       studentId: 'student-1',
       totalMoves: 15,

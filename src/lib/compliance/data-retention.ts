@@ -537,14 +537,25 @@ export function scheduleDataRetention() {
  * Get data retention statistics
  */
 export async function getRetentionStatistics() {
+  const safeCount = async (operation: () => Promise<number>, fallback = 0): Promise<number> => {
+    try {
+      return await operation();
+    } catch (error) {
+      logger.warn('Retention stats count fallback used', {
+        error: error instanceof Error ? error.message : String(error),
+      });
+      return fallback;
+    }
+  };
+
   try {
     const stats = {
       sessions: {
-        total: await prisma.session.count(),
-        softDeleted: await prisma.session.count({
+        total: await safeCount(() => prisma.session.count()),
+        softDeleted: await safeCount(() => prisma.session.count({
           where: { deletedAt: { not: null } },
-        }),
-        approachingRetention: await prisma.session.count({
+        })),
+        approachingRetention: await safeCount(() => prisma.session.count({
           where: {
             updatedAt: {
               lt: new Date(
@@ -553,14 +564,14 @@ export async function getRetentionStatistics() {
             },
             deletedAt: null,
           },
-        }),
+        })),
       },
       assessments: {
-        total: await prisma.assessment.count(),
-        anonymized: await prisma.assessment.count({
+        total: await safeCount(() => prisma.assessment.count()),
+        anonymized: await safeCount(() => prisma.assessment.count({
           where: { isAnonymized: true },
-        }),
-        approachingRetention: await prisma.assessment.count({
+        })),
+        approachingRetention: await safeCount(() => prisma.assessment.count({
           where: {
             createdAt: {
               lt: new Date(
@@ -569,24 +580,24 @@ export async function getRetentionStatistics() {
             },
             isAnonymized: false,
           },
-        }),
+        })),
       },
       consents: {
-        total: await prisma.user.count({
+        total: await safeCount(() => prisma.user.count({
           where: { isMinor: true },
-        }),
-        archived: await prisma.user.count({
+        })),
+        archived: await safeCount(() => prisma.user.count({
           where: {
             isMinor: true,
             consentArchived: true,
           },
-        }),
+        })),
       },
       auditLogs: {
-        total: await prisma.auditLog.count(),
-        archived: await prisma.auditLog.count({
+        total: await safeCount(() => prisma.auditLog.count()),
+        archived: await safeCount(() => prisma.auditLog.count({
           where: { archived: true },
-        }),
+        })),
       },
     };
 

@@ -28,6 +28,7 @@ Latest validation run:
 - `npm run build` passed
 - `npx vitest run src/app/api/webhooks/clerk/__tests__/route.test.ts src/app/api/stripe/webhook/__tests__/route.test.ts src/app/api/admin/super/tenants/[tenantId]/invoice/__tests__/route.test.ts src/app/api/admin/super/tenants/[tenantId]/suspension/__tests__/route.test.ts` passed
 - `npx vitest run tests/integration/api/consent-enforcement.test.ts` passed
+- `npm run test:integration` passed (19 files / 152 tests)
 
 ## Phase 1 - Core Reliability
 
@@ -110,6 +111,6 @@ Status: In progress
 
 ## Immediate Next Actions
 
-1. Execute CI-equivalent integration suite (`npm run test:integration`) and resolve remaining stale tests.
-2. Run Playwright E2E suite in CI/full browser-auth setup (local run timed out in this environment).
-3. Add reliability tests for stream interruption/retry behavior on `/api/chat`.
+1. Run Playwright E2E suite in CI/full browser-auth setup (local run timed out in this environment).
+2. Add reliability tests for stream interruption/retry behavior on `/api/chat`.
+3. Execute and publish baseline load-test results with SLO definitions.
