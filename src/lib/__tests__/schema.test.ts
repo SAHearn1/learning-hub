@@ -38,11 +38,17 @@ describe('Prisma schema — models', () => {
     'IngestLog',
     'PlatformConfig',
     'NVCQualityEvaluation',
+    'Term',
+    'Course',
+    'Assignment',
+    'Submission',
+    'Grade',
+    'FiveRTemplate',
   ];
 
-  it('generates all 29 expected models', () => {
+  it('generates all 35 expected models', () => {
     const modelNames = Object.values(Prisma.ModelName);
-    expect(modelNames).toHaveLength(29);
+    expect(modelNames).toHaveLength(35);
   });
 
   it.each(expectedModels)('includes model %s', (model) => {

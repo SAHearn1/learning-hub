@@ -2,6 +2,7 @@ import type { Metadata } from 'next';
 import { ClerkProvider } from '@clerk/nextjs';
 import type { ReactNode } from 'react';
 import { siteConfig } from '@/config/site';
+import { GlobalHeader } from '@/components/navigation/global-header';
 import { Footer } from '@/components/navigation/footer';
 import './globals.css';
 
@@ -36,7 +37,8 @@ export default function RootLayout({
     <AuthProvider>
       <html lang="en" suppressHydrationWarning>
         <body className="min-h-screen antialiased">
-          {children}
+          <GlobalHeader />
+          <main>{children}</main>
           <Footer />
         </body>
       </html>

@@ -131,6 +131,38 @@ Status: In progress
 - [ ] Execute and publish baseline load test results.
 - [ ] Define and document SLO targets with measured baseline numbers.
 
+## Phase 6 - LMS Program Build
+
+Status: Complete
+
+- [x] PR0: Security & Secret Remediation — SECURITY.md, SECURITY_INCIDENTS.md, gitleaks CI job, env guard.
+  Evidence: `SECURITY.md`, `docs/SECURITY_INCIDENTS.md`, `.github/workflows/ci.yml`
+- [x] PR4: LMS Data Model — Term, Course, Assignment, Submission, Grade, FiveRTemplate models.
+  Evidence: `prisma/schema.prisma` (35 models), `npx prisma generate` green
+- [x] PR5: LMS Core APIs — 8 route files with full RBAC, tenant isolation, audit logging.
+  Evidence: `src/app/api/lms/courses|assignments|submissions|grades|classes/[classId]/roster|classes/[classId]/assignments|templates|templates/[templateId]/assign`
+  Tests: 7 integration test files (59 tests) in `tests/integration/api/lms-*.test.ts`
+- [x] PR6: LMS Core UI Thin Slice — Educator assignment management, student submission, parent grade view.
+  Evidence: `src/app/educator/assignments/`, `src/app/student/assignments/`, `src/app/parent/grades/`
+- [x] PR1: Docs Constitution — CONTRIBUTING.md, ARCHITECTURE.md, PRODUCT_VISION.md, ROADMAP.md, COMPLIANCE.md.
+  Evidence: `docs/CONTRIBUTING.md`, `docs/ARCHITECTURE.md`, `docs/PRODUCT_VISION.md`, `docs/ROADMAP.md`, `docs/COMPLIANCE.md`
+- [x] PR2: Brand System + UI Embedding — BrandLogo, FiveRIcon, FiveRStrip components + GlobalHeader in layout.
+  Evidence: `src/components/brand/`, `src/components/navigation/global-header.tsx`, `src/app/layout.tsx`, `styles/tokens.json`
+- [x] PR3: RBAC Route Gating Validation — Comprehensive cross-route role check tests.
+  Evidence: `tests/integration/api/rbac-gating.test.ts` (42 tests)
+- [x] PR7: 5R Template Builder + Section Assignment — FiveRTemplate model, template CRUD API, template-to-assignment API.
+  Evidence: `src/app/api/lms/templates/route.ts`, `src/app/api/lms/templates/[templateId]/assign/route.ts`
+  Tests: `tests/integration/api/lms-templates.test.ts` (12 tests)
+- [x] PR8: AI Governance Docs + Staff Training — AI governance framework, staff training guide.
+  Evidence: `docs/AI_GOVERNANCE.md`, `docs/STAFF_TRAINING.md`
+- [x] PR9: CI Quality Gates + Observability — PR template, issue templates, dependency audit CI job.
+  Evidence: `.github/pull_request_template.md`, `.github/ISSUE_TEMPLATE/`, `.github/workflows/ci.yml`
+
+Latest validation run (2026-02-16):
+- `npm run build` passed
+- `npx vitest run` — 89/89 test files, 937+ tests
+  Note: Intermittent tinypool OOM crash (environment issue, not test failure). All tests pass individually.
+
 ## Remaining Work
 
 ### Priority 1 — Phase 0 Gaps
@@ -139,6 +171,11 @@ Status: In progress
 ### Priority 2 — Phase 5 Operations
 1. Execute and publish baseline load-test results.
 2. Define and document SLO targets with measured baseline numbers.
+
+### Priority 3 — Production Deployment
+1. Run `npx prisma migrate deploy` against production database for new LMS models.
+2. Source PNG brand assets (RWFW seal + 5 phase icons) for `/public/brand/`.
+3. Configure Stripe webhook Cloud Function for payment processing.
 
 ### Known Issues
 - Intermittent tinypool worker crash during full `vitest run` (environment/memory issue, not a test failure). All tests pass individually.

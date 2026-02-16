@@ -64,11 +64,43 @@ model School {
   @@index([tenantId])
 }
 
+model Term {
+  id           String   @id @default(cuid())
+  tenantId     String
+  name         String
+  academicYear String
+  startDate    DateTime
+  endDate      DateTime
+  classes      Class[]
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  @@index([tenantId])
+}
+
+model Course {
+  id          String   @id @default(cuid())
+  tenantId    String
+  name        String
+  description String?  @db.Text
+  subject     Subject
+  gradeLevel  Int[]
+  classes     Class[]
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([tenantId])
+}
+
 model Class {
   id           String            @id @default(cuid())
   tenantId     String
   schoolId     String
   school       School            @relation(fields: [schoolId], references: [id])
+  courseId      String?
+  course       Course?           @relation(fields: [courseId], references: [id])
+  termId       String?
+  term         Term?             @relation(fields: [termId], references: [id])
   name         String
   subject      Subject
   gradeLevel   Int
@@ -76,11 +108,14 @@ model Class {
   educatorId   String
   educator     User              @relation("ClassEducator", fields: [educatorId], references: [id])
   enrollments  ClassEnrollment[]
+  assignments  Assignment[]
   createdAt    DateTime          @default(now())
   updatedAt    DateTime          @updatedAt
 
   @@index([tenantId])
   @@index([schoolId])
+  @@index([courseId])
+  @@index([termId])
 }
 
 model ClassEnrollment {
@@ -101,6 +136,92 @@ enum EnrollmentStatus {
   ACTIVE
   WITHDRAWN
   COMPLETED
+}
+
+// ═══════════════════════════════════════════════════════════════
+// LMS CORE MODELS (Course Delivery)
+// ═══════════════════════════════════════════════════════════════
+
+model Assignment {
+  id          String           @id @default(cuid())
+  tenantId    String
+  classId     String
+  class       Class            @relation(fields: [classId], references: [id])
+  createdById String
+  createdBy   User             @relation("AssignmentCreator", fields: [createdById], references: [id])
+  title       String
+  description String?          @db.Text
+  type        AssignmentType   @default(HOMEWORK)
+  dueDate     DateTime?
+  points      Int              @default(100)
+  rubric      Json?
+  published   Boolean          @default(false)
+  templateId  String?
+  template    FiveRTemplate?   @relation(fields: [templateId], references: [id])
+  submissions Submission[]
+  createdAt   DateTime         @default(now())
+  updatedAt   DateTime         @updatedAt
+
+  @@index([tenantId])
+  @@index([classId])
+  @@index([classId, dueDate])
+  @@index([templateId])
+}
+
+enum AssignmentType {
+  HOMEWORK
+  QUIZ
+  TEST
+  PROJECT
+  DISCUSSION
+  FIVE_R_SESSION
+}
+
+model Submission {
+  id           String           @id @default(cuid())
+  tenantId     String
+  assignmentId String
+  assignment   Assignment       @relation(fields: [assignmentId], references: [id])
+  studentId    String
+  student      Student          @relation(fields: [studentId], references: [id])
+  content      String?          @db.Text
+  attachments  Json?
+  submittedAt  DateTime         @default(now())
+  status       SubmissionStatus @default(SUBMITTED)
+  grade        Grade?
+  updatedAt    DateTime         @updatedAt
+
+  @@unique([assignmentId, studentId])
+  @@index([tenantId])
+  @@index([assignmentId])
+  @@index([studentId])
+}
+
+enum SubmissionStatus {
+  DRAFT
+  SUBMITTED
+  RETURNED
+  GRADED
+}
+
+model Grade {
+  id           String     @id @default(cuid())
+  tenantId     String
+  submissionId String     @unique
+  submission   Submission @relation(fields: [submissionId], references: [id])
+  gradedById   String
+  gradedBy     User       @relation("GradeGrader", fields: [gradedById], references: [id])
+  score        Float
+  maxScore     Float      @default(100)
+  percentage   Float
+  letterGrade  String?
+  feedback     String?    @db.Text
+  rubricScores Json?
+  gradedAt     DateTime   @default(now())
+  updatedAt    DateTime   @updatedAt
+
+  @@index([tenantId])
+  @@index([submissionId])
 }
 
 // ═══════════════════════════════════════════════════════════════
@@ -125,9 +246,12 @@ model User {
   student         Student?
   educator        Educator?
   parent          Parent?
-  teachingClasses Class[]        @relation("ClassEducator")
-  createdAt       DateTime       @default(now())
-  updatedAt       DateTime       @updatedAt
+  teachingClasses      Class[]        @relation("ClassEducator")
+  createdAssignments   Assignment[]   @relation("AssignmentCreator")
+  createdTemplates     FiveRTemplate[] @relation("TemplateCreator")
+  gradedSubmissions    Grade[]        @relation("GradeGrader")
+  createdAt            DateTime       @default(now())
+  updatedAt            DateTime       @updatedAt
 
   @@index([tenantId])
   @@index([clerkUserId])
@@ -164,6 +288,7 @@ model Student {
   sessions            Session[]
   progress            Progress[]
   enrollments         ClassEnrollment[]
+  submissions         Submission[]
   thinkingProgress    ReasoningMoveProgress[]
   abilityEstimates    StudentAbility[]
   reviewSchedules     ReviewSchedule[]
@@ -429,6 +554,29 @@ enum FiveRPhase {
   REFLECT
   RESTORE
   RECONNECT
+}
+
+// ═══════════════════════════════════════════════════════════════
+// 5R TEMPLATE MODELS
+// ═══════════════════════════════════════════════════════════════
+
+model FiveRTemplate {
+  id                   String      @id @default(cuid())
+  tenantId             String
+  createdById          String
+  createdBy            User        @relation("TemplateCreator", fields: [createdById], references: [id])
+  name                 String
+  description          String?     @db.Text
+  subject              Subject
+  gradeLevel           Int[]
+  phases               Json
+  totalDurationMinutes Int         @default(50)
+  assignments          Assignment[]
+  createdAt            DateTime    @default(now())
+  updatedAt            DateTime    @updatedAt
+
+  @@index([tenantId])
+  @@index([tenantId, subject])
 }
 
 // ═══════════════════════════════════════════════════════════════
