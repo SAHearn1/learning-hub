@@ -1,4 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { NextRequest } from 'next/server';
 
 const mockRequireRole = vi.fn();
 const mockIssueDistrictInvoice = vi.fn();
@@ -16,7 +17,7 @@ describe('POST /api/admin/super/tenants/[tenantId]/invoice', () => {
     mockRequireRole.mockResolvedValue({ id: 'admin_1', email: 'admin@rootwork.ai' });
     mockIssueDistrictInvoice.mockResolvedValue({ id: 'in_123', hosted_invoice_url: 'https://stripe.test/in_123', status: 'open' });
 
-    const request = new Request('http://localhost', {
+    const request = new NextRequest('http://localhost/api/admin/super/tenants/tenant_1/invoice', {
       method: 'POST',
       headers: { 'content-type': 'application/json' },
       body: JSON.stringify({
@@ -25,7 +26,7 @@ describe('POST /api/admin/super/tenants/[tenantId]/invoice', () => {
       }),
     });
 
-    const response = await POST(request, { params: { tenantId: 'tenant_1' } });
+    const response = await POST(request, { params: Promise.resolve({ tenantId: 'tenant_1' }) });
 
     expect(response.status).toBe(200);
     await expect(response.json()).resolves.toEqual({

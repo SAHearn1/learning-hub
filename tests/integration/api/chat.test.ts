@@ -1,21 +1,37 @@
-import { describe, expect, it, vi, beforeEach } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { NextRequest } from 'next/server';
+import { AuthenticationError, BadRequestError, ForbiddenError, NotFoundError } from '@/lib/api-errors';
 
-vi.mock('@clerk/nextjs/server', () => ({
-  auth: vi.fn(() => ({ userId: 'clerk_test_user_123' })),
+const mockRequireUser = vi.fn();
+const mockGetCachedSession = vi.fn();
+const mockInvalidateSessionCache = vi.fn();
+const mockEnforceUsageLimits = vi.fn();
+const mockEvaluateOrganizationTokenUsage = vi.fn();
+const mockDbMessageCreate = vi.fn();
+
+vi.mock('@/lib/auth', () => ({
+  requireUser: mockRequireUser,
+}));
+
+vi.mock('@/lib/redis/cached-queries', () => ({
+  getCachedSession: mockGetCachedSession,
+  getCachedUserProfile: vi.fn(),
+  invalidateSessionCache: mockInvalidateSessionCache,
+}));
+
+vi.mock('@/lib/usage-limits', () => ({
+  enforceUsageLimits: mockEnforceUsageLimits,
+  evaluateOrganizationTokenUsage: mockEvaluateOrganizationTokenUsage,
+  UsageLimitError: class extends Error {},
 }));
 
 vi.mock('@/lib/db', () => ({
   db: {
-    user: {
-      findUnique: vi.fn(),
+    message: {
+      create: mockDbMessageCreate,
     },
     session: {
-      findUnique: vi.fn(),
       update: vi.fn(),
-    },
-    message: {
-      create: vi.fn(),
     },
     aIUsageLedger: {
       create: vi.fn(),
@@ -26,168 +42,226 @@ vi.mock('@/lib/db', () => ({
     reasoningMoveProgress: {
       upsert: vi.fn(),
     },
+    topic: {
+      findUnique: vi.fn().mockResolvedValue(null),
+    },
   },
 }));
 
-vi.mock('@/lib/usage-limits', () => ({
-  enforceUsageLimits: vi.fn(() => Promise.resolve()),
-  UsageLimitError: class extends Error {},
+vi.mock('@/lib/vector-search', () => ({
+  searchCurriculum: vi.fn().mockResolvedValue([]),
+  formatCurriculumContext: vi.fn().mockReturnValue(''),
+}));
+
+vi.mock('@/lib/ai/client', () => ({
+  anthropic: {
+    messages: {
+      stream: vi.fn(),
+    },
+  },
+  AI_MODELS: {
+    primary: 'test-model',
+  },
+}));
+
+vi.mock('@/lib/ai/prompts/master-system-prompt', () => ({
+  buildMasterSystemPrompt: vi.fn().mockReturnValue('system prompt'),
 }));
 
 vi.mock('@/lib/regulation/detector', () => ({
-  detectDysregulation: vi.fn(() => ({
-    signals: [],
-    severity: 'none',
-    recommendation: 'continue',
-  })),
-  updateRegulationLevel: vi.fn((current: number) => current),
+  detectDysregulation: vi.fn().mockReturnValue({ signals: [], severity: 'none' }),
+  updateRegulationLevel: vi.fn((level: number) => level),
+  analyzeSentiment: vi.fn().mockReturnValue({ label: 'neutral', score: 0 }),
+}));
+
+vi.mock('@/lib/regulation/sentiment-classifier', () => ({
+  classifySentiment: vi.fn().mockReturnValue({
+    stressLevel: 'low',
+    shouldIntervene: false,
+    detectedPatterns: [],
+    exercise: null,
+  }),
+  formatInterventionMessage: vi.fn(),
+}));
+
+vi.mock('@/lib/five-rs/state-machine', () => ({
+  computePhaseTransition: vi.fn((phase: string) => phase),
+  buildFiveRStateSnapshot: vi.fn().mockReturnValue({
+    currentPhase: 'ROOT',
+    phaseHistory: [],
+    sentiment: { label: 'neutral', score: 0 },
+    regulationPassed: true,
+    updatedAt: new Date().toISOString(),
+  }),
+}));
+
+vi.mock('@/lib/privacy', () => ({
+  anonymizeForLlmWithMap: vi.fn((text: string) => ({ sanitizedText: text, tokenMap: {} })),
+  reattachPii: vi.fn((text: string) => text),
 }));
 
 vi.mock('@/lib/trace/tracker', () => ({
-  analyzeThinkingQuality: vi.fn(() => Promise.resolve(null)),
+  analyzeThinkingQuality: vi.fn().mockResolvedValue(null),
 }));
 
-vi.mock('@/lib/five-rs/phase-transition', () => ({
-  getRecommendedPhaseTransition: vi.fn(() => null),
+vi.mock('@/lib/nvc/evaluation-service', () => ({
+  createNVCEvaluation: vi.fn().mockResolvedValue(undefined),
+}));
+
+vi.mock('@/lib/monitoring', () => ({
+  captureException: vi.fn(),
+  recordMetric: vi.fn(),
+  trackEvent: vi.fn(),
+}));
+
+vi.mock('@/lib/audit', () => ({
+  appendImmutableAuditLog: vi.fn().mockResolvedValue(undefined),
 }));
 
 describe('POST /api/chat', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    mockEnforceUsageLimits.mockResolvedValue(undefined);
+    mockEvaluateOrganizationTokenUsage.mockResolvedValue({
+      organizationId: 'tenant_123',
+      projectedDailyTokens: 1000,
+      baselineDailyTokens: 900,
+      spikeRatio: 1.11,
+      dailyHardLimitTokens: 250000,
+      spikeDetected: false,
+    });
+    mockDbMessageCreate.mockResolvedValue({ id: 'msg_1' });
   });
 
-  it('returns 401 when not authenticated', async () => {
-    const { auth } = await import('@clerk/nextjs/server');
-    vi.mocked(auth).mockReturnValueOnce({ userId: null } as any);
-
+  it('throws AuthenticationError when not authenticated', async () => {
+    mockRequireUser.mockRejectedValue(new AuthenticationError());
     const { POST } = await import('@/app/api/chat/route');
+
     const req = new NextRequest('http://localhost:3000/api/chat', {
       method: 'POST',
-      body: JSON.stringify({
-        sessionId: 'session_123',
-        message: 'Hello',
-      }),
+      body: JSON.stringify({ sessionId: 'session_123', message: 'Hello' }),
     });
 
-    const response = await POST(req);
-    expect(response.status).toBe(401);
+    await expect(POST(req)).rejects.toBeInstanceOf(AuthenticationError);
   });
 
-  it('returns 404 when student profile not found', async () => {
-    const { db } = await import('@/lib/db');
-    vi.mocked(db.user.findUnique).mockResolvedValueOnce(null);
-
-    const { POST } = await import('@/app/api/chat/route');
-    const req = new NextRequest('http://localhost:3000/api/chat', {
-      method: 'POST',
-      body: JSON.stringify({
-        sessionId: 'session_123',
-        message: 'Hello',
-      }),
-    });
-
-    const response = await POST(req);
-    expect(response.status).toBe(404);
-  });
-
-  it('returns 404 when session not found', async () => {
-    const { db } = await import('@/lib/db');
-    vi.mocked(db.user.findUnique).mockResolvedValueOnce({
+  it('throws NotFoundError when student profile is missing', async () => {
+    mockRequireUser.mockResolvedValue({
       id: 'user_123',
-      clerkUserId: 'clerk_test_user_123',
       tenantId: 'tenant_123',
-      student: {
-        id: 'student_123',
-        gradeLevel: 5,
-        learningPreferences: {},
-        iepAccommodations: [],
-      },
-    } as any);
-    vi.mocked(db.session.findUnique).mockResolvedValueOnce(null);
-
+      student: null,
+    });
     const { POST } = await import('@/app/api/chat/route');
+
     const req = new NextRequest('http://localhost:3000/api/chat', {
       method: 'POST',
-      body: JSON.stringify({
-        sessionId: 'session_123',
-        message: 'Hello',
-      }),
+      body: JSON.stringify({ sessionId: 'session_123', message: 'Hello' }),
     });
 
-    const response = await POST(req);
-    expect(response.status).toBe(404);
+    await expect(POST(req)).rejects.toBeInstanceOf(NotFoundError);
   });
 
-  it('returns 403 when session belongs to different student', async () => {
-    const { db } = await import('@/lib/db');
-    vi.mocked(db.user.findUnique).mockResolvedValueOnce({
+  it('throws NotFoundError when session is missing', async () => {
+    mockRequireUser.mockResolvedValue({
       id: 'user_123',
-      clerkUserId: 'clerk_test_user_123',
       tenantId: 'tenant_123',
-      student: {
-        id: 'student_123',
-        gradeLevel: 5,
-        learningPreferences: {},
-        iepAccommodations: [],
-      },
-    } as any);
-    vi.mocked(db.session.findUnique).mockResolvedValueOnce({
+      student: { id: 'student_123', gradeLevel: 5, learningPreferences: {}, iepAccommodations: [] },
+    });
+    mockGetCachedSession.mockResolvedValue(null);
+    const { POST } = await import('@/app/api/chat/route');
+
+    const req = new NextRequest('http://localhost:3000/api/chat', {
+      method: 'POST',
+      body: JSON.stringify({ sessionId: 'session_123', message: 'Hello' }),
+    });
+
+    await expect(POST(req)).rejects.toBeInstanceOf(NotFoundError);
+  });
+
+  it('throws ForbiddenError when session belongs to another student', async () => {
+    mockRequireUser.mockResolvedValue({
+      id: 'user_123',
+      tenantId: 'tenant_123',
+      student: { id: 'student_123', gradeLevel: 5, learningPreferences: {}, iepAccommodations: [] },
+    });
+    mockGetCachedSession.mockResolvedValue({
       id: 'session_123',
       studentId: 'different_student',
-      messages: [],
       endedAt: null,
-    } as any);
-
+      messages: [],
+      currentPhase: 'ROOT',
+      subject: 'MATH',
+      engagementMode: 'FORWARD',
+      metadata: {},
+      regulationState: { level: 70, signals: [], interventionCount: 0 },
+    });
     const { POST } = await import('@/app/api/chat/route');
+
     const req = new NextRequest('http://localhost:3000/api/chat', {
       method: 'POST',
-      body: JSON.stringify({
-        sessionId: 'session_123',
-        message: 'Hello',
-      }),
+      body: JSON.stringify({ sessionId: 'session_123', message: 'Hello' }),
     });
 
-    const response = await POST(req);
-    expect(response.status).toBe(403);
+    await expect(POST(req)).rejects.toBeInstanceOf(ForbiddenError);
   });
 
-  it('streams chat response for valid request', async () => {
-    const { db } = await import('@/lib/db');
-    vi.mocked(db.user.findUnique).mockResolvedValueOnce({
+  it('throws BadRequestError when session has already ended', async () => {
+    mockRequireUser.mockResolvedValue({
       id: 'user_123',
-      clerkUserId: 'clerk_test_user_123',
       tenantId: 'tenant_123',
-      student: {
-        id: 'student_123',
-        gradeLevel: 5,
-        learningPreferences: {},
-        iepAccommodations: [],
-      },
-    } as any);
-    vi.mocked(db.session.findUnique).mockResolvedValueOnce({
+      student: { id: 'student_123', gradeLevel: 5, learningPreferences: {}, iepAccommodations: [] },
+    });
+    mockGetCachedSession.mockResolvedValue({
       id: 'session_123',
       studentId: 'student_123',
+      endedAt: new Date().toISOString(),
       messages: [],
-      endedAt: null,
-      currentPhase: 'RELATE',
+      currentPhase: 'ROOT',
       subject: 'MATH',
-      engagementMode: 'GUIDED_INQUIRY',
-      regulationState: { level: 70 },
-    } as any);
-    vi.mocked(db.message.create).mockResolvedValue({} as any);
-    vi.mocked(db.aIUsageLedger.create).mockResolvedValue({} as any);
-
+      engagementMode: 'FORWARD',
+      metadata: {},
+      regulationState: { level: 70, signals: [], interventionCount: 0 },
+    });
     const { POST } = await import('@/app/api/chat/route');
+
     const req = new NextRequest('http://localhost:3000/api/chat', {
       method: 'POST',
-      body: JSON.stringify({
-        sessionId: 'session_123',
-        message: 'Help me with math',
-      }),
+      body: JSON.stringify({ sessionId: 'session_123', message: 'Hello' }),
+    });
+
+    await expect(POST(req)).rejects.toBeInstanceOf(BadRequestError);
+  });
+
+  it('returns SSE response and persists refusal for personal trade advice prompts', async () => {
+    mockRequireUser.mockResolvedValue({
+      id: 'user_123',
+      tenantId: 'tenant_123',
+      student: { id: 'student_123', gradeLevel: 5, learningPreferences: {}, iepAccommodations: [] },
+    });
+    mockGetCachedSession.mockResolvedValue({
+      id: 'session_123',
+      studentId: 'student_123',
+      endedAt: null,
+      messages: [],
+      currentPhase: 'ROOT',
+      subject: 'FINANCIAL_LITERACY',
+      engagementMode: 'FORWARD',
+      metadata: {},
+      regulationState: { level: 70, signals: [], interventionCount: 0 },
+    });
+
+    const { POST } = await import('@/app/api/chat/route');
+
+    const req = new NextRequest('http://localhost:3000/api/chat', {
+      method: 'POST',
+      body: JSON.stringify({ sessionId: 'session_123', message: 'Should I buy TSLA today?' }),
     });
 
     const response = await POST(req);
+
     expect(response.status).toBe(200);
-    expect(response.headers.get('content-type')).toBe('text/event-stream');
+    expect(response.headers.get('content-type')).toContain('text/event-stream');
+    expect(mockDbMessageCreate).toHaveBeenCalled();
+    expect(mockInvalidateSessionCache).toHaveBeenCalledWith('session_123');
   });
 });
