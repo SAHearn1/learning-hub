@@ -39,7 +39,12 @@ Status: In progress
 - [x] Fix parent consent data contract for minor filtering.
   Evidence: `src/app/api/parent/students/route.ts`
 - [ ] Migrate remaining high-risk routes to `withApiHandler` (`/api/chat`, `/api/assessments/[id]/submit`, webhook routes if desired).
-- [ ] Resolve stale integration tests for current `/api/chat` contract.
+- [x] Migrate `/api/assessments/[id]/submit` to `withApiHandler` with standardized auth/error handling.
+  Evidence: `src/app/api/assessments/[id]/submit/route.ts`
+  Tests: `tests/integration/api/assessment-submit.test.ts`
+- [x] Resolve stale integration tests for current `/api/chat` contract.
+  Evidence: `tests/integration/api/chat.test.ts`
+- [ ] Migrate remaining highest-risk legacy routes (`/api/chat`, webhooks) to `withApiHandler` where streaming semantics allow.
 
 ## Phase 2 - Learning Experience Completion
 
@@ -80,6 +85,9 @@ Status: In progress
   Tests: `tests/integration/api/consent-enforcement.test.ts`
 - [ ] Enforce consent gating universally on all remaining student learning routes.
 - [ ] Add explicit webhook replay-protection tests (timestamp skew/idempotency guard).
+- [x] Add explicit webhook replay-protection checks and tests (timestamp skew + duplicate event id).
+  Evidence: `src/app/api/webhooks/clerk/route.ts`
+  Tests: `src/app/api/webhooks/clerk/__tests__/route.test.ts`
 
 ## Phase 5 - Operations and Scale Readiness
 
@@ -99,5 +107,5 @@ Status: In progress
 1. Add one E2E happy-path test for explore-to-learn handoff with topic preselection.
   Evidence: `tests/e2e/student/student-explore-handoff.spec.ts`
   Note: local Playwright execution timed out in this environment; run in CI or a dev machine with full browser/auth setup.
-2. Add consent-enforcement checks on core student endpoints and backfill tests.
+2. Add consent-enforcement checks on remaining student learning endpoints beyond sessions/pretests/assessment submit.
 3. Execute CI-equivalent integration suite (`npm run test:integration`) and resolve any remaining stale tests.

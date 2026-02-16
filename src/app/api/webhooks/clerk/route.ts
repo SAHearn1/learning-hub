@@ -2,6 +2,10 @@ import { NextRequest, NextResponse } from 'next/server';
 import { Webhook } from 'svix';
 import { db } from '@/lib/db';
 
+const WEBHOOK_TIMESTAMP_TOLERANCE_MS = 5 * 60 * 1000;
+const WEBHOOK_REPLAY_TTL_MS = 10 * 60 * 1000;
+const processedWebhookIds = new Map<string, number>();
+
 type ProvisionableRole = 'STUDENT' | 'EDUCATOR' | 'PARENT' | 'SCHOOL_ADMIN' | 'DISTRICT_ADMIN';
 
 type ClerkWebhookEvent = {
@@ -39,6 +43,22 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'Missing svix headers' }, { status: 400 });
   }
 
+  const timestampMs = Number(svixTimestamp) * 1000;
+  if (!Number.isFinite(timestampMs)) {
+    return NextResponse.json({ error: 'Invalid svix timestamp' }, { status: 400 });
+  }
+
+  const now = Date.now();
+  pruneReplayCache(now);
+
+  if (Math.abs(now - timestampMs) > WEBHOOK_TIMESTAMP_TOLERANCE_MS) {
+    return NextResponse.json({ error: 'Stale svix timestamp' }, { status: 400 });
+  }
+
+  if (processedWebhookIds.has(svixId)) {
+    return NextResponse.json({ error: 'Duplicate webhook event' }, { status: 409 });
+  }
+
   const body = await req.text();
   const webhook = new Webhook(webhookSecret);
 
@@ -55,6 +75,8 @@ export async function POST(req: NextRequest) {
   }
 
   try {
+    processedWebhookIds.set(svixId, now + WEBHOOK_REPLAY_TTL_MS);
+
     switch (event.type) {
       case 'user.created':
         await handleUserCreated(event.data);
@@ -73,6 +95,14 @@ export async function POST(req: NextRequest) {
   } catch (error) {
     console.error('Webhook processing error:', error);
     return NextResponse.json({ error: 'Processing failed' }, { status: 500 });
+  }
+}
+
+function pruneReplayCache(now: number) {
+  for (const [id, expiresAt] of processedWebhookIds.entries()) {
+    if (expiresAt <= now) {
+      processedWebhookIds.delete(id);
+    }
   }
 }
 

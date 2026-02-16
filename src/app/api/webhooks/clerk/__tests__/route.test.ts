@@ -61,8 +61,8 @@ describe('POST /api/webhooks/clerk', () => {
     const req = new Request('http://localhost/api/webhooks/clerk', {
       method: 'POST',
       headers: {
-        'svix-id': 'msg_123',
-        'svix-timestamp': String(Date.now()),
+        'svix-id': 'msg_signature_fail',
+        'svix-timestamp': String(Math.floor(Date.now() / 1000)),
         'svix-signature': 'v1,bad',
       },
       body: JSON.stringify({}),
@@ -71,6 +71,76 @@ describe('POST /api/webhooks/clerk', () => {
     const res = await POST(req as any);
     expect(res.status).toBe(401);
     await expect(res.json()).resolves.toEqual({ error: 'Invalid signature' });
+  });
+
+  it('returns 400 for stale webhook timestamps', async () => {
+    const { POST } = await import('../route');
+    mockVerify.mockReturnValue({
+      type: 'user.updated',
+      data: {
+        id: 'clerk_123',
+        email_addresses: [{ email_address: 'new@example.com' }],
+        first_name: 'New',
+        last_name: 'Name',
+      },
+    });
+
+    const staleSeconds = Math.floor((Date.now() - 10 * 60 * 1000) / 1000);
+    const req = new Request('http://localhost/api/webhooks/clerk', {
+      method: 'POST',
+      headers: {
+        'svix-id': 'msg_old',
+        'svix-timestamp': String(staleSeconds),
+        'svix-signature': 'v1,ok',
+      },
+      body: JSON.stringify({}),
+    });
+
+    const res = await POST(req as any);
+    expect(res.status).toBe(400);
+    await expect(res.json()).resolves.toEqual({ error: 'Stale svix timestamp' });
+  });
+
+  it('returns 409 for duplicate webhook ids (replay)', async () => {
+    const { POST } = await import('../route');
+    mockVerify.mockReturnValue({
+      type: 'user.updated',
+      data: {
+        id: 'clerk_123',
+        email_addresses: [{ email_address: 'new@example.com' }],
+        first_name: 'New',
+        last_name: 'Name',
+      },
+    });
+    mockUserFindUnique.mockResolvedValue({
+      id: 'user_1',
+      email: 'old@example.com',
+      firstName: 'Old',
+      lastName: 'Name',
+    });
+    mockUserUpdate.mockResolvedValue({});
+
+    const ts = String(Math.floor(Date.now() / 1000));
+    const headers = {
+      'svix-id': 'msg_replay',
+      'svix-timestamp': ts,
+      'svix-signature': 'v1,ok',
+    };
+
+    const first = await POST(new Request('http://localhost/api/webhooks/clerk', {
+      method: 'POST',
+      headers,
+      body: JSON.stringify({}),
+    }) as any);
+    expect(first.status).toBe(200);
+
+    const second = await POST(new Request('http://localhost/api/webhooks/clerk', {
+      method: 'POST',
+      headers,
+      body: JSON.stringify({}),
+    }) as any);
+    expect(second.status).toBe(409);
+    await expect(second.json()).resolves.toEqual({ error: 'Duplicate webhook event' });
   });
 
   it('processes user.updated event and updates mapped user record', async () => {
@@ -95,8 +165,8 @@ describe('POST /api/webhooks/clerk', () => {
     const req = new Request('http://localhost/api/webhooks/clerk', {
       method: 'POST',
       headers: {
-        'svix-id': 'msg_123',
-        'svix-timestamp': String(Date.now()),
+        'svix-id': 'msg_process_update',
+        'svix-timestamp': String(Math.floor(Date.now() / 1000)),
         'svix-signature': 'v1,ok',
       },
       body: JSON.stringify({ some: 'payload' }),

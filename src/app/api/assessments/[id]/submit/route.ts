@@ -1,10 +1,13 @@
-import { NextRequest, NextResponse } from 'next/server';
-import { auth } from '@clerk/nextjs/server';
+import { NextResponse } from 'next/server';
+import { z } from 'zod';
 import { db } from '@/lib/db';
+import { withApiHandler } from '@/lib/api-handler';
+import { requireUser } from '@/lib/auth';
+import { hasRequiredMinorConsent } from '@/lib/compliance';
 import { generateAIFeedback } from '@/lib/assessments/ai-feedback-generator';
 import { updateProgress } from '@/lib/assessments/progress-calculator';
 import { suggestPrerequisiteTopics } from '@/lib/curriculum/prerequisite-graph';
-import { z } from 'zod';
+import { ForbiddenError, NotFoundError } from '@/lib/api-errors';
 
 const submitAssessmentSchema = z.object({
   studentResponse: z.string().min(1),
@@ -13,161 +16,123 @@ const submitAssessmentSchema = z.object({
 
 /**
  * POST /api/assessments/[id]/submit
- * Submits a student's response to an assessment
- * 
- * @param id - Assessment ID
- * @body studentResponse (string), timeTaken (number, optional)
- * @returns Updated assessment with AI-generated feedback
- * @throws 401 if not authenticated
- * @throws 403 if not authorized (must be session owner)
- * @throws 404 if assessment not found
+ * Submits a student's response to an assessment.
  */
-export async function POST(
-  request: NextRequest,
-  context: { params: Promise<{ id: string }> }
-) {
-  try {
-    const { userId: clerkId } = await auth();
-    if (!clerkId) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    }
+export const POST = withApiHandler(async (request, ctx) => {
+  const assessmentId = ctx.params.id;
+  const user = await requireUser();
 
-    const params = await context.params;
-    const assessmentId = params.id;
+  if (!hasRequiredMinorConsent(user.isMinor, user.consentStatus)) {
+    throw new ForbiddenError('Parental consent required before submitting assessments');
+  }
 
-    let body;
-    try {
-      body = submitAssessmentSchema.parse(await request.json());
-    } catch (err) {
-      const message = err instanceof z.ZodError ? err.errors.map(e => e.message).join(', ') : 'Invalid request';
-      return NextResponse.json({ error: message }, { status: 400 });
-    }
+  const { studentResponse, timeTaken } = submitAssessmentSchema.parse(await request.json());
 
-    const { studentResponse, timeTaken } = body;
-
-    // Get assessment with session and student details
-    const assessment = await db.assessment.findUnique({
-      where: { id: assessmentId },
-      include: {
-        session: {
-          include: {
-            student: {
-              include: {
-                user: true,
-              },
+  const assessment = await db.assessment.findUnique({
+    where: { id: assessmentId },
+    include: {
+      session: {
+        include: {
+          student: {
+            include: {
+              user: true,
             },
           },
         },
-        standard: {
-          include: {
-            topics: {
-              include: {
-                prerequisites: {
-                  select: {
-                    id: true,
-                    name: true,
-                  },
+      },
+      standard: {
+        include: {
+          topics: {
+            include: {
+              prerequisites: {
+                select: {
+                  id: true,
+                  name: true,
                 },
               },
             },
           },
         },
       },
-    });
+    },
+  });
 
-    if (!assessment) {
-      return NextResponse.json({ error: 'Assessment not found' }, { status: 404 });
-    }
+  if (!assessment) {
+    throw new NotFoundError('Assessment not found');
+  }
 
-    // Verify the user owns this assessment's session
-    const user = await db.user.findUnique({ where: { clerkUserId: clerkId } });
-    if (!user) {
-      return NextResponse.json({ error: 'User not found' }, { status: 404 });
-    }
+  if (user.role === 'STUDENT' && assessment.session.student.userId !== user.id) {
+    throw new ForbiddenError();
+  }
+  if (user.role !== 'STUDENT' && assessment.session.student.user.tenantId !== user.tenantId) {
+    throw new ForbiddenError();
+  }
 
-    if (user.role === 'STUDENT' && assessment.session.student.userId !== user.id) {
-      return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
-    }
-    if (user.role !== 'STUDENT' && assessment.session.student.user.tenantId !== user.tenantId) {
-      return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
-    }
+  const metadata = (assessment.metadata as Record<string, unknown> | null) ?? {};
 
-    // Extract metadata
-    const metadata = assessment.metadata as any;
+  const feedback = await generateAIFeedback({
+    question: assessment.question,
+    studentResponse,
+    correctAnswer: metadata.correctAnswer as string | undefined,
+    rubric: metadata.rubric as string | undefined,
+    bloomsLevel: assessment.bloomsLevel,
+    difficulty: assessment.difficulty,
+    includeScaffold: true,
+  });
 
-    // Generate AI feedback
-    const feedback = await generateAIFeedback({
-      question: assessment.question,
+  const prerequisiteRecommendations = feedback.isCorrect
+    ? []
+    : suggestPrerequisiteTopics(
+      assessment.standard?.topics.map((topic) => ({
+        id: topic.id,
+        name: topic.name,
+        prerequisites: topic.prerequisites,
+      })) ?? [],
+      assessment.standard?.topics[0]?.name ?? assessment.question,
+      3,
+    );
+
+  const updatedAssessment = await db.assessment.update({
+    where: { id: assessmentId },
+    data: {
       studentResponse,
-      correctAnswer: metadata?.correctAnswer,
-      rubric: metadata?.rubric,
+      isCorrect: feedback.isCorrect,
+      score: feedback.score,
+      feedback: feedback.feedback,
+      metadata: JSON.parse(JSON.stringify({
+        ...metadata,
+        scaffoldHints: feedback.scaffoldHints,
+        commonErrors: feedback.commonErrors,
+        nextSteps: feedback.nextSteps,
+        prerequisiteRecommendations,
+        timeTaken,
+      })),
+    },
+  });
+
+  if (assessment.standardId && assessment.session) {
+    await updateProgress({
+      studentId: assessment.session.studentId,
+      standardId: assessment.standardId,
+      tenantId: assessment.session.student.user.tenantId,
+      assessmentScore: feedback.score,
       bloomsLevel: assessment.bloomsLevel,
       difficulty: assessment.difficulty,
-      includeScaffold: true,
     });
+  }
 
-    const prerequisiteRecommendations = feedback.isCorrect
-      ? []
-      : suggestPrerequisiteTopics(
-        assessment.standard?.topics.map((topic) => ({
-          id: topic.id,
-          name: topic.name,
-          prerequisites: topic.prerequisites,
-        })) ?? [],
-        assessment.standard?.topics[0]?.name ?? assessment.question,
-        3,
-      );
-
-    // Update assessment with response and feedback
-    const updatedAssessment = await db.assessment.update({
-      where: { id: assessmentId },
-      data: {
-        studentResponse,
+  return NextResponse.json({
+    data: {
+      ...updatedAssessment,
+      feedback: {
         isCorrect: feedback.isCorrect,
         score: feedback.score,
         feedback: feedback.feedback,
-        metadata: {
-          ...metadata,
-          scaffoldHints: feedback.scaffoldHints,
-          commonErrors: feedback.commonErrors,
-          nextSteps: feedback.nextSteps,
-          prerequisiteRecommendations,
-          timeTaken,
-        },
+        scaffoldHints: feedback.scaffoldHints,
+        nextSteps: feedback.nextSteps,
+        prerequisiteRecommendations,
       },
-    });
-
-    // Update progress if standard is associated
-    if (assessment.standardId && assessment.session) {
-      await updateProgress({
-        studentId: assessment.session.studentId,
-        standardId: assessment.standardId,
-        tenantId: assessment.session.student.user.tenantId,
-        assessmentScore: feedback.score,
-        bloomsLevel: assessment.bloomsLevel,
-        difficulty: assessment.difficulty,
-      });
-    }
-
-    return NextResponse.json({
-      data: {
-        ...updatedAssessment,
-        feedback: {
-          isCorrect: feedback.isCorrect,
-          score: feedback.score,
-          feedback: feedback.feedback,
-          scaffoldHints: feedback.scaffoldHints,
-          nextSteps: feedback.nextSteps,
-          prerequisiteRecommendations,
-        },
-      },
-      message: 'Assessment submitted successfully',
-    });
-  } catch (error) {
-    console.error('Error submitting assessment:', error);
-    return NextResponse.json(
-      { error: 'Failed to submit assessment' },
-      { status: 500 }
-    );
-  }
-}
+    },
+    message: 'Assessment submitted successfully',
+  });
+});
