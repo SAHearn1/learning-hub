@@ -1,14 +1,16 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { auth } from '@clerk/nextjs/server';
 import { db } from '@/lib/db';
 import { generateFormativeCheck } from '@/lib/assessments/formative-generator';
 import { Subject, BloomsLevel } from '@prisma/client';
+import { requireUser } from '@/lib/auth';
+import { hasRequiredMinorConsent } from '@/lib/compliance';
 
 export async function POST(request: NextRequest) {
   try {
-    const { userId: clerkId } = await auth();
-    if (!clerkId) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    const user = await requireUser();
+
+    if (!hasRequiredMinorConsent(user.isMinor, user.consentStatus)) {
+      return NextResponse.json({ error: 'Parental consent required before formative assessments' }, { status: 403 });
     }
 
     const body = await request.json();
@@ -34,10 +36,6 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Session not found' }, { status: 404 });
     }
 
-    const user = await db.user.findUnique({ where: { clerkUserId: clerkId } });
-    if (!user) {
-      return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
-    }
     if (user.role === 'STUDENT' && session.student.user.id !== user.id) {
       return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
     }
@@ -89,9 +87,10 @@ export async function POST(request: NextRequest) {
 
 export async function GET(request: NextRequest) {
   try {
-    const { userId: clerkId } = await auth();
-    if (!clerkId) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    const user = await requireUser();
+
+    if (!hasRequiredMinorConsent(user.isMinor, user.consentStatus)) {
+      return NextResponse.json({ error: 'Parental consent required before formative assessments' }, { status: 403 });
     }
 
     const { searchParams } = new URL(request.url);
@@ -102,11 +101,6 @@ export async function GET(request: NextRequest) {
         { error: 'sessionId is required' },
         { status: 400 }
       );
-    }
-
-    const user = await db.user.findUnique({ where: { clerkUserId: clerkId } });
-    if (!user) {
-      return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
     }
 
     const session = await db.session.findUnique({

@@ -1,5 +1,4 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { auth } from '@clerk/nextjs/server';
 import { db } from '@/lib/db';
 import {
   trackReasoningMove,
@@ -8,12 +7,32 @@ import {
   REASONING_MOVE_DESCRIPTIONS,
 } from '@/lib/assessments/reasoning-move-tracker';
 import { ReasoningMove } from '@prisma/client';
+import { requireUser } from '@/lib/auth';
+import { hasRequiredMinorConsent } from '@/lib/compliance';
+
+async function canAccessStudent(user: Awaited<ReturnType<typeof requireUser>>, studentId: string): Promise<boolean> {
+  const student = await db.student.findUnique({
+    where: { id: studentId },
+    include: { user: { select: { id: true, tenantId: true } } },
+  });
+
+  if (!student) {
+    return false;
+  }
+
+  if (user.role === 'STUDENT') {
+    return student.user.id === user.id;
+  }
+
+  return student.user.tenantId === user.tenantId;
+}
 
 export async function POST(request: NextRequest) {
   try {
-    const { userId: clerkId } = await auth();
-    if (!clerkId) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    const user = await requireUser();
+
+    if (!hasRequiredMinorConsent(user.isMinor, user.consentStatus)) {
+      return NextResponse.json({ error: 'Parental consent required before tracking reasoning moves' }, { status: 403 });
     }
 
     const body = await request.json();
@@ -33,6 +52,10 @@ export async function POST(request: NextRequest) {
         { error: `Invalid reasoning move. Must be one of: ${Object.values(ReasoningMove).join(', ')}` },
         { status: 400 }
       );
+    }
+
+    if (!(await canAccessStudent(user, studentId))) {
+      return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
     }
 
     // Track the reasoning move
@@ -60,9 +83,10 @@ export async function POST(request: NextRequest) {
 
 export async function GET(request: NextRequest) {
   try {
-    const { userId: clerkId } = await auth();
-    if (!clerkId) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    const user = await requireUser();
+
+    if (!hasRequiredMinorConsent(user.isMinor, user.consentStatus)) {
+      return NextResponse.json({ error: 'Parental consent required before reasoning profile access' }, { status: 403 });
     }
 
     const { searchParams } = new URL(request.url);
@@ -74,6 +98,10 @@ export async function GET(request: NextRequest) {
         { error: 'studentId is required' },
         { status: 400 }
       );
+    }
+
+    if (!(await canAccessStudent(user, studentId))) {
+      return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
     }
 
     // Get student reasoning profile
@@ -109,9 +137,10 @@ export async function GET(request: NextRequest) {
 
 export async function PUT(request: NextRequest) {
   try {
-    const { userId: clerkId } = await auth();
-    if (!clerkId) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    const user = await requireUser();
+
+    if (!hasRequiredMinorConsent(user.isMinor, user.consentStatus)) {
+      return NextResponse.json({ error: 'Parental consent required before tracking reasoning moves' }, { status: 403 });
     }
 
     const body = await request.json();
@@ -123,6 +152,10 @@ export async function PUT(request: NextRequest) {
         { error: 'Missing required fields: studentId, moves (array)' },
         { status: 400 }
       );
+    }
+
+    if (!(await canAccessStudent(user, studentId))) {
+      return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
     }
 
     // Track multiple reasoning moves (batch update)

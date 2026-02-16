@@ -1,9 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { auth } from '@clerk/nextjs/server';
 import { db } from '@/lib/db';
 import { generateDiagnosticQuestions } from '@/lib/assessments/diagnostic-generator';
 import { Subject } from '@prisma/client';
 import { z } from 'zod';
+import { requireUser } from '@/lib/auth';
+import { hasRequiredMinorConsent } from '@/lib/compliance';
 
 const diagnosticSchema = z.object({
   studentId: z.string().min(1),
@@ -25,9 +26,10 @@ const diagnosticSchema = z.object({
  */
 export async function POST(request: NextRequest) {
   try {
-    const { userId: clerkId } = await auth();
-    if (!clerkId) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    const user = await requireUser();
+
+    if (!hasRequiredMinorConsent(user.isMinor, user.consentStatus)) {
+      return NextResponse.json({ error: 'Parental consent required before diagnostics' }, { status: 403 });
     }
 
     let body;
@@ -48,11 +50,6 @@ export async function POST(request: NextRequest) {
 
     if (!session) {
       return NextResponse.json({ error: 'Session not found' }, { status: 404 });
-    }
-
-    const user = await db.user.findUnique({ where: { clerkUserId: clerkId } });
-    if (!user) {
-      return NextResponse.json({ error: 'User not found' }, { status: 404 });
     }
 
     // Verify authorization
@@ -119,9 +116,10 @@ export async function POST(request: NextRequest) {
  */
 export async function GET(request: NextRequest) {
   try {
-    const { userId: clerkId } = await auth();
-    if (!clerkId) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    const user = await requireUser();
+
+    if (!hasRequiredMinorConsent(user.isMinor, user.consentStatus)) {
+      return NextResponse.json({ error: 'Parental consent required before diagnostics' }, { status: 403 });
     }
 
     const { searchParams } = new URL(request.url);
@@ -133,11 +131,6 @@ export async function GET(request: NextRequest) {
         { error: 'Either studentId or sessionId is required' },
         { status: 400 }
       );
-    }
-
-    const user = await db.user.findUnique({ where: { clerkUserId: clerkId } });
-    if (!user) {
-      return NextResponse.json({ error: 'User not found' }, { status: 404 });
     }
 
     // Build query

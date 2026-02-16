@@ -27,6 +27,7 @@ Latest validation run:
 - `npm run lint` passed
 - `npm run build` passed
 - `npx vitest run src/app/api/webhooks/clerk/__tests__/route.test.ts src/app/api/stripe/webhook/__tests__/route.test.ts src/app/api/admin/super/tenants/[tenantId]/invoice/__tests__/route.test.ts src/app/api/admin/super/tenants/[tenantId]/suspension/__tests__/route.test.ts` passed
+- `npx vitest run tests/integration/api/consent-enforcement.test.ts` passed
 
 ## Phase 1 - Core Reliability
 
@@ -58,7 +59,9 @@ Status: In progress
   Evidence: `src/app/learn/page.tsx`, `src/app/api/chat/route.ts`
 - [x] Streaming chat interface wired.
   Evidence: `src/hooks/useChat.ts`, `src/app/api/chat/route.ts`
-- [ ] Add end-to-end regression test covering `/explore` -> `/learn?topic=...` -> first chat turn.
+- [x] Add end-to-end regression test covering `/explore` -> `/learn?topic=...` -> first chat turn.
+  Evidence: `tests/e2e/student/student-explore-handoff.spec.ts`
+  Note: local Playwright execution timed out in this environment; execute in CI/full local browser setup.
 - [ ] Add reliability tests for stream interruption/retry behavior.
 
 ## Phase 3 - Educator, Parent, Admin Maturity
@@ -85,8 +88,9 @@ Status: In progress
 - [x] Enforce consent gating on core session and pretest learning routes.
   Evidence: `src/app/api/sessions/route.ts`, `src/app/api/explore/pretest/route.ts`, `src/app/api/explore/pretest/next/route.ts`
   Tests: `tests/integration/api/consent-enforcement.test.ts`
-- [ ] Enforce consent gating universally on all remaining student learning routes.
-- [ ] Add explicit webhook replay-protection tests (timestamp skew/idempotency guard).
+- [x] Enforce consent gating universally on all remaining student learning routes.
+  Evidence: `src/app/api/assessments/diagnostic/route.ts`, `src/app/api/assessments/formative/route.ts`, `src/app/api/assessments/summative/route.ts`, `src/app/api/assessments/reasoning-moves/route.ts`, `src/app/api/irt/ability/route.ts`, `src/app/api/irt/next-item/route.ts`
+  Tests: `tests/integration/api/consent-enforcement.test.ts`
 - [x] Add explicit webhook replay-protection checks and tests (timestamp skew + duplicate event id).
   Evidence: `src/app/api/webhooks/clerk/route.ts`
   Tests: `src/app/api/webhooks/clerk/__tests__/route.test.ts`
@@ -106,8 +110,6 @@ Status: In progress
 
 ## Immediate Next Actions
 
-1. Add one E2E happy-path test for explore-to-learn handoff with topic preselection.
-  Evidence: `tests/e2e/student/student-explore-handoff.spec.ts`
-  Note: local Playwright execution timed out in this environment; run in CI or a dev machine with full browser/auth setup.
-2. Add consent-enforcement checks on remaining student learning endpoints beyond sessions/pretests/assessment submit.
-3. Execute CI-equivalent integration suite (`npm run test:integration`) and resolve any remaining stale tests.
+1. Execute CI-equivalent integration suite (`npm run test:integration`) and resolve remaining stale tests.
+2. Run Playwright E2E suite in CI/full browser-auth setup (local run timed out in this environment).
+3. Add reliability tests for stream interruption/retry behavior on `/api/chat`.

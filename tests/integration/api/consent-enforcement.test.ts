@@ -19,6 +19,9 @@ const mockDb = {
   assessment: {
     create: vi.fn(),
   },
+  student: {
+    findUnique: vi.fn(),
+  },
 };
 
 vi.mock('@/lib/auth', () => ({
@@ -102,5 +105,116 @@ describe('minor consent enforcement', () => {
       code: 'FORBIDDEN',
     });
     expect(mockDb.session.create).not.toHaveBeenCalled();
+  });
+
+  it('blocks minor without granted consent from creating diagnostic assessments', async () => {
+    const { POST } = await import('@/app/api/assessments/diagnostic/route');
+    const req = new NextRequest('http://localhost/api/assessments/diagnostic', {
+      method: 'POST',
+      body: JSON.stringify({
+        studentId: 'student_1',
+        sessionId: 'session_1',
+        subject: 'MATH',
+        gradeLevel: 5,
+      }),
+      headers: { 'content-type': 'application/json' },
+    });
+
+    const res = await POST(req);
+
+    expect(res.status).toBe(403);
+    await expect(res.json()).resolves.toMatchObject({
+      error: expect.stringContaining('Parental consent required'),
+    });
+  });
+
+  it('blocks minor without granted consent from creating formative assessments', async () => {
+    const { POST } = await import('@/app/api/assessments/formative/route');
+    const req = new NextRequest('http://localhost/api/assessments/formative', {
+      method: 'POST',
+      body: JSON.stringify({
+        sessionId: 'session_1',
+        currentTopic: 'Fractions',
+      }),
+      headers: { 'content-type': 'application/json' },
+    });
+
+    const res = await POST(req);
+
+    expect(res.status).toBe(403);
+    await expect(res.json()).resolves.toMatchObject({
+      error: expect.stringContaining('Parental consent required'),
+    });
+  });
+
+  it('blocks minor without granted consent from creating summative assessments', async () => {
+    const { POST } = await import('@/app/api/assessments/summative/route');
+    const req = new NextRequest('http://localhost/api/assessments/summative', {
+      method: 'POST',
+      body: JSON.stringify({
+        studentId: 'student_1',
+        sessionId: 'session_1',
+        topicName: 'Fractions',
+        learningObjectives: ['Add fractions'],
+      }),
+      headers: { 'content-type': 'application/json' },
+    });
+
+    const res = await POST(req);
+
+    expect(res.status).toBe(403);
+    await expect(res.json()).resolves.toMatchObject({
+      error: expect.stringContaining('Parental consent required'),
+    });
+  });
+
+  it('blocks minor without granted consent from tracking reasoning moves', async () => {
+    const { POST } = await import('@/app/api/assessments/reasoning-moves/route');
+    const req = new NextRequest('http://localhost/api/assessments/reasoning-moves', {
+      method: 'POST',
+      body: JSON.stringify({
+        studentId: 'student_1',
+        move: 'SELF_CORRECTION',
+      }),
+      headers: { 'content-type': 'application/json' },
+    });
+
+    const res = await POST(req);
+
+    expect(res.status).toBe(403);
+    await expect(res.json()).resolves.toMatchObject({
+      error: expect.stringContaining('Parental consent required'),
+    });
+  });
+
+  it('blocks minor without granted consent from reading IRT ability', async () => {
+    const { GET } = await import('@/app/api/irt/ability/route');
+    const req = new NextRequest('http://localhost/api/irt/ability?studentId=student_1&subject=MATH');
+
+    const res = await GET(req);
+
+    expect(res.status).toBe(403);
+    await expect(res.json()).resolves.toMatchObject({
+      error: expect.stringContaining('Parental consent required'),
+    });
+  });
+
+  it('blocks minor without granted consent from selecting next IRT item', async () => {
+    const { POST } = await import('@/app/api/irt/next-item/route');
+    const req = new NextRequest('http://localhost/api/irt/next-item', {
+      method: 'POST',
+      body: JSON.stringify({
+        studentId: 'student_1',
+        subject: 'MATH',
+      }),
+      headers: { 'content-type': 'application/json' },
+    });
+
+    const res = await POST(req);
+
+    expect(res.status).toBe(403);
+    await expect(res.json()).resolves.toMatchObject({
+      error: expect.stringContaining('Parental consent required'),
+    });
   });
 });
