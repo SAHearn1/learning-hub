@@ -1,10 +1,23 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { NextRequest } from 'next/server';
 
 const mockRequireUser = vi.fn();
 const mockCreateCheckoutSession = vi.fn();
 
 vi.mock('@/lib/auth', () => ({ requireUser: mockRequireUser }));
 vi.mock('@/lib/billing', () => ({ createCheckoutSession: mockCreateCheckoutSession }));
+vi.mock('@/lib/logger', () => ({
+  logger: { debug: vi.fn(), info: vi.fn(), warn: vi.fn(), error: vi.fn() },
+}));
+vi.mock('@/lib/api/metrics', () => ({
+  incrementMetric: vi.fn(),
+  observeLatency: vi.fn(),
+}));
+vi.mock('@/lib/monitoring', () => ({
+  captureError: vi.fn(),
+}));
+
+const routeContext = { params: Promise.resolve({}) };
 
 describe('POST /api/billing/checkout', () => {
   beforeEach(() => {
@@ -21,13 +34,13 @@ describe('POST /api/billing/checkout', () => {
     });
     mockCreateCheckoutSession.mockResolvedValue({ url: 'https://checkout.stripe.com/c/session_1' });
 
-    const request = new Request('http://localhost/api/billing/checkout', {
+    const request = new NextRequest('http://localhost/api/billing/checkout', {
       method: 'POST',
       headers: { 'content-type': 'application/json' },
       body: JSON.stringify({ tier: 'STARTER' }),
     });
 
-    const response = await POST(request);
+    const response = await POST(request, routeContext);
 
     expect(response.status).toBe(200);
     await expect(response.json()).resolves.toEqual({ url: 'https://checkout.stripe.com/c/session_1' });
@@ -49,16 +62,16 @@ describe('POST /api/billing/checkout', () => {
     });
     mockCreateCheckoutSession.mockResolvedValue({ url: 'https://checkout.stripe.com/c/session_2' });
 
-    const request = new Request('http://localhost/api/billing/checkout', {
+    const request = new NextRequest('http://localhost/api/billing/checkout', {
       method: 'POST',
       headers: {
-        'content-type': 'application/x-www-form-urlencoded',
+        'content-type': 'application/json',
         accept: 'text/html',
       },
-      body: new URLSearchParams({ tier: 'PROFESSIONAL' }),
+      body: JSON.stringify({ tier: 'PROFESSIONAL' }),
     });
 
-    const response = await POST(request);
+    const response = await POST(request, routeContext);
 
     expect(response.status).toBe(307);
     expect(response.headers.get('location')).toBe('https://checkout.stripe.com/c/session_2');
@@ -72,15 +85,16 @@ describe('POST /api/billing/checkout', () => {
       tenantId: 'tenant_1',
     });
 
-    const request = new Request('http://localhost/api/billing/checkout', {
+    const request = new NextRequest('http://localhost/api/billing/checkout', {
       method: 'POST',
       headers: { 'content-type': 'application/json' },
       body: JSON.stringify({ tier: 'INVALID_TIER' }),
     });
 
-    const response = await POST(request);
+    const response = await POST(request, routeContext);
 
     expect(response.status).toBe(400);
-    await expect(response.json()).resolves.toEqual({ error: 'Invalid request payload.' });
+    const body = await response.json();
+    expect(body.code).toBe('VALIDATION_ERROR');
   });
 });

@@ -9,8 +9,18 @@ const mockDb = {
 
 vi.mock('@clerk/nextjs/server', () => ({ auth: mockAuth }));
 vi.mock('@/lib/db', () => ({ db: mockDb }));
-vi.mock('@/lib/logger', () => ({ logger: { debug: vi.fn(), info: vi.fn(), warn: vi.fn(), error: vi.fn() } }));
-vi.mock('@/lib/monitoring', () => ({ captureError: vi.fn() }));
+vi.mock('@/lib/logger', () => ({
+  logger: { debug: vi.fn(), info: vi.fn(), warn: vi.fn(), error: vi.fn() },
+}));
+vi.mock('@/lib/api/metrics', () => ({
+  incrementMetric: vi.fn(),
+  observeLatency: vi.fn(),
+}));
+vi.mock('@/lib/monitoring', () => ({
+  captureError: vi.fn(),
+}));
+
+const routeContext = { params: Promise.resolve({}) };
 
 describe('GET /api/assessments/context', () => {
   beforeEach(() => {
@@ -21,7 +31,7 @@ describe('GET /api/assessments/context', () => {
     const { GET } = await import('../route');
     mockAuth.mockReturnValue({ userId: null });
 
-    const response = await GET(new NextRequest('http://localhost/api/assessments/context'));
+    const response = await GET(new NextRequest('http://localhost/api/assessments/context'), routeContext);
     const body = await response.json();
 
     expect(response.status).toBe(401);
@@ -35,7 +45,7 @@ describe('GET /api/assessments/context', () => {
     mockDb.user.findUnique.mockResolvedValue({ student: { id: 'stu_1', gradeLevel: 6 } });
     mockDb.session.findFirst.mockResolvedValue({ id: 'sess_1', subject: 'MATH' });
 
-    const response = await GET(new NextRequest('http://localhost/api/assessments/context'));
+    const response = await GET(new NextRequest('http://localhost/api/assessments/context'), routeContext);
     const body = await response.json();
 
     expect(response.status).toBe(200);

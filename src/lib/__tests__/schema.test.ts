@@ -18,6 +18,11 @@ describe('Prisma schema — models', () => {
     'Educator',
     'Parent',
     'IepAccommodation',
+    'ItemCalibration',
+    'StudentAbility',
+    'ResponseData',
+    'ReviewSchedule',
+    'ReviewHistory',
     'Session',
     'Message',
     'Assessment',
@@ -31,11 +36,13 @@ describe('Prisma schema — models', () => {
     'AIUsageLedger',
     'AuditLog',
     'IngestLog',
+    'PlatformConfig',
+    'NVCQualityEvaluation',
   ];
 
-  it('generates all 22 expected models', () => {
+  it('generates all 29 expected models', () => {
     const modelNames = Object.values(Prisma.ModelName);
-    expect(modelNames).toHaveLength(22);
+    expect(modelNames).toHaveLength(29);
   });
 
   it.each(expectedModels)('includes model %s', (model) => {

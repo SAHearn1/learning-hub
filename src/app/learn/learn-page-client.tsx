@@ -54,13 +54,15 @@ export function LearnPageClient({ preselectedTopic }: LearnPageClientProps) {
     async (selectedSubject: Subject, selectedMode: EngagementMode) => {
       setStartError(null);
       setCompletedSummary(null);
-      const createdSessionId = await createSession(
-        selectedSubject,
-        selectedMode,
-        preselectedTopic?.id,
-      );
-      if (!createdSessionId) {
-        setStartError('We could not start your session. Please try again in a moment.');
+      try {
+        await createSession(
+          selectedSubject,
+          selectedMode,
+          preselectedTopic?.id,
+        );
+      } catch (err) {
+        const message = err instanceof Error ? err.message : 'Unknown error';
+        setStartError(message);
       }
     },
     [createSession, preselectedTopic],

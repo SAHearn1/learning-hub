@@ -36,6 +36,22 @@ vi.mock('@/lib/auth', () => ({
   requireUser: vi.fn(),
 }));
 
+vi.mock('@/lib/logger', () => ({
+  logger: { debug: vi.fn(), info: vi.fn(), warn: vi.fn(), error: vi.fn() },
+}));
+
+vi.mock('@/lib/api/metrics', () => ({
+  incrementMetric: vi.fn(),
+  observeLatency: vi.fn(),
+}));
+
+vi.mock('@/lib/monitoring', () => ({
+  captureError: vi.fn(),
+  captureException: vi.fn(),
+  recordMetric: vi.fn(),
+  trackEvent: vi.fn(),
+}));
+
 describe('Multi-tenant isolation audit (RLS-style negative paths)', () => {
   beforeEach(() => {
     vi.clearAllMocks();
@@ -121,11 +137,15 @@ describe('Multi-tenant isolation audit (RLS-style negative paths)', () => {
     } as any);
 
     const { POST } = await import('@/app/api/chat/route');
+    const routeContext = { params: Promise.resolve({}) };
     const req = new NextRequest('http://localhost:3000/api/chat', {
       method: 'POST',
       body: JSON.stringify({ sessionId: 'session_school_a', message: 'hello' }),
     });
 
-    await expect(POST(req)).rejects.toThrow('Access to this session is forbidden');
+    const response = await POST(req, routeContext);
+    expect(response.status).toBe(403);
+    const body = await response.json();
+    expect(body.error).toBe('Access to this session is forbidden');
   }, 15000);
 });

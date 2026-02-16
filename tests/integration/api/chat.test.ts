@@ -113,6 +113,7 @@ vi.mock('@/lib/nvc/evaluation-service', () => ({
 
 vi.mock('@/lib/monitoring', () => ({
   captureException: vi.fn(),
+  captureError: vi.fn(),
   recordMetric: vi.fn(),
   trackEvent: vi.fn(),
 }));
@@ -120,6 +121,22 @@ vi.mock('@/lib/monitoring', () => ({
 vi.mock('@/lib/audit', () => ({
   appendImmutableAuditLog: mockAppendImmutableAuditLog,
 }));
+
+vi.mock('@/lib/logger', () => ({
+  logger: {
+    debug: vi.fn(),
+    info: vi.fn(),
+    warn: vi.fn(),
+    error: vi.fn(),
+  },
+}));
+
+vi.mock('@/lib/api/metrics', () => ({
+  incrementMetric: vi.fn(),
+  observeLatency: vi.fn(),
+}));
+
+const routeContext = { params: Promise.resolve({}) };
 
 describe('POST /api/chat', () => {
   beforeEach(() => {
@@ -138,7 +155,7 @@ describe('POST /api/chat', () => {
     mockAppendImmutableAuditLog.mockResolvedValue(undefined);
   });
 
-  it('throws AuthenticationError when not authenticated', async () => {
+  it('returns 401 when not authenticated', async () => {
     mockRequireUser.mockRejectedValue(new AuthenticationError());
     const { POST } = await import('@/app/api/chat/route');
 
@@ -147,10 +164,13 @@ describe('POST /api/chat', () => {
       body: JSON.stringify({ sessionId: 'session_123', message: 'Hello' }),
     });
 
-    await expect(POST(req)).rejects.toBeInstanceOf(AuthenticationError);
+    const response = await POST(req, routeContext);
+    expect(response.status).toBe(401);
+    const body = await response.json();
+    expect(body.code).toBe('AUTHENTICATION_ERROR');
   }, 15000);
 
-  it('throws NotFoundError when student profile is missing', async () => {
+  it('returns 404 when student profile is missing', async () => {
     mockRequireUser.mockResolvedValue({
       id: 'user_123',
       tenantId: 'tenant_123',
@@ -163,10 +183,13 @@ describe('POST /api/chat', () => {
       body: JSON.stringify({ sessionId: 'session_123', message: 'Hello' }),
     });
 
-    await expect(POST(req)).rejects.toBeInstanceOf(NotFoundError);
+    const response = await POST(req, routeContext);
+    expect(response.status).toBe(404);
+    const body = await response.json();
+    expect(body.error).toBe('Student profile not found');
   }, 15000);
 
-  it('throws NotFoundError when session is missing', async () => {
+  it('returns 404 when session is missing', async () => {
     mockRequireUser.mockResolvedValue({
       id: 'user_123',
       tenantId: 'tenant_123',
@@ -180,10 +203,13 @@ describe('POST /api/chat', () => {
       body: JSON.stringify({ sessionId: 'session_123', message: 'Hello' }),
     });
 
-    await expect(POST(req)).rejects.toBeInstanceOf(NotFoundError);
+    const response = await POST(req, routeContext);
+    expect(response.status).toBe(404);
+    const body = await response.json();
+    expect(body.error).toBe('Session not found');
   });
 
-  it('throws ForbiddenError when session belongs to another student', async () => {
+  it('returns 403 when session belongs to another student', async () => {
     mockRequireUser.mockResolvedValue({
       id: 'user_123',
       tenantId: 'tenant_123',
@@ -207,10 +233,11 @@ describe('POST /api/chat', () => {
       body: JSON.stringify({ sessionId: 'session_123', message: 'Hello' }),
     });
 
-    await expect(POST(req)).rejects.toBeInstanceOf(ForbiddenError);
+    const response = await POST(req, routeContext);
+    expect(response.status).toBe(403);
   });
 
-  it('throws BadRequestError when session has already ended', async () => {
+  it('returns 400 when session has already ended', async () => {
     mockRequireUser.mockResolvedValue({
       id: 'user_123',
       tenantId: 'tenant_123',
@@ -234,7 +261,10 @@ describe('POST /api/chat', () => {
       body: JSON.stringify({ sessionId: 'session_123', message: 'Hello' }),
     });
 
-    await expect(POST(req)).rejects.toBeInstanceOf(BadRequestError);
+    const response = await POST(req, routeContext);
+    expect(response.status).toBe(400);
+    const body = await response.json();
+    expect(body.error).toBe('Session has ended');
   });
 
   it('returns SSE response and persists refusal for personal trade advice prompts', async () => {
@@ -262,7 +292,7 @@ describe('POST /api/chat', () => {
       body: JSON.stringify({ sessionId: 'session_123', message: 'Should I buy TSLA today?' }),
     });
 
-    const response = await POST(req);
+    const response = await POST(req, routeContext);
 
     expect(response.status).toBe(200);
     expect(response.headers.get('content-type')).toContain('text/event-stream');
@@ -319,7 +349,7 @@ describe('POST /api/chat', () => {
       body: JSON.stringify({ sessionId: 'session_123', message: 'Help me with fractions' }),
     });
 
-    const response = await POST(req);
+    const response = await POST(req, routeContext);
 
     expect(response.status).toBe(200);
     expect(response.headers.get('content-type')).toContain('text/event-stream');
@@ -338,5 +368,92 @@ describe('POST /api/chat', () => {
     expect(mockAIUsageLedgerCreate).toHaveBeenCalled();
     expect(mockAppendImmutableAuditLog).toHaveBeenCalled();
     expect(mockInvalidateSessionCache).toHaveBeenCalledWith('session_123');
+  });
+
+  it('returns SSE error event when stream throws mid-response', async () => {
+    mockRequireUser.mockResolvedValue({
+      id: 'user_123',
+      tenantId: 'tenant_123',
+      student: {
+        id: 'student_123',
+        gradeLevel: 5,
+        learningPreferences: {},
+        iepAccommodations: [],
+      },
+    });
+    mockGetCachedSession.mockResolvedValue({
+      id: 'session_123',
+      studentId: 'student_123',
+      endedAt: null,
+      messages: [],
+      currentPhase: 'ROOT',
+      subject: 'MATH',
+      engagementMode: 'FORWARD',
+      metadata: {},
+      regulationState: { level: 70, signals: [], interventionCount: 0 },
+    });
+
+    mockDbMessageCreate.mockResolvedValue({ id: 'msg_user' });
+
+    mockAnthropicStream.mockResolvedValue({
+      async *[Symbol.asyncIterator]() {
+        yield {
+          type: 'content_block_delta',
+          delta: { type: 'text_delta', text: 'Starting...' },
+        };
+        throw new Error('Connection reset');
+      },
+      finalMessage: async () => ({
+        usage: { input_tokens: 0, output_tokens: 0 },
+      }),
+    });
+
+    const { POST } = await import('@/app/api/chat/route');
+
+    const req = new NextRequest('http://localhost:3000/api/chat', {
+      method: 'POST',
+      body: JSON.stringify({ sessionId: 'session_123', message: 'Help me' }),
+    });
+
+    const response = await POST(req, routeContext);
+    expect(response.status).toBe(200);
+
+    // Consume the stream and collect SSE events
+    const reader = response.body?.getReader();
+    const decoder = new TextDecoder();
+    let fullOutput = '';
+    if (reader) {
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        fullOutput += decoder.decode(value, { stream: true });
+      }
+    }
+
+    // Should contain the partial text followed by an error event
+    expect(fullOutput).toContain('"text":"Starting..."');
+    expect(fullOutput).toContain('"error"');
+    expect(fullOutput).toContain('Connection reset');
+  });
+
+  it('returns 403 when minor lacks parental consent', async () => {
+    mockRequireUser.mockResolvedValue({
+      id: 'user_123',
+      tenantId: 'tenant_123',
+      isMinor: true,
+      consentStatus: 'PENDING',
+      student: { id: 'student_123', gradeLevel: 5, learningPreferences: {}, iepAccommodations: [] },
+    });
+    const { POST } = await import('@/app/api/chat/route');
+
+    const req = new NextRequest('http://localhost:3000/api/chat', {
+      method: 'POST',
+      body: JSON.stringify({ sessionId: 'session_123', message: 'Hello' }),
+    });
+
+    const response = await POST(req, routeContext);
+    expect(response.status).toBe(403);
+    const body = await response.json();
+    expect(body.error).toContain('consent');
   });
 });
