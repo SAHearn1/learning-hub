@@ -3,11 +3,31 @@
 import { FormativeCheck } from '@/components/assessments/FormativeCheck';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { useSearchParams } from 'next/navigation';
+import { Suspense } from 'react';
 
 export default function FormativePage() {
+  return (
+    <Suspense fallback={<FormativePageShell />}>
+      <FormativePageContent />
+    </Suspense>
+  );
+}
+
+function FormativePageContent() {
   const searchParams = useSearchParams();
   const sessionId = searchParams.get('sessionId') || 'session-123';
   const topic = searchParams.get('topic') || 'Fractions and Equivalent Forms';
+
+  return <FormativePageShell sessionId={sessionId} topic={topic} />;
+}
+
+function FormativePageShell({
+  sessionId = 'session-123',
+  topic = 'Fractions and Equivalent Forms',
+}: {
+  sessionId?: string;
+  topic?: string;
+}) {
 
   return (
     <div className="container mx-auto py-8 px-4 max-w-4xl space-y-6">

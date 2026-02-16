@@ -3,6 +3,7 @@
 import { SummativeAssessment } from '@/components/assessments/SummativeAssessment';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { useSearchParams } from 'next/navigation';
+import { Suspense } from 'react';
 
 const DEFAULT_OBJECTIVES = [
   'Solve multi-step problems with clear reasoning',
@@ -11,11 +12,31 @@ const DEFAULT_OBJECTIVES = [
 ];
 
 export default function SummativePage() {
+  return (
+    <Suspense fallback={<SummativePageShell />}>
+      <SummativePageContent />
+    </Suspense>
+  );
+}
+
+function SummativePageContent() {
   const searchParams = useSearchParams();
   const studentId = searchParams.get('studentId') || 'student-123';
   const sessionId = searchParams.get('sessionId') || 'session-123';
   const topicName = searchParams.get('topic') || 'Fraction Operations';
 
+  return <SummativePageShell studentId={studentId} sessionId={sessionId} topicName={topicName} />;
+}
+
+function SummativePageShell({
+  studentId = 'student-123',
+  sessionId = 'session-123',
+  topicName = 'Fraction Operations',
+}: {
+  studentId?: string;
+  sessionId?: string;
+  topicName?: string;
+}) {
   return (
     <div className="container mx-auto py-8 px-4 max-w-5xl space-y-6">
       <div>
