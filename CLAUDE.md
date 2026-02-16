@@ -97,5 +97,7 @@ Status: In progress
 ## Immediate Next Actions
 
 1. Add one E2E happy-path test for explore-to-learn handoff with topic preselection.
+  Evidence: `tests/e2e/student/student-explore-handoff.spec.ts`
+  Note: local Playwright execution timed out in this environment; run in CI or a dev machine with full browser/auth setup.
 2. Add consent-enforcement checks on core student endpoints and backfill tests.
 3. Execute CI-equivalent integration suite (`npm run test:integration`) and resolve any remaining stale tests.
