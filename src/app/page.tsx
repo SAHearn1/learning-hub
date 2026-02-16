@@ -5,6 +5,7 @@ import { siteConfig } from '@/config/site';
 import { studentNavItems } from '@/config/navigation';
 
 const rolePortals = [
+  { label: 'Student Dashboard', href: '/learn' },
   { label: 'Educator Dashboard', href: '/educator/students' },
   { label: 'Parent Dashboard', href: '/students/demo-student/assessments' },
   { label: 'Admin Dashboard', href: '/admin/dashboard' },

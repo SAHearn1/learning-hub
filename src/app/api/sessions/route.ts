@@ -20,7 +20,35 @@ export const POST = withApiHandler(async (req) => {
     throw new ForbiddenError('Parental consent required before starting sessions');
   }
 
-  if (!user.student) {
+  const tenant = await db.tenant.findUnique({
+    where: { id: user.tenantId },
+    select: { id: true },
+  });
+  if (!tenant) {
+    throw new NotFoundError('Tenant not found for current user');
+  }
+
+  let studentId = user.student?.id ?? null;
+  if (!studentId && user.role === 'STUDENT') {
+    const student = await db.student.upsert({
+      where: { userId: user.id },
+      update: {},
+      create: {
+        userId: user.id,
+        gradeLevel: 6,
+        learningPreferences: {},
+        regulationProfile: {
+          dysregulationTriggers: [],
+          calmingStrategies: [],
+          preferredBreakDuration: 5,
+        },
+      },
+      select: { id: true },
+    });
+    studentId = student.id;
+  }
+
+  if (!studentId) {
     throw new NotFoundError('Student profile not found');
   }
 
@@ -50,7 +78,7 @@ export const POST = withApiHandler(async (req) => {
   const session = await db.session.create({
     data: {
       tenantId: user.tenantId,
-      studentId: user.student.id,
+      studentId,
       subject: body.subject,
       currentPhase: 'ROOT',
       engagementMode: body.engagementMode,

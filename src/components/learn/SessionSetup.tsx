@@ -21,6 +21,7 @@ interface SessionSetupProps {
   startError?: string | null;
   onClearError?: () => void;
   preselectedTopic?: PreselectedTopic | null;
+  preselectedSubject?: Subject | null;
 }
 
 const SUBJECT_DETAILS: Record<Subject, { name: string; color: string; description: string }> = {
@@ -83,8 +84,17 @@ function formatRelativeTime(dateStr: string): string {
   return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
 }
 
-export function SessionSetup({ onStart, isLoading, startError, onClearError, preselectedTopic }: SessionSetupProps) {
-  const [selectedSubject, setSelectedSubject] = useState<Subject | null>(preselectedTopic?.subject ?? null);
+export function SessionSetup({
+  onStart,
+  isLoading,
+  startError,
+  onClearError,
+  preselectedTopic,
+  preselectedSubject,
+}: SessionSetupProps) {
+  const [selectedSubject, setSelectedSubject] = useState<Subject | null>(
+    preselectedTopic?.subject ?? preselectedSubject ?? null,
+  );
   const [selectedMode, setSelectedMode] = useState<EngagementMode>('FORWARD');
 
   // TODO: Wire up session history fetching
