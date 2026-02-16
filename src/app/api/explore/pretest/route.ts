@@ -4,10 +4,11 @@ import { z } from 'zod';
 import { withApiHandler } from '@/lib/api-handler';
 import { requireUser } from '@/lib/auth';
 import { enforceUsageLimits, UsageLimitError } from '@/lib/usage-limits';
-import { NotFoundError, ConflictError, PaymentRequiredError } from '@/lib/api-errors';
+import { NotFoundError, ConflictError, PaymentRequiredError, ForbiddenError } from '@/lib/api-errors';
 import { generateDiagnosticQuestions } from '@/lib/assessments/diagnostic-generator';
 import { getStudentAbility } from '@/lib/irt/ability-estimation';
 import { getRecommendedDifficultyRange } from '@/lib/irt/adaptive-selection';
+import { hasRequiredMinorConsent } from '@/lib/compliance';
 
 const pretestSchema = z.object({
   subject: z.enum(['MATH', 'SCIENCE', 'LANGUAGE_ARTS', 'FINANCIAL_LITERACY']),
@@ -20,6 +21,10 @@ const pretestSchema = z.object({
  */
 export const POST = withApiHandler(async (req) => {
   const user = await requireUser();
+
+  if (!hasRequiredMinorConsent(user.isMinor, user.consentStatus)) {
+    throw new ForbiddenError('Parental consent required before pretests');
+  }
 
   if (!user.student) {
     throw new NotFoundError('Student profile not found');

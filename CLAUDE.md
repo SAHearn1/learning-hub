@@ -75,7 +75,10 @@ Status: In progress
   Evidence: `src/lib/compliance/data-retention.ts`, `src/app/api/admin/data-retention/route.ts`
 - [x] Security headers and CSP configured.
   Evidence: `next.config.js`, `middleware.ts`
-- [ ] Enforce consent gating universally on student learning routes.
+- [x] Enforce consent gating on core session and pretest learning routes.
+  Evidence: `src/app/api/sessions/route.ts`, `src/app/api/explore/pretest/route.ts`, `src/app/api/explore/pretest/next/route.ts`
+  Tests: `tests/integration/api/consent-enforcement.test.ts`
+- [ ] Enforce consent gating universally on all remaining student learning routes.
 - [ ] Add explicit webhook replay-protection tests (timestamp skew/idempotency guard).
 
 ## Phase 5 - Operations and Scale Readiness

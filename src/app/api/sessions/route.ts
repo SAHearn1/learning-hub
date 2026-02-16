@@ -4,7 +4,8 @@ import { enforceUsageLimits, UsageLimitError } from '@/lib/usage-limits';
 import { z } from 'zod';
 import { withApiHandler } from '@/lib/api-handler';
 import { requireUser } from '@/lib/auth';
-import { NotFoundError, PaymentRequiredError } from '@/lib/api-errors';
+import { NotFoundError, PaymentRequiredError, ForbiddenError } from '@/lib/api-errors';
+import { hasRequiredMinorConsent } from '@/lib/compliance';
 
 const createSessionSchema = z.object({
   subject: z.enum(['MATH', 'SCIENCE', 'LANGUAGE_ARTS', 'FINANCIAL_LITERACY']),
@@ -14,6 +15,10 @@ const createSessionSchema = z.object({
 
 export const POST = withApiHandler(async (req) => {
   const user = await requireUser();
+
+  if (!hasRequiredMinorConsent(user.isMinor, user.consentStatus)) {
+    throw new ForbiddenError('Parental consent required before starting sessions');
+  }
 
   if (!user.student) {
     throw new NotFoundError('Student profile not found');

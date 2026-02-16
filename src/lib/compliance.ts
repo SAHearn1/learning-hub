@@ -61,6 +61,14 @@ export function requiresGuardianForDataRequest(isMinor: boolean, role: UserRole)
   return isMinor && !canManageMinorConsent(role);
 }
 
+export function hasRequiredMinorConsent(
+  isMinor: boolean,
+  consentStatus: ConsentStatus | null | undefined,
+): boolean {
+  if (!isMinor) return true;
+  return consentStatus === 'GRANTED';
+}
+
 
 export const regulatoryControls = {
   FERPA: [

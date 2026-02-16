@@ -18,6 +18,7 @@ import { computePhaseTransition, buildFiveRStateSnapshot } from '@/lib/five-rs/s
 import { withApiHandler } from '@/lib/api-handler';
 import { requireUser } from '@/lib/auth';
 import { UnauthorizedError, NotFoundError, ForbiddenError, BadRequestError, PaymentRequiredError } from '@/lib/api-errors';
+import { hasRequiredMinorConsent } from '@/lib/compliance';
 import type { SourceCitation } from '@/types/chat';
 
 const chatRequestSchema = z.object({
@@ -80,6 +81,10 @@ function isPersonalTradeAdviceRequest(message: string): boolean {
 
 export async function POST(req: NextRequest) {
   const user = await requireUser();
+
+  if (!hasRequiredMinorConsent(user.isMinor, user.consentStatus)) {
+    throw new ForbiddenError('Parental consent required before using chat');
+  }
 
   if (!user.student) {
     throw new NotFoundError('Student profile not found');

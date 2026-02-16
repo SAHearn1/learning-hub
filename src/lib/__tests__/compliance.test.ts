@@ -4,6 +4,7 @@ import {
   isConsentStatusTransitionAllowed,
   retentionPolicyRecords,
   requiresGuardianForDataRequest,
+  hasRequiredMinorConsent,
 } from '@/lib/compliance';
 
 describe('compliance utilities', () => {
@@ -23,6 +24,14 @@ describe('compliance utilities', () => {
     expect(requiresGuardianForDataRequest(true, 'STUDENT')).toBe(true);
     expect(requiresGuardianForDataRequest(true, 'PARENT')).toBe(false);
     expect(requiresGuardianForDataRequest(false, 'STUDENT')).toBe(false);
+  });
+
+  it('requires granted consent for minors in learning flows', () => {
+    expect(hasRequiredMinorConsent(false, null)).toBe(true);
+    expect(hasRequiredMinorConsent(true, 'GRANTED')).toBe(true);
+    expect(hasRequiredMinorConsent(true, 'PENDING')).toBe(false);
+    expect(hasRequiredMinorConsent(true, 'DENIED')).toBe(false);
+    expect(hasRequiredMinorConsent(true, 'WITHDRAWN')).toBe(false);
   });
 
   it('defines retention categories for legal readiness', () => {
