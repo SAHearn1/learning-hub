@@ -8,6 +8,9 @@ const mockInvalidateSessionCache = vi.fn();
 const mockEnforceUsageLimits = vi.fn();
 const mockEvaluateOrganizationTokenUsage = vi.fn();
 const mockDbMessageCreate = vi.fn();
+const mockAIUsageLedgerCreate = vi.fn();
+const mockAppendImmutableAuditLog = vi.fn();
+const mockAnthropicStream = vi.fn();
 
 vi.mock('@/lib/auth', () => ({
   requireUser: mockRequireUser,
@@ -34,7 +37,7 @@ vi.mock('@/lib/db', () => ({
       update: vi.fn(),
     },
     aIUsageLedger: {
-      create: vi.fn(),
+      create: mockAIUsageLedgerCreate,
     },
     thinkingAssessment: {
       create: vi.fn(),
@@ -56,7 +59,7 @@ vi.mock('@/lib/vector-search', () => ({
 vi.mock('@/lib/ai/client', () => ({
   anthropic: {
     messages: {
-      stream: vi.fn(),
+      stream: mockAnthropicStream,
     },
   },
   AI_MODELS: {
@@ -115,7 +118,7 @@ vi.mock('@/lib/monitoring', () => ({
 }));
 
 vi.mock('@/lib/audit', () => ({
-  appendImmutableAuditLog: vi.fn().mockResolvedValue(undefined),
+  appendImmutableAuditLog: mockAppendImmutableAuditLog,
 }));
 
 describe('POST /api/chat', () => {
@@ -131,6 +134,8 @@ describe('POST /api/chat', () => {
       spikeDetected: false,
     });
     mockDbMessageCreate.mockResolvedValue({ id: 'msg_1' });
+    mockAIUsageLedgerCreate.mockResolvedValue({});
+    mockAppendImmutableAuditLog.mockResolvedValue(undefined);
   });
 
   it('throws AuthenticationError when not authenticated', async () => {
@@ -262,6 +267,76 @@ describe('POST /api/chat', () => {
     expect(response.status).toBe(200);
     expect(response.headers.get('content-type')).toContain('text/event-stream');
     expect(mockDbMessageCreate).toHaveBeenCalled();
+    expect(mockInvalidateSessionCache).toHaveBeenCalledWith('session_123');
+  });
+
+  it('streams normal assistant response and persists assistant + usage ledger', async () => {
+    mockRequireUser.mockResolvedValue({
+      id: 'user_123',
+      tenantId: 'tenant_123',
+      student: {
+        id: 'student_123',
+        gradeLevel: 5,
+        learningPreferences: {},
+        iepAccommodations: [],
+      },
+    });
+    mockGetCachedSession.mockResolvedValue({
+      id: 'session_123',
+      studentId: 'student_123',
+      endedAt: null,
+      messages: [],
+      currentPhase: 'ROOT',
+      subject: 'MATH',
+      engagementMode: 'FORWARD',
+      metadata: {},
+      regulationState: { level: 70, signals: [], interventionCount: 0 },
+    });
+
+    mockDbMessageCreate
+      .mockResolvedValueOnce({ id: 'msg_user' })
+      .mockResolvedValueOnce({ id: 'msg_assistant' });
+
+    mockAnthropicStream.mockResolvedValue({
+      async *[Symbol.asyncIterator]() {
+        yield {
+          type: 'content_block_delta',
+          delta: { type: 'text_delta', text: 'Let us solve this step by step.' },
+        };
+      },
+      finalMessage: async () => ({
+        usage: {
+          input_tokens: 42,
+          output_tokens: 84,
+        },
+      }),
+    });
+
+    const { POST } = await import('@/app/api/chat/route');
+
+    const req = new NextRequest('http://localhost:3000/api/chat', {
+      method: 'POST',
+      body: JSON.stringify({ sessionId: 'session_123', message: 'Help me with fractions' }),
+    });
+
+    const response = await POST(req);
+
+    expect(response.status).toBe(200);
+    expect(response.headers.get('content-type')).toContain('text/event-stream');
+
+    // Consume the SSE body so stream completion side effects (assistant save, usage ledger) run.
+    const reader = response.body?.getReader();
+    if (reader) {
+      while (true) {
+        const { done } = await reader.read();
+        if (done) break;
+      }
+    }
+
+    expect(mockAnthropicStream).toHaveBeenCalled();
+    expect(mockDbMessageCreate).toHaveBeenCalledTimes(2);
+    expect(mockAIUsageLedgerCreate).toHaveBeenCalled();
+    expect(mockAppendImmutableAuditLog).toHaveBeenCalled();
     expect(mockInvalidateSessionCache).toHaveBeenCalledWith('session_123');
   });
 });

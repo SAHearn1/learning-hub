@@ -18,6 +18,8 @@ Status: In progress
   Evidence: `src/app/api/admin/super/tenants/[tenantId]/invoice/__tests__/route.test.ts`, `src/app/api/admin/super/tenants/[tenantId]/suspension/__tests__/route.test.ts`
 - [x] API-level chat route contract tests updated to current implementation.
   Evidence: `tests/integration/api/chat.test.ts`
+- [x] Streaming chat persistence side effects (assistant message + usage ledger + audit log) validated in integration tests.
+  Evidence: `tests/integration/api/chat.test.ts`
 - [ ] End-to-end validation of full persistence flow (`/api/chat` -> DB -> progress views).
 - [ ] Full E2E auth fixture run in CI with Clerk test credentials.
 
