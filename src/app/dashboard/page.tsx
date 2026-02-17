@@ -10,11 +10,15 @@ export default async function DashboardPage() {
   const { userId } = await auth();
   if (!userId) redirect('/sign-in');
 
-  const user = await getCurrentUser();
+  let user;
+  try {
+    user = await getCurrentUser();
+  } catch (err) {
+    console.error('Dashboard: failed to get user, falling back to /learn', err);
+    redirect('/learn');
+  }
 
   if (!user) {
-    // User exists in Clerk but not yet in DB — getCurrentUser auto-provisions,
-    // so this is a rare edge case. Redirect to learn as default.
     redirect('/learn');
   }
 
