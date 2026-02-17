@@ -1,20 +1,19 @@
 'use client';
 
+import Image from 'next/image';
 import { cn } from '@/lib/utils';
-import { Sprout, Wind, MessageCircle, Leaf, Handshake, type LucideIcon } from 'lucide-react';
 
 const PHASES: ReadonlyArray<{
   key: string;
   label: string;
-  color: string;
-  Icon: LucideIcon;
+  src: string;
   description: string;
 }> = [
-  { key: 'root', label: 'Root', color: 'bg-emerald-800', Icon: Sprout, description: 'Ground & Connect' },
-  { key: 'regulate', label: 'Regulate', color: 'bg-emerald-700', Icon: Wind, description: 'Check In & Breathe' },
-  { key: 'reflect', label: 'Reflect', color: 'bg-emerald-600', Icon: MessageCircle, description: 'Think & Reason' },
-  { key: 'restore', label: 'Restore', color: 'bg-amber-700', Icon: Leaf, description: 'Learn & Grow' },
-  { key: 'reconnect', label: 'Reconnect', color: 'bg-amber-600', Icon: Handshake, description: 'Apply & Share' },
+  { key: 'root', label: 'Root', src: '/brand/5r-root.png', description: 'Ground & Connect' },
+  { key: 'regulate', label: 'Regulate', src: '/brand/5r-regulate.png', description: 'Check In & Breathe' },
+  { key: 'reflect', label: 'Reflect', src: '/brand/5r-reflect.png', description: 'Think & Reason' },
+  { key: 'restore', label: 'Restore', src: '/brand/5r-restore.png', description: 'Learn & Grow' },
+  { key: 'reconnect', label: 'Reconnect', src: '/brand/5r-reconnect.png', description: 'Apply & Share' },
 ];
 
 interface FiveRStripProps {
@@ -41,16 +40,21 @@ export function FiveRStrip({ activePhase, compact = false, className, onPhaseCli
             aria-current={isActive ? 'step' : undefined}
             className={cn(
               'flex items-center gap-1.5 rounded-md px-3 py-1.5 text-sm font-medium transition-all',
-              'text-white/80 hover:text-white',
               isActive
-                ? `${phase.color} ring-2 ring-amber-400 shadow-md text-white`
-                : `${phase.color}/60 hover:${phase.color}/80`,
+                ? 'bg-primary-900 ring-2 ring-secondary-400 shadow-md text-white'
+                : 'bg-primary-700/60 text-white/80 hover:bg-primary-700/80 hover:text-white',
               !onPhaseClick && 'cursor-default',
               compact && 'px-2 py-1 text-xs',
             )}
             title={phase.description}
           >
-            <phase.Icon size={compact ? 14 : 16} aria-hidden />
+            <Image
+              src={phase.src}
+              alt={phase.label}
+              width={compact ? 18 : 22}
+              height={compact ? 18 : 22}
+              className="rounded-full"
+            />
             {!compact && <span>{phase.label}</span>}
             {compact && <span className="sr-only">{phase.label}</span>}
           </button>

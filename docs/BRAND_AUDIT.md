@@ -7,52 +7,47 @@
 
 | Original File | Source | Canonical Output | Status |
 |---------------|--------|-----------------|--------|
-| RWFW Logo 1.png | Brand package | `/public/brand/rwfw-seal.png` | PENDING — requires source PNG |
-| Root icon 2-16-25.png | Brand package | `/public/brand/5r-root.png` | PENDING — requires source PNG |
-| REgulate Icon.png | Brand package | `/public/brand/5r-regulate.png` | PENDING — requires source PNG |
-| Reflect Icon.png | Brand package | `/public/brand/5r-reflect.png` | PENDING — requires source PNG |
-| Restore 21625.png | Brand package | `/public/brand/5r-restore.png` | PENDING — requires source PNG |
-| Reconnect Icon.png | Brand package | `/public/brand/5r-reconnect.png` | PENDING — requires source PNG |
-| (derived from seal) | — | `/public/brand/favicon.png` | PENDING — resize from seal |
+| RWFW Logo 1.png | ~/Downloads | `/public/brand/rwfw-seal.png` | DEPLOYED |
+| Root icon 2-16-25.png | ~/Downloads | `/public/brand/5r-root.png` | DEPLOYED |
+| REgulate Icon.png | ~/Downloads | `/public/brand/5r-regulate.png` | DEPLOYED |
+| REflect icon.png | ~/Downloads | `/public/brand/5r-reflect.png` | DEPLOYED |
+| Restore 21625.png | ~/Downloads | `/public/brand/5r-restore.png` | DEPLOYED |
+| Reconnect Icon.png | ~/Downloads | `/public/brand/5r-reconnect.png` | DEPLOYED |
+| (derived from seal) | — | `/public/brand/favicon.png` | DEPLOYED (copy of seal) |
 
 ## Component Audit
 
 | Component | Path | Status | Notes |
 |-----------|------|--------|-------|
-| BrandLogo | `/src/components/brand/BrandLogo.tsx` | CREATED | SVG gradient logo, full/compact variants |
-| FiveRIcon | `/src/components/brand/FiveRIcon.tsx` | CREATED | Individual phase icon with sm/md/lg sizes |
-| FiveRStrip | `/src/components/brand/FiveRStrip.tsx` | CREATED | Horizontal nav strip, compact variant |
-| rootwork-logo | `/src/components/brand/rootwork-logo.tsx` | EXISTING | Original SVG logo |
-| rootwork-icon | `/src/components/brand/rootwork-icon.tsx` | EXISTING | Lucide icon mapper |
+| BrandLogo | `/src/components/brand/BrandLogo.tsx` | DEPLOYED | Uses `/brand/rwfw-seal.png` via next/image |
+| FiveRIcon | `/src/components/brand/FiveRIcon.tsx` | DEPLOYED | Uses PNG assets from `/brand/5r-*.png` |
+| FiveRStrip | `/src/components/brand/FiveRStrip.tsx` | DEPLOYED | Horizontal nav strip with PNG icons |
+| rootwork-logo | `/src/components/brand/rootwork-logo.tsx` | DEPLOYED | Uses `/brand/rwfw-seal.png` via next/image |
+| rootwork-icon | `/src/components/brand/rootwork-icon.tsx` | EXISTING | Lucide icon mapper for navigation |
 
 ## Token Audit
 
 | Token File | Path | Status | Matches Spec |
 |-----------|------|--------|-------------|
-| tokens.json | `/styles/tokens.json` | CREATED | YES — exact match to spec |
-| tokens.css | `/src/brand/tokens.css` | EXISTING | Extended version with CSS custom properties |
+| tokens.json | `/styles/tokens.json` | DEPLOYED | YES — exact match to spec |
+| tokens.css | `/src/brand/tokens.css` | DEPLOYED | Forest/gold palette mapped from spec |
+| phase-tokens.css | `/src/brand/phase-tokens.css` | DEPLOYED | Brand-consistent 5R phase colors |
 | brand.ts | `/src/brand/brand.ts` | EXISTING | TypeScript constants for programmatic use |
 
 ## Embedding Audit
 
-| Location | BrandLogo | FiveRStrip | Status |
-|----------|-----------|-----------|--------|
-| Global header | TODO | TODO | Needs integration |
-| Student dashboard | TODO | TODO | Needs integration |
-| Educator dashboard | TODO | TODO | Needs integration |
-| Session player | — | TODO | FiveRStrip as primary nav |
-| README.md | TODO | — | Embed seal + 5R strip |
+| Location | BrandLogo | FiveRStrip/Icons | Status |
+|----------|-----------|-----------------|--------|
+| Global header | RWFW seal PNG | — | DEPLOYED |
+| Homepage hero | RWFW seal PNG | 5R icon row | DEPLOYED |
+| Footer | RWFW seal PNG | — | DEPLOYED |
+| Session player header | — | PhaseIndicator (CSS tokens) | DEPLOYED |
+| Favicon | `/brand/favicon.png` | — | DEPLOYED |
 
-## Action Items
+## Verified
 
-1. **Source PNGs needed:** The 6 original PNG files (RWFW seal + 5 phase icons) must be placed in `/public/brand/` with canonical names. These are physical image files that cannot be generated from code.
-2. **Favicon generation:** Once `rwfw-seal.png` is available, resize to 32x32 and 180x180 for favicon use.
-3. **Header integration:** Embed `<BrandLogo />` in the global navigation header.
-4. **Dashboard integration:** Add `<FiveRStrip />` to student and educator dashboard layouts.
-5. **README update:** Embed brand assets in README.md with relative paths.
-
-## Notes
-
-- SVG components (`BrandLogo.tsx`, existing `rootwork-logo.tsx`) provide vector logos that work at any size
-- PNG assets in `/public/brand/` serve as fallbacks for contexts where SVG isn't supported (favicons, Open Graph, email)
-- All components include accessibility attributes (aria-hidden, aria-label, role="img")
+- All brand assets referenced only from `/public/brand/`
+- No duplicate scattered copies
+- Accessibility alt text on all images
+- Dark mode: Icons use colored backgrounds, readable on both light and dark
+- CSS token values match `/styles/tokens.json` exactly

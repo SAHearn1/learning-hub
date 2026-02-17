@@ -51,13 +51,13 @@ Maintain a minimum clearspace equal to the height of the "R" in "RootWork" on al
 
 Each phase of the RootWork 5Rs has a designated icon and color:
 
-| Phase | Icon | Background | Description |
-|-------|------|-----------|-------------|
-| Root | 🌱 | `emerald-800` | Ground & Connect |
-| Regulate | 🍃 | `emerald-700` | Check In & Breathe |
-| Reflect | 💭 | `emerald-600` | Think & Reason |
-| Restore | 🌿 | `amber-700` | Learn & Grow |
-| Reconnect | 🤝 | `amber-600` | Apply & Share |
+| Phase | Icon Asset | Phase Color | Description |
+|-------|-----------|-------------|-------------|
+| Root | `/brand/5r-root.png` | `#0C3B2E` (forest.deep) | Ground & Connect |
+| Regulate | `/brand/5r-regulate.png` | `#14532D` (forest.primary) | Check In & Breathe |
+| Reflect | `/brand/5r-reflect.png` | `#1E6B45` (forest.glow) | Think & Reason |
+| Restore | `/brand/5r-restore.png` | `#B68D2E` (gold.muted) | Learn & Grow |
+| Reconnect | `/brand/5r-reconnect.png` | `#C9A23E` (gold.primary) | Apply & Share |
 
 ### FiveRStrip Component
 Use `<FiveRStrip />` as the primary navigation for 5R session players. Available in `compact` and `full` variants.
@@ -82,11 +82,11 @@ favicon.png         — Browser favicon
 
 ### Components (`/src/components/brand/`)
 ```
-BrandLogo.tsx       — SVG logo with gradient (full/compact variants)
-FiveRIcon.tsx       — Individual phase icon with label
-FiveRStrip.tsx      — Horizontal strip of all 5R phases
-rootwork-logo.tsx   — Original SVG logo component
-rootwork-icon.tsx   — Lucide icon mapper
+BrandLogo.tsx       — RWFW seal logo (full/compact variants, uses /brand/rwfw-seal.png)
+FiveRIcon.tsx       — Individual phase icon using PNG assets from /brand/
+FiveRStrip.tsx      — Horizontal strip of all 5R phases with PNG icons
+rootwork-logo.tsx   — Site logo component (uses /brand/rwfw-seal.png)
+rootwork-icon.tsx   — Lucide icon mapper for navigation
 ```
 
 ### Design Tokens

@@ -23,8 +23,8 @@ export const metadata: Metadata = {
   },
   description: siteConfig.description,
   icons: {
-    icon: '/icon.svg',
-    apple: '/apple-icon.svg',
+    icon: '/brand/favicon.png',
+    apple: '/brand/favicon.png',
   },
 };
 

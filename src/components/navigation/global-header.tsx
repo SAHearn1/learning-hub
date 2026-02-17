@@ -1,5 +1,5 @@
 import Link from 'next/link';
-import { BrandLogo } from '@/components/brand/BrandLogo';
+import Image from 'next/image';
 
 const NAV_LINKS = [
   { href: '/curriculum', label: 'Curriculum' },
@@ -15,7 +15,14 @@ export function GlobalHeader() {
     >
       <div className="mx-auto flex h-14 max-w-6xl items-center justify-between px-4">
         <Link href="/" className="flex items-center gap-2">
-          <BrandLogo variant="compact" />
+          <Image
+            src="/brand/rwfw-seal.png"
+            alt="RootWork Framework"
+            width={32}
+            height={32}
+            className="rounded-full"
+            priority
+          />
           <span className="text-sm font-bold text-white">RootWork</span>
         </Link>
 

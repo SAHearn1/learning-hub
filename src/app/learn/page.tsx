@@ -1,5 +1,7 @@
+import { auth } from '@clerk/nextjs/server';
 import { db } from '@/lib/db';
 import { LearnPageClient } from './learn-page-client';
+import { SignInPrompt } from './sign-in-prompt';
 import type { Subject } from '@prisma/client';
 
 export interface PreselectedTopic {
@@ -14,6 +16,13 @@ interface PageProps {
 }
 
 export default async function LearnPage({ searchParams }: PageProps) {
+  const { userId } = await auth();
+
+  // If not signed in, show sign-in prompt
+  if (!userId) {
+    return <SignInPrompt />;
+  }
+
   const { topic: topicId, subject } = await searchParams;
 
   const preselectedSubject: Subject | null =
