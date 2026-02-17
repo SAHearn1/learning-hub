@@ -48,7 +48,7 @@ const nextConfig = {
           {
             key: "Content-Security-Policy",
             value:
-              "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://cdn.clerk.io https://*.clerk.accounts.dev https://js.stripe.com; worker-src 'self' blob:; style-src 'self' 'unsafe-inline'; img-src 'self' data: https://img.clerk.com https://images.unsplash.com; font-src 'self'; connect-src 'self' https://api.clerk.io https://*.clerk.accounts.dev https://api.stripe.com https://*.pinecone.io https://api.anthropic.com https://api.openai.com; frame-src https://js.stripe.com https://accounts.clerk.dev https://*.clerk.accounts.dev; object-src 'none'; base-uri 'self'; form-action 'self';",
+              "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://cdn.clerk.io https://*.clerk.accounts.dev https://js.stripe.com https://challenges.cloudflare.com; worker-src 'self' blob:; style-src 'self' 'unsafe-inline'; img-src 'self' data: https://img.clerk.com https://images.unsplash.com; font-src 'self'; connect-src 'self' https://api.clerk.io https://*.clerk.accounts.dev https://api.stripe.com https://*.pinecone.io https://api.anthropic.com https://api.openai.com https://challenges.cloudflare.com; frame-src https://js.stripe.com https://accounts.clerk.dev https://*.clerk.accounts.dev https://challenges.cloudflare.com; object-src 'none'; base-uri 'self'; form-action 'self';",
           },
         ],
       },

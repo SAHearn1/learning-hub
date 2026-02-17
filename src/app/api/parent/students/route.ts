@@ -35,6 +35,9 @@ export const GET = withApiHandler(async (req: NextRequest) => {
       firstName: true,
       lastName: true,
       email: true,
+      isMinor: true,
+      consentStatus: true,
+      dateOfBirth: true,
     },
   });
 
