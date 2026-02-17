@@ -1,7 +1,12 @@
+import { auth } from '@clerk/nextjs/server';
+import { redirect } from 'next/navigation';
 import { parentNavItems } from '@/config/navigation';
 import { PortalHome } from '@/components/navigation/portal-home';
 
-export default function ParentDashboardPage() {
+export default async function ParentDashboardPage() {
+  const { userId } = await auth();
+  if (!userId) redirect('/sign-in');
+
   return (
     <PortalHome
       title="Parent Workspace"

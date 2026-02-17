@@ -9,8 +9,18 @@ const mockDb = {
 
 vi.mock('@clerk/nextjs/server', () => ({ auth: mockAuth }));
 vi.mock('@/lib/db', () => ({ db: mockDb }));
-vi.mock('@/lib/logger', () => ({ logger: { debug: vi.fn(), info: vi.fn(), warn: vi.fn(), error: vi.fn() } }));
-vi.mock('@/lib/monitoring', () => ({ captureError: vi.fn() }));
+vi.mock('@/lib/logger', () => ({
+  logger: { debug: vi.fn(), info: vi.fn(), warn: vi.fn(), error: vi.fn() },
+}));
+vi.mock('@/lib/api/metrics', () => ({
+  incrementMetric: vi.fn(),
+  observeLatency: vi.fn(),
+}));
+vi.mock('@/lib/monitoring', () => ({
+  captureError: vi.fn(),
+}));
+
+const routeContext = { params: Promise.resolve({}) };
 
 describe('POST /api/assessments/review', () => {
   beforeEach(() => {
@@ -28,6 +38,7 @@ describe('POST /api/assessments/review', () => {
         headers: { 'content-type': 'application/json' },
         body: JSON.stringify({ assessmentId: 'a1', rubricScore: 200, comments: 'x' }),
       }),
+      routeContext,
     );
     const body = await response.json();
 
@@ -40,7 +51,10 @@ describe('POST /api/assessments/review', () => {
     const { GET } = await import('../route');
     mockAuth.mockReturnValue({ userId: null });
 
-    const response = await GET(new NextRequest('http://localhost/api/assessments/review'));
+    const response = await GET(
+      new NextRequest('http://localhost/api/assessments/review'),
+      routeContext,
+    );
     const body = await response.json();
 
     expect(response.status).toBe(401);

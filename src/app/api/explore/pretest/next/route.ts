@@ -15,6 +15,7 @@ import {
   shouldStopAssessment,
   getRecommendedDifficultyRange,
 } from '@/lib/irt/adaptive-selection';
+import { hasRequiredMinorConsent } from '@/lib/compliance';
 
 const nextSchema = z.object({
   sessionId: z.string().min(1),
@@ -27,6 +28,10 @@ const nextSchema = z.object({
  */
 export const POST = withApiHandler(async (req) => {
   const user = await requireUser();
+
+  if (!hasRequiredMinorConsent(user.isMinor, user.consentStatus)) {
+    throw new ForbiddenError('Parental consent required before continuing pretests');
+  }
 
   if (!user.student) {
     throw new NotFoundError('Student profile not found');

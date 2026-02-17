@@ -40,3 +40,32 @@ Fix the TypeScript/Prisma JSON typing issue in `src/app/api/chat/route.ts` and r
 ## Follow-up Planning Artifact
 
 - Detailed execution plan: `docs/status/build-remediation-task-list-2026-02-15.md`
+
+---
+
+## Addendum â€” 2026-02-16 Student Workspace Operability Update
+
+### Build Verification
+
+- Command run: `cmd /c npm run build`
+- Result: ✅ Passed
+- Notes: Prior `src/app/api/student/settings/route.ts` typing issue resolved; production build now completes.
+
+### Student Workspace End-to-End Workflow Verification
+
+- `Learn` card: subject query handoff implemented and session start hardened.
+- `Explore` card: existing pretest/topic flow retained.
+- `Financial Literacy` learn card: now correctly preselects subject in learn setup.
+- `Browse Curriculum` and `Financial Literacy` curriculum cards: existing curriculum workflows retained.
+- `Calm Corner` card: persisted regulation check-in implemented (`POST /api/regulate/check-in`).
+- `My Progress` card: existing dashboard workflow retained.
+- `Community` card: topic-to-guided-session launch flow implemented.
+- `Settings` card: persisted student settings workflow implemented (`GET/PATCH /api/student/settings`).
+
+### Test Verification
+
+- Command run:
+  - `cmd /c npx vitest run src/app/api/sessions/__tests__/route.test.ts src/app/api/student/settings/__tests__/route.test.ts src/app/api/regulate/check-in/__tests__/route.test.ts src/config/__tests__/config.test.ts`
+- Result:
+  - ✅ 4/4 test files passed
+  - ✅ 39/39 tests passed

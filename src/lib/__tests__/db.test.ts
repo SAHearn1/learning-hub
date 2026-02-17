@@ -114,6 +114,10 @@ describe('database connection — error handling', () => {
       datasourceUrl: 'postgresql://invalid:invalid@localhost:1/nonexistent',
     });
 
-    await expect(client.$connect()).rejects.toThrow();
-  });
+    try {
+      await expect(client.$connect()).rejects.toThrow();
+    } finally {
+      await client.$disconnect().catch(() => {});
+    }
+  }, 15000);
 });

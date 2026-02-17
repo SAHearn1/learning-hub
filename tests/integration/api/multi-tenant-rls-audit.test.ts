@@ -32,6 +32,26 @@ vi.mock('@/lib/redis/cached-queries', () => ({
   invalidateSessionCache: vi.fn(),
 }));
 
+vi.mock('@/lib/auth', () => ({
+  requireUser: vi.fn(),
+}));
+
+vi.mock('@/lib/logger', () => ({
+  logger: { debug: vi.fn(), info: vi.fn(), warn: vi.fn(), error: vi.fn() },
+}));
+
+vi.mock('@/lib/api/metrics', () => ({
+  incrementMetric: vi.fn(),
+  observeLatency: vi.fn(),
+}));
+
+vi.mock('@/lib/monitoring', () => ({
+  captureError: vi.fn(),
+  captureException: vi.fn(),
+  recordMetric: vi.fn(),
+  trackEvent: vi.fn(),
+}));
+
 describe('Multi-tenant isolation audit (RLS-style negative paths)', () => {
   beforeEach(() => {
     vi.clearAllMocks();
@@ -39,8 +59,9 @@ describe('Multi-tenant isolation audit (RLS-style negative paths)', () => {
 
   it('profiles: blocks School B teacher from listing School A class roster', async () => {
     const { db } = await import('@/lib/db');
+    const { requireUser } = await import('@/lib/auth');
 
-    vi.mocked(db.user.findUnique).mockResolvedValueOnce({
+    vi.mocked(requireUser).mockResolvedValueOnce({
       id: 'teacher_b',
       clerkUserId: 'clerk_teacher_school_b',
       tenantId: 'school_b',
@@ -63,18 +84,19 @@ describe('Multi-tenant isolation audit (RLS-style negative paths)', () => {
 
   it('assignments: blocks School B teacher from reading School A session assessments', async () => {
     const { db } = await import('@/lib/db');
+    const { requireUser } = await import('@/lib/auth');
+
+    vi.mocked(requireUser).mockResolvedValueOnce({
+      id: 'teacher_b',
+      clerkUserId: 'clerk_teacher_school_b',
+      tenantId: 'school_b',
+      role: 'EDUCATOR',
+    } as any);
 
     vi.mocked(db.session.findUnique).mockResolvedValueOnce({
       id: 'session_school_a',
       tenantId: 'school_a',
       student: { userId: 'student_user_a' },
-    } as any);
-
-    vi.mocked(db.user.findUnique).mockResolvedValueOnce({
-      id: 'teacher_b',
-      clerkUserId: 'clerk_teacher_school_b',
-      tenantId: 'school_b',
-      role: 'EDUCATOR',
     } as any);
 
     const { GET } = await import('@/app/api/assessments/route');
@@ -87,11 +109,14 @@ describe('Multi-tenant isolation audit (RLS-style negative paths)', () => {
   });
 
   it('chats: blocks School B teacher token from School A student chat session', async () => {
-    const { getCachedUserProfile, getCachedSession } = await import('@/lib/redis/cached-queries');
+    const { getCachedSession } = await import('@/lib/redis/cached-queries');
+    const { requireUser } = await import('@/lib/auth');
 
-    vi.mocked(getCachedUserProfile).mockResolvedValueOnce({
-      id: 'teacher_b',
+    vi.mocked(requireUser).mockResolvedValueOnce({
+      id: 'user_school_b',
       tenantId: 'school_b',
+      isMinor: false,
+      consentStatus: null,
       student: {
         id: 'student_b',
         gradeLevel: 6,
@@ -112,13 +137,15 @@ describe('Multi-tenant isolation audit (RLS-style negative paths)', () => {
     } as any);
 
     const { POST } = await import('@/app/api/chat/route');
+    const routeContext = { params: Promise.resolve({}) };
     const req = new NextRequest('http://localhost:3000/api/chat', {
       method: 'POST',
       body: JSON.stringify({ sessionId: 'session_school_a', message: 'hello' }),
     });
 
-    const response = await POST(req);
-
+    const response = await POST(req, routeContext);
     expect(response.status).toBe(403);
-  });
+    const body = await response.json();
+    expect(body.error).toBe('Access to this session is forbidden');
+  }, 15000);
 });

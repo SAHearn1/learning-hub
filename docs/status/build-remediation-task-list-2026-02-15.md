@@ -88,3 +88,38 @@ This task list is derived from:
 - **Build/type fix (P0-1):** API/backend engineer
 - **CI policy + evidence (P0-2, P1-1, P1-2):** DevOps + QA lead + independent verifier
 - **Readiness docs (P2-1, P2-2):** Program/operations owner with verifier support
+
+---
+
+## Student Workspace E2E Operability Sprint (2026-02-16)
+
+Scope requested: ensure each Student Workspace card has a purposeful end-to-end workflow and verify production build operability.
+
+### Tasks and Status
+
+- [x] Wire `Learn` page to honor `subject` query parameter handoffs from workspace cards.
+  - Evidence: `src/app/learn/page.tsx`, `src/app/learn/learn-page-client.tsx`, `src/components/learn/SessionSetup.tsx`
+- [x] Harden session start for student-role users missing `student` relation to prevent Begin Session failures.
+  - Evidence: `src/app/api/sessions/route.ts`, `src/app/api/sessions/__tests__/route.test.ts`
+- [x] Convert `Settings` card destination from placeholder to persisted student preferences workflow.
+  - Evidence: `src/app/settings/page.tsx`, `src/app/settings/settings-client.tsx`, `src/app/api/student/settings/route.ts`, `src/app/api/student/settings/__tests__/route.test.ts`
+- [x] Convert `Calm Corner` card destination from placeholder to persisted regulation check-in workflow.
+  - Evidence: `src/app/regulate/page.tsx`, `src/app/regulate/regulate-client.tsx`, `src/app/api/regulate/check-in/route.ts`, `src/app/api/regulate/check-in/__tests__/route.test.ts`
+- [x] Convert `Community` card destination from placeholder to topic-to-session launch workflow.
+  - Evidence: `src/app/community/page.tsx`
+- [x] Validate targeted automated tests for new workflows.
+  - Evidence: `cmd /c npx vitest run src/app/api/sessions/__tests__/route.test.ts src/app/api/student/settings/__tests__/route.test.ts src/app/api/regulate/check-in/__tests__/route.test.ts src/config/__tests__/config.test.ts` (39/39 passing)
+- [x] Validate production build after workflow changes.
+  - Evidence: `cmd /c npm run build` passed (2026-02-16)
+
+### Card-by-Card Outcome
+
+- [x] `Learn` -> session setup and begin session API (`/api/sessions`) working with explicit subject preselect support.
+- [x] `Explore` -> pretest/topic recommendation flow already implemented.
+- [x] `Financial Literacy` (learn) -> now preselects subject in `Learn` flow.
+- [x] `Browse Curriculum` -> topic browsing and standards path already implemented.
+- [x] `Financial Literacy` (curriculum) -> filtered curriculum path already implemented.
+- [x] `Calm Corner` -> regulation check-in persisted via API and audit log.
+- [x] `My Progress` -> student progress dashboard path already implemented.
+- [x] `Community` -> launches topic-based guided sessions (`/learn?topic=...`).
+- [x] `Settings` -> persisted student profile, learning, and regulation preferences.

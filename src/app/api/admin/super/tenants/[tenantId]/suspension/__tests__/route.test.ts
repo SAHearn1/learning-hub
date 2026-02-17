@@ -1,4 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { NextRequest } from 'next/server';
 
 const mockRequireRole = vi.fn();
 const mockSetTenantSuspension = vi.fn();
@@ -21,13 +22,13 @@ describe('PATCH /api/admin/super/tenants/[tenantId]/suspension', () => {
       suspensionReason: 'Non-payment',
     });
 
-    const request = new Request('http://localhost', {
+    const request = new NextRequest('http://localhost/api/admin/super/tenants/tenant_1/suspension', {
       method: 'PATCH',
       headers: { 'content-type': 'application/json' },
       body: JSON.stringify({ suspend: true, reason: 'Non-payment' }),
     });
 
-    const response = await PATCH(request, { params: { tenantId: 'tenant_1' } });
+    const response = await PATCH(request, { params: Promise.resolve({ tenantId: 'tenant_1' }) });
 
     expect(response.status).toBe(200);
     await expect(response.json()).resolves.toEqual(

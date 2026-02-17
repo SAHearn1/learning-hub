@@ -4,7 +4,8 @@ import { enforceUsageLimits, UsageLimitError } from '@/lib/usage-limits';
 import { z } from 'zod';
 import { withApiHandler } from '@/lib/api-handler';
 import { requireUser } from '@/lib/auth';
-import { NotFoundError, PaymentRequiredError } from '@/lib/api-errors';
+import { NotFoundError, PaymentRequiredError, ForbiddenError } from '@/lib/api-errors';
+import { hasRequiredMinorConsent } from '@/lib/compliance';
 
 const createSessionSchema = z.object({
   subject: z.enum(['MATH', 'SCIENCE', 'LANGUAGE_ARTS', 'FINANCIAL_LITERACY']),
@@ -15,7 +16,39 @@ const createSessionSchema = z.object({
 export const POST = withApiHandler(async (req) => {
   const user = await requireUser();
 
-  if (!user.student) {
+  if (!hasRequiredMinorConsent(user.isMinor, user.consentStatus)) {
+    throw new ForbiddenError('Parental consent required before starting sessions');
+  }
+
+  const tenant = await db.tenant.findUnique({
+    where: { id: user.tenantId },
+    select: { id: true },
+  });
+  if (!tenant) {
+    throw new NotFoundError('Tenant not found for current user');
+  }
+
+  let studentId = user.student?.id ?? null;
+  if (!studentId && user.role === 'STUDENT') {
+    const student = await db.student.upsert({
+      where: { userId: user.id },
+      update: {},
+      create: {
+        userId: user.id,
+        gradeLevel: 6,
+        learningPreferences: {},
+        regulationProfile: {
+          dysregulationTriggers: [],
+          calmingStrategies: [],
+          preferredBreakDuration: 5,
+        },
+      },
+      select: { id: true },
+    });
+    studentId = student.id;
+  }
+
+  if (!studentId) {
     throw new NotFoundError('Student profile not found');
   }
 
@@ -45,7 +78,7 @@ export const POST = withApiHandler(async (req) => {
   const session = await db.session.create({
     data: {
       tenantId: user.tenantId,
-      studentId: user.student.id,
+      studentId,
       subject: body.subject,
       currentPhase: 'ROOT',
       engagementMode: body.engagementMode,

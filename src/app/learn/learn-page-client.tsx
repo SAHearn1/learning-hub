@@ -11,6 +11,7 @@ import { ChatInput } from '@/components/learn/ChatInput';
 import { CalmCorner } from '@/components/learn/CalmCorner';
 import type { SessionSummary as SessionSummaryData } from '@/hooks/useChat';
 import type { PreselectedTopic } from './page';
+import type { Subject as PrismaSubject } from '@prisma/client';
 
 type Subject = 'MATH' | 'SCIENCE' | 'LANGUAGE_ARTS' | 'FINANCIAL_LITERACY';
 type EngagementMode = 'FORWARD' | 'REVERSE' | 'ERROR_ANALYSIS' | 'MULTIPLE_PATHWAYS' | 'PROBLEM_POSING';
@@ -18,9 +19,10 @@ type FiveRPhase = 'ROOT' | 'REGULATE' | 'REFLECT' | 'RESTORE' | 'RECONNECT';
 
 interface LearnPageClientProps {
   preselectedTopic: PreselectedTopic | null;
+  preselectedSubject: PrismaSubject | null;
 }
 
-export function LearnPageClient({ preselectedTopic }: LearnPageClientProps) {
+export function LearnPageClient({ preselectedTopic, preselectedSubject }: LearnPageClientProps) {
   const sessionId = useSessionStore((s) => s.sessionId);
   const subject = useSessionStore((s) => s.subject);
   const currentPhase = useSessionStore((s) => s.currentPhase);
@@ -54,13 +56,15 @@ export function LearnPageClient({ preselectedTopic }: LearnPageClientProps) {
     async (selectedSubject: Subject, selectedMode: EngagementMode) => {
       setStartError(null);
       setCompletedSummary(null);
-      const createdSessionId = await createSession(
-        selectedSubject,
-        selectedMode,
-        preselectedTopic?.id,
-      );
-      if (!createdSessionId) {
-        setStartError('We could not start your session. Please try again in a moment.');
+      try {
+        await createSession(
+          selectedSubject,
+          selectedMode,
+          preselectedTopic?.id,
+        );
+      } catch (err) {
+        const message = err instanceof Error ? err.message : 'Unknown error';
+        setStartError(message);
       }
     },
     [createSession, preselectedTopic],
@@ -114,6 +118,7 @@ export function LearnPageClient({ preselectedTopic }: LearnPageClientProps) {
           startError={startError}
           onClearError={() => setStartError(null)}
           preselectedTopic={preselectedTopic}
+          preselectedSubject={preselectedSubject}
         />
       </main>
     );

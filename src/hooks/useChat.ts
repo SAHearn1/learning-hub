@@ -196,7 +196,9 @@ export function useChat(): UseChatReturn {
       });
 
       if (!response.ok) {
-        throw new Error('Failed to create session');
+        const errData = await response.json().catch(() => ({}));
+        const message = errData.error || `Request failed (${response.status})`;
+        throw new Error(message);
       }
 
       const { data } = await response.json();
@@ -204,9 +206,9 @@ export function useChat(): UseChatReturn {
       setEngagementMode(mode as Parameters<typeof setEngagementMode>[0]);
       setLoading(false);
       return data.id;
-    } catch {
+    } catch (err) {
       setLoading(false);
-      return null;
+      throw err;
     }
   }, [setLoading, startSession, setEngagementMode]);
 

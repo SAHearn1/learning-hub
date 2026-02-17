@@ -9,6 +9,9 @@ vi.mock('@clerk/nextjs/server', () => ({
 
 vi.mock('@/lib/db', () => ({
   db: {
+    user: {
+      findUnique: vi.fn(),
+    },
     session: {
       findUnique: vi.fn(),
     },
@@ -68,9 +71,17 @@ describe('POST /api/assessments/thinking', () => {
 
     const response = await POST(request);
     expect(response.status).toBe(401);
-  });
+  }, 15000);
 
   it('returns 400 when missing required fields', async () => {
+    const { db } = await import('@/lib/db');
+    vi.mocked(db.user.findUnique).mockResolvedValueOnce({
+      id: 'user_1',
+      clerkUserId: 'clerk_test_user',
+      tenantId: 'tenant_1',
+      role: 'STUDENT',
+    } as any);
+
     const { POST } = await import('@/app/api/assessments/thinking/route');
     const request = new NextRequest('http://localhost/api/assessments/thinking', {
       method: 'POST',
@@ -82,9 +93,17 @@ describe('POST /api/assessments/thinking', () => {
 
     const response = await POST(request);
     expect(response.status).toBe(400);
-  });
+  }, 15000);
 
   it('returns 400 for invalid engagement mode', async () => {
+    const { db } = await import('@/lib/db');
+    vi.mocked(db.user.findUnique).mockResolvedValueOnce({
+      id: 'user_1',
+      clerkUserId: 'clerk_test_user',
+      tenantId: 'tenant_1',
+      role: 'STUDENT',
+    } as any);
+
     const { POST } = await import('@/app/api/assessments/thinking/route');
     const request = new NextRequest('http://localhost/api/assessments/thinking', {
       method: 'POST',
@@ -101,7 +120,14 @@ describe('POST /api/assessments/thinking', () => {
   });
 
   it('generates thinking prompt successfully', async () => {
+    const { db } = await import('@/lib/db');
     const { generateThinkingPrompt } = await import('@/lib/assessments/thinking-evaluator');
+    vi.mocked(db.user.findUnique).mockResolvedValueOnce({
+      id: 'user_1',
+      clerkUserId: 'clerk_test_user',
+      tenantId: 'tenant_1',
+      role: 'STUDENT',
+    } as any);
 
     const { POST } = await import('@/app/api/assessments/thinking/route');
     const request = new NextRequest('http://localhost/api/assessments/thinking', {
@@ -130,6 +156,14 @@ describe('POST /api/assessments/thinking', () => {
   });
 
   it('uses default engagement mode when not provided', async () => {
+    const { db } = await import('@/lib/db');
+    vi.mocked(db.user.findUnique).mockResolvedValueOnce({
+      id: 'user_1',
+      clerkUserId: 'clerk_test_user',
+      tenantId: 'tenant_1',
+      role: 'STUDENT',
+    } as any);
+
     const { POST } = await import('@/app/api/assessments/thinking/route');
     const request = new NextRequest('http://localhost/api/assessments/thinking', {
       method: 'POST',
@@ -174,6 +208,12 @@ describe('PUT /api/assessments/thinking', () => {
   it('evaluates thinking quality successfully', async () => {
     const { db } = await import('@/lib/db');
     const { evaluateThinkingQuality } = await import('@/lib/assessments/thinking-evaluator');
+    vi.mocked(db.user.findUnique).mockResolvedValueOnce({
+      id: 'user_1',
+      clerkUserId: 'clerk_test_user',
+      tenantId: 'tenant_1',
+      role: 'STUDENT',
+    } as any);
 
     vi.mocked(db.session.findUnique).mockResolvedValueOnce({
       id: 'session-1',

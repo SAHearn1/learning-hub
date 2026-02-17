@@ -3,18 +3,24 @@ import OpenAI from 'openai';
 const EMBEDDING_MODEL = 'text-embedding-3-small';
 const EMBEDDING_DIMENSIONS = 1536;
 
-const openai = new OpenAI({
-  apiKey: process.env.OPENAI_API_KEY,
-});
+let openaiClient: OpenAI | null = null;
+
+function getOpenAIClient(): OpenAI {
+  if (!process.env.OPENAI_API_KEY) {
+    throw new Error('OPENAI_API_KEY is not configured');
+  }
+  if (!openaiClient) {
+    openaiClient = new OpenAI({
+      apiKey: process.env.OPENAI_API_KEY,
+    });
+  }
+  return openaiClient;
+}
 
 /**
  * Generate semantic embeddings for text using OpenAI
  */
 export async function generateEmbedding(text: string): Promise<number[]> {
-  if (!process.env.OPENAI_API_KEY) {
-    throw new Error('OPENAI_API_KEY is not configured');
-  }
-
   const trimmed = text.trim();
   if (!trimmed) {
     throw new Error('Cannot generate embedding for empty text');
@@ -25,7 +31,7 @@ export async function generateEmbedding(text: string): Promise<number[]> {
   const input = trimmed.slice(0, 8192);
 
   try {
-    const response = await openai.embeddings.create({
+    const response = await getOpenAIClient().embeddings.create({
       model: EMBEDDING_MODEL,
       input,
     });
@@ -41,10 +47,6 @@ export async function generateEmbedding(text: string): Promise<number[]> {
  * Batch embedding generation
  */
 export async function generateEmbeddings(texts: string[]): Promise<number[][]> {
-  if (!process.env.OPENAI_API_KEY) {
-    throw new Error('OPENAI_API_KEY is not configured');
-  }
-
   if (texts.length === 0) {
     return [];
   }
@@ -58,7 +60,7 @@ export async function generateEmbeddings(texts: string[]): Promise<number[][]> {
   }
 
   try {
-    const response = await openai.embeddings.create({
+    const response = await getOpenAIClient().embeddings.create({
       model: EMBEDDING_MODEL,
       input,
     });

@@ -11,7 +11,7 @@ vi.mock('@/lib/db', () => ({ db: mockDb }));
 
 describe('usage limit enforcement', () => {
   beforeEach(() => {
-    vi.clearAllMocks();
+    vi.resetAllMocks();
   });
 
   it('throws when free tier session limit is reached', async () => {

@@ -40,7 +40,7 @@ describe('POST /api/educator/classes', () => {
 
     const response = await POST(req);
     expect(response.status).toBe(401);
-  });
+  }, 15000);
 
   it('returns 403 when user is not an educator', async () => {
     const { db } = await import('@/lib/db');

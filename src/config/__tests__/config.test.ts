@@ -73,14 +73,15 @@ describe('phaseTransitions', () => {
 });
 
 describe('navigation', () => {
-  it('student nav has 7 items total including grade-gated items', () => {
-    expect(studentNavItems).toHaveLength(7);
+  it('student nav has 9 items total including grade-gated items', () => {
+    expect(studentNavItems).toHaveLength(9);
   });
 
 
-  it('hides Financial Literacy for grades below 9', () => {
-    const labels = getStudentNavItems(8).map((i) => i.label);
-    expect(labels).not.toContain('Financial Literacy');
+  it('hides grade-gated Financial Literacy learn link for grades below 9', () => {
+    const items = getStudentNavItems(8);
+    const finlitLearnItem = items.find((i) => i.href === '/learn?subject=FINANCIAL_LITERACY');
+    expect(finlitLearnItem).toBeUndefined();
   });
 
   it('shows Financial Literacy for grade 9 and above', () => {
@@ -94,8 +95,8 @@ describe('navigation', () => {
     expect(labels).toContain('Calm Corner');
   });
 
-  it('educator nav has 5 items', () => {
-    expect(educatorNavItems).toHaveLength(5);
+  it('educator nav has 4 items', () => {
+    expect(educatorNavItems).toHaveLength(4);
   });
 
   it('educator nav includes Compliance', () => {

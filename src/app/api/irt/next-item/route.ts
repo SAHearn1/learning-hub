@@ -15,8 +15,17 @@ import { NextRequest, NextResponse } from 'next/server';
 import { NotFoundError } from '@/lib/api-errors';
 import { selectNextItem, getStudentAbility } from '@/lib/irt';
 import type { Subject, BloomsLevel } from '@prisma/client';
+import { requireUser } from '@/lib/auth';
+import { db } from '@/lib/db';
+import { hasRequiredMinorConsent } from '@/lib/compliance';
 
 export async function POST(request: NextRequest) {
+  const user = await requireUser();
+
+  if (!hasRequiredMinorConsent(user.isMinor, user.consentStatus)) {
+    return NextResponse.json({ error: 'Parental consent required before adaptive item selection' }, { status: 403 });
+  }
+
   const body = await request.json();
   const {
     studentId,
@@ -38,6 +47,30 @@ export async function POST(request: NextRequest) {
       { error: 'Invalid subject. Must be MATH, SCIENCE, LANGUAGE_ARTS, or FINANCIAL_LITERACY' },
       { status: 400 }
     );
+  }
+
+  const student = await db.student.findUnique({
+    where: { id: studentId },
+    include: {
+      user: {
+        select: {
+          id: true,
+          tenantId: true,
+        },
+      },
+    },
+  });
+
+  if (!student) {
+    return NextResponse.json({ error: 'Student not found' }, { status: 404 });
+  }
+
+  if (user.role === 'STUDENT' && student.user.id !== user.id) {
+    return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+  }
+
+  if (user.role !== 'STUDENT' && student.user.tenantId !== user.tenantId) {
+    return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
   }
 
   let theta = currentTheta;

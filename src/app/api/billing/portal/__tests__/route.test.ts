@@ -1,10 +1,24 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { NextRequest } from 'next/server';
+import { AuthenticationError } from '@/lib/api-errors';
 
 const mockRequireUser = vi.fn();
 const mockCreateBillingPortalSession = vi.fn();
 
 vi.mock('@/lib/auth', () => ({ requireUser: mockRequireUser }));
 vi.mock('@/lib/billing', () => ({ createBillingPortalSession: mockCreateBillingPortalSession }));
+vi.mock('@/lib/logger', () => ({
+  logger: { debug: vi.fn(), info: vi.fn(), warn: vi.fn(), error: vi.fn() },
+}));
+vi.mock('@/lib/api/metrics', () => ({
+  incrementMetric: vi.fn(),
+  observeLatency: vi.fn(),
+}));
+vi.mock('@/lib/monitoring', () => ({
+  captureError: vi.fn(),
+}));
+
+const routeContext = { params: Promise.resolve({}) };
 
 describe('POST /api/billing/portal', () => {
   beforeEach(() => {
@@ -17,21 +31,29 @@ describe('POST /api/billing/portal', () => {
     mockRequireUser.mockResolvedValue({ email: 'owner@example.com', tenantId: 'tenant_1' });
     mockCreateBillingPortalSession.mockResolvedValue({ url: 'https://billing.stripe.com/p/session_1' });
 
-    const response = await POST();
+    const req = new NextRequest('http://localhost/api/billing/portal', {
+      method: 'POST',
+    });
+
+    const response = await POST(req, routeContext);
     const body = await response.json();
 
     expect(response.status).toBe(200);
     expect(body.url).toBe('https://billing.stripe.com/p/session_1');
   });
 
-  it('returns 500 when a failure occurs', async () => {
+  it('returns 401 when not authenticated', async () => {
     const { POST } = await import('../route');
-    mockRequireUser.mockRejectedValue(new Error('Unauthorized'));
+    mockRequireUser.mockRejectedValue(new AuthenticationError());
 
-    const response = await POST();
+    const req = new NextRequest('http://localhost/api/billing/portal', {
+      method: 'POST',
+    });
+
+    const response = await POST(req, routeContext);
     const body = await response.json();
 
-    expect(response.status).toBe(500);
-    expect(body.error).toBe('Unable to create billing portal session');
+    expect(response.status).toBe(401);
+    expect(body.code).toBe('AUTHENTICATION_ERROR');
   });
 });

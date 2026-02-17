@@ -34,6 +34,9 @@ vi.mock('@/lib/db', () => ({
       findUnique: vi.fn(),
       count: vi.fn(),
     },
+    class: {
+      findUnique: vi.fn(),
+    },
     message: {
       findMany: vi.fn(),
       create: vi.fn(),
@@ -91,7 +94,7 @@ describe('RLS Auditing - Multi-Tenant Data Isolation', () => {
 
       expect(response.status).toBe(403);
       expect(data.error).toBe('Forbidden');
-    });
+    }, 15000);
 
     it('blocks School A student from accessing School B student session', async () => {
       const { auth } = await import('@clerk/nextjs/server');
@@ -132,7 +135,7 @@ describe('RLS Auditing - Multi-Tenant Data Isolation', () => {
 
       expect(response.status).toBe(403);
       expect(data.error).toBe('Forbidden');
-    });
+    }, 15000);
 
     it('allows School A educator to access School A student session', async () => {
       const { auth } = await import('@clerk/nextjs/server');
@@ -303,6 +306,7 @@ describe('RLS Auditing - Multi-Tenant Data Isolation', () => {
 
       vi.mocked(db.student.findMany).mockResolvedValueOnce([] as any);
       vi.mocked(db.student.count).mockResolvedValueOnce(0);
+      vi.mocked(db.class.findUnique).mockResolvedValueOnce({ tenantId: 'tenant_school_a' } as any);
 
       const { GET } = await import('@/app/api/educator/students/route');
       const req = new NextRequest('http://localhost:3000/api/educator/students?classId=class_a');

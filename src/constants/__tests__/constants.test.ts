@@ -17,7 +17,7 @@ describe('GRADE_LEVELS', () => {
 
   it('grades 6-8 are Middle School', () => {
     const middle = GRADE_LEVELS.filter((g) => g.group === 'Middle School');
-    expect(middle).toHaveLength(4);
+    expect(middle).toHaveLength(3);
     expect(middle.map((g) => g.value)).toEqual([6, 7, 8]);
   });
 

@@ -31,11 +31,11 @@ const HARMFUL_CONTENT_PATTERNS: { pattern: RegExp; label: string }[] = [
 
 /** Inappropriate topics for minors — political, religious, sexual. */
 const INAPPROPRIATE_TOPIC_PATTERNS: { pattern: RegExp; label: string }[] = [
-  { pattern: /\b(democrat|republican|liberal|conservative)\s+(is|are)\s+(right|wrong|better|worse|evil|stupid)\b/i, label: 'political_bias' },
+  { pattern: /\b(democrats?|republicans?|liberals?|conservatives?)\s+(is|are)\s+(right|wrong|better|worse|evil|stupid)\b/i, label: 'political_bias' },
   { pattern: /\b(vote\s+for|support|endorse)\s+(trump|biden|obama|\w+\s+party)\b/i, label: 'political_endorsement' },
   { pattern: /\b(god\s+is|allah\s+is|jesus\s+is|bible\s+says|quran\s+says)\s+(the\s+)?(only|true|real|right|wrong)\b/i, label: 'religious_assertion' },
   { pattern: /\b(you\s+should\s+(pray|believe\s+in|worship|accept\s+jesus|accept\s+god))\b/i, label: 'religious_proselytization' },
-  { pattern: /\b(sex\s+position|pornograph|orgasm|erotic|genital)\b/i, label: 'sexual_content' },
+  { pattern: /\b(sex\s+positions?|pornograph|orgasm|erotic|genital)\b/i, label: 'sexual_content' },
   { pattern: /\b(drugs?\s+are\s+(cool|fun|awesome|great))\b/i, label: 'drug_glorification' },
   { pattern: /\b(alcohol\s+is\s+(fun|great|awesome|cool))\b/i, label: 'alcohol_glorification' },
 ];

@@ -1,10 +1,16 @@
+import { auth } from '@clerk/nextjs/server';
+import { redirect } from 'next/navigation';
 import { db } from '@/lib/db';
-import { requireUser } from '@/lib/auth';
+import { getCurrentUser } from '@/lib/auth';
 import { ExploreClient } from './explore-client';
 import type { Subject } from '@prisma/client';
 
 export default async function ExplorePage() {
-  const user = await requireUser();
+  const { userId } = await auth();
+  if (!userId) redirect('/sign-in');
+
+  const user = await getCurrentUser();
+  if (!user) redirect('/sign-in');
 
   // Determine pretest status per subject
   const subjects: Subject[] = ['MATH', 'SCIENCE', 'LANGUAGE_ARTS', 'FINANCIAL_LITERACY'];
