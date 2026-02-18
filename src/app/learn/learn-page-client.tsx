@@ -1,6 +1,7 @@
 'use client';
 
-import { useCallback, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
+import { useSearchParams } from 'next/navigation';
 import { useSessionStore } from '@/stores/session-store';
 import { useRegulationStore } from '@/stores/regulation-store';
 import { useChat } from '@/hooks/useChat';
@@ -23,6 +24,7 @@ interface LearnPageClientProps {
 }
 
 export function LearnPageClient({ preselectedTopic, preselectedSubject }: LearnPageClientProps) {
+  const searchParams = useSearchParams();
   const sessionId = useSessionStore((s) => s.sessionId);
   const subject = useSessionStore((s) => s.subject);
   const currentPhase = useSessionStore((s) => s.currentPhase);
@@ -44,6 +46,7 @@ export function LearnPageClient({ preselectedTopic, preselectedSubject }: LearnP
   const {
     sendMessage,
     createSession,
+    loadSession,
     endSession,
     updatePhase,
     updateEngagementMode,
@@ -69,6 +72,27 @@ export function LearnPageClient({ preselectedTopic, preselectedSubject }: LearnP
     },
     [createSession, preselectedTopic],
   );
+
+  const handleResumeSession = useCallback(
+    async (sid: string) => {
+      setStartError(null);
+      setCompletedSummary(null);
+      try {
+        await loadSession(sid);
+      } catch (err) {
+        const message = err instanceof Error ? err.message : 'Unknown error';
+        setStartError(message);
+      }
+    },
+    [loadSession],
+  );
+
+  useEffect(() => {
+    const resumeId = searchParams.get('resume');
+    if (!resumeId) return;
+    if (sessionId) return;
+    void handleResumeSession(resumeId);
+  }, [handleResumeSession, searchParams, sessionId]);
 
   const handleSendMessage = useCallback(
     (content: string) => {
@@ -114,6 +138,7 @@ export function LearnPageClient({ preselectedTopic, preselectedSubject }: LearnP
       <main className="min-h-screen px-6 py-12">
         <SessionSetup
           onStart={handleStartSession}
+          onResume={handleResumeSession}
           isLoading={isLoading}
           startError={startError}
           onClearError={() => setStartError(null)}

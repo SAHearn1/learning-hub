@@ -16,6 +16,7 @@ export interface SessionSummary {
 interface UseChatReturn {
   sendMessage: (content: string) => Promise<void>;
   createSession: (subject: 'MATH' | 'SCIENCE' | 'LANGUAGE_ARTS' | 'FINANCIAL_LITERACY', mode?: string, topicId?: string) => Promise<string | null>;
+  loadSession: (sessionId: string) => Promise<void>;
   endSession: () => Promise<void>;
   updatePhase: (phase: string) => Promise<void>;
   updateEngagementMode: (mode: string) => Promise<void>;
@@ -34,6 +35,7 @@ export function useChat(): UseChatReturn {
   const finishStreamingMessage = useSessionStore((s) => s.finishStreamingMessage);
   const setLoading = useSessionStore((s) => s.setLoading);
   const startSession = useSessionStore((s) => s.startSession);
+  const hydrateSession = useSessionStore((s) => s.hydrateSession);
   const endSessionStore = useSessionStore((s) => s.endSession);
   const setPhase = useSessionStore((s) => s.setPhase);
   const setEngagementMode = useSessionStore((s) => s.setEngagementMode);
@@ -212,6 +214,37 @@ export function useChat(): UseChatReturn {
     }
   }, [setLoading, startSession, setEngagementMode]);
 
+  const loadSession = useCallback(async (sid: string) => {
+    if (!sid) return;
+    setLoading(true);
+    try {
+      const res = await fetch(`/api/sessions/${encodeURIComponent(sid)}`);
+      if (!res.ok) {
+        const body = await res.json().catch(() => ({}));
+        const message = body?.error || `Failed to load session (${res.status})`;
+        throw new Error(message);
+      }
+
+      const { data } = await res.json();
+      const msgs = Array.isArray(data?.messages) ? data.messages : [];
+
+      hydrateSession({
+        sessionId: data.id,
+        subject: data.subject,
+        currentPhase: data.currentPhase,
+        engagementMode: data.engagementMode,
+        messages: msgs.map((m: any) => ({
+          id: m.id,
+          role: m.role,
+          content: m.content,
+          timestamp: new Date(m.createdAt ?? Date.now()),
+        })),
+      });
+    } finally {
+      setLoading(false);
+    }
+  }, [hydrateSession, setLoading]);
+
   const updatePhase = useCallback(async (phase: string) => {
     if (!sessionId) return;
     await updatePhaseInternal(sessionId, phase);
@@ -258,6 +291,7 @@ export function useChat(): UseChatReturn {
   return {
     sendMessage,
     createSession,
+    loadSession,
     endSession,
     updatePhase,
     updateEngagementMode,

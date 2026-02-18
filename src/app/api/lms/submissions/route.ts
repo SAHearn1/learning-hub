@@ -82,10 +82,20 @@ export const POST = withApiHandler(async (req) => {
 
   const assignment = await db.assignment.findUnique({
     where: { id: body.assignmentId },
+    select: { id: true, tenantId: true, published: true, classId: true },
   });
   if (!assignment) throw new NotFoundError('Assignment not found');
   if (assignment.tenantId !== user.tenantId) throw new ForbiddenError('Access denied');
   if (!assignment.published) throw new ForbiddenError('Assignment is not published');
+
+  const enrollment = await db.classEnrollment.findUnique({
+    where: { classId_studentId: { classId: assignment.classId, studentId: user.student.id } },
+    select: { status: true },
+  });
+
+  if (!enrollment || enrollment.status !== 'ACTIVE') {
+    throw new ForbiddenError('You are not enrolled in this class');
+  }
 
   const submission = await db.submission.upsert({
     where: {

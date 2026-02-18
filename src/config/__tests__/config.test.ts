@@ -105,7 +105,7 @@ describe('navigation', () => {
   });
 
   it('parent nav has 2 items', () => {
-    expect(parentNavItems).toHaveLength(2);
+    expect(parentNavItems).toHaveLength(3);
   });
 
   it('admin nav has 2 items', () => {

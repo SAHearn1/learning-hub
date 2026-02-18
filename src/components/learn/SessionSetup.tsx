@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -18,6 +18,7 @@ interface PreselectedTopic {
 
 interface SessionSetupProps {
   onStart: (subject: Subject, mode: EngagementMode) => void;
+  onResume?: (sessionId: string) => void | Promise<void>;
   isLoading: boolean;
   startError?: string | null;
   onClearError?: () => void;
@@ -87,6 +88,7 @@ function formatRelativeTime(dateStr: string): string {
 
 export function SessionSetup({
   onStart,
+  onResume,
   isLoading,
   startError,
   onClearError,
@@ -98,9 +100,57 @@ export function SessionSetup({
   );
   const [selectedMode, setSelectedMode] = useState<EngagementMode>('FORWARD');
 
-  // TODO: Wire up session history fetching
-  const historyLoading = true;
-  const recentSessions: Array<{ id: string; subject: Subject; engagementMode: EngagementMode; startedAt: string }> = [];
+  const [historyLoading, setHistoryLoading] = useState(true);
+  const [historyError, setHistoryError] = useState<string | null>(null);
+  const [recentSessions, setRecentSessions] = useState<
+    Array<{ id: string; subject: Subject; engagementMode: EngagementMode; startedAt: string; endedAt: string | null }>
+  >([]);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    const loadHistory = async () => {
+      setHistoryLoading(true);
+      setHistoryError(null);
+      try {
+        const res = await fetch('/api/sessions?page=1&pageSize=5');
+        if (!res.ok) {
+          const body = await res.json().catch(() => ({}));
+          throw new Error(body?.error || `Failed to load session history (${res.status})`);
+        }
+        const payload = await res.json();
+        const sessions = Array.isArray(payload?.data) ? payload.data : [];
+
+        const normalized = sessions
+          .map((s: any) => ({
+            id: String(s.id),
+            subject: s.subject as Subject,
+            engagementMode: s.engagementMode as EngagementMode,
+            startedAt: String(s.startedAt),
+            endedAt: s.endedAt ? String(s.endedAt) : null,
+          }))
+          .filter((s: any) => Boolean(s.id) && Boolean(s.subject) && Boolean(s.engagementMode) && Boolean(s.startedAt));
+
+        if (!cancelled) {
+          setRecentSessions(normalized);
+        }
+      } catch (err) {
+        if (!cancelled) {
+          setHistoryError(err instanceof Error ? err.message : 'Failed to load session history');
+        }
+      } finally {
+        if (!cancelled) {
+          setHistoryLoading(false);
+        }
+      }
+    };
+
+    void loadHistory();
+
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   return (
     <div className="mx-auto max-w-3xl space-y-8">
@@ -232,6 +282,10 @@ export function SessionSetup({
                   key={session.id}
                   onClick={() => {
                     onClearError?.();
+                    if (onResume) {
+                      void onResume(session.id);
+                      return;
+                    }
                     setSelectedSubject(session.subject);
                     setSelectedMode(session.engagementMode);
                   }}
@@ -251,6 +305,11 @@ export function SessionSetup({
                           {modeInfo.name}
                         </span>
                       )}
+                      {session.endedAt === null && (
+                        <span className="ml-2 rounded-full bg-blue-50 px-2 py-0.5 text-[10px] font-semibold text-blue-700">
+                          In progress
+                        </span>
+                      )}
                     </div>
                     <div className="text-xs text-neutral-500">
                       {formatRelativeTime(session.startedAt)}
@@ -263,6 +322,18 @@ export function SessionSetup({
               );
             })}
           </div>
+        </div>
+      )}
+
+      {!historyLoading && recentSessions.length === 0 && !historyError && (
+        <div className="rounded-lg border border-neutral-200 bg-white px-4 py-3 text-sm text-neutral-600">
+          No recent sessions yet. Start one above to begin building your progress history.
+        </div>
+      )}
+
+      {!historyLoading && historyError && (
+        <div className="rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
+          {historyError}
         </div>
       )}
     </div>

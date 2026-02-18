@@ -22,6 +22,13 @@ interface SessionStore {
   streamingMessageId: string | null;
 
   startSession: (sessionId: string, subject: Subject) => void;
+  hydrateSession: (session: {
+    sessionId: string;
+    subject: Subject;
+    currentPhase: FiveRPhase;
+    engagementMode: EngagementMode;
+    messages: SessionMessage[];
+  }) => void;
   setPhase: (phase: FiveRPhase) => void;
   setEngagementMode: (mode: EngagementMode) => void;
   addMessage: (message: SessionMessage) => void;
@@ -48,6 +55,17 @@ export const useSessionStore = create<SessionStore>((set) => ({
     subject,
     currentPhase: 'ROOT',
     messages: [],
+    isLoading: false,
+    isStreaming: false,
+    streamingMessageId: null,
+  }),
+
+  hydrateSession: (session) => set({
+    sessionId: session.sessionId,
+    subject: session.subject,
+    currentPhase: session.currentPhase,
+    engagementMode: session.engagementMode,
+    messages: session.messages,
     isLoading: false,
     isStreaming: false,
     streamingMessageId: null,

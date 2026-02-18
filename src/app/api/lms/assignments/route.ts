@@ -31,6 +31,21 @@ export const GET = withApiHandler(async (req) => {
   if (!cls) throw new NotFoundError('Class not found');
   if (cls.tenantId !== user.tenantId) throw new ForbiddenError('Access denied');
 
+  if (user.role === 'STUDENT') {
+    if (!user.student) {
+      throw new ForbiddenError('Student profile required');
+    }
+
+    const enrollment = await db.classEnrollment.findUnique({
+      where: { classId_studentId: { classId, studentId: user.student.id } },
+      select: { status: true },
+    });
+
+    if (!enrollment || enrollment.status !== 'ACTIVE') {
+      throw new ForbiddenError('You are not enrolled in this class');
+    }
+  }
+
   // Students can only see published assignments
   if (user.role === 'STUDENT' || studentView) {
     const assignments = await db.assignment.findMany({

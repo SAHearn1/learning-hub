@@ -78,6 +78,9 @@ export function StudentAssignmentsClient() {
 
   // Class selector
   const [classId, setClassId] = useState('');
+  const [classesLoading, setClassesLoading] = useState(true);
+  const [classesError, setClassesError] = useState<string | null>(null);
+  const [classes, setClasses] = useState<Array<{ id: string; name: string; subject: string; educatorName: string }>>([]);
 
   // Expanded assignment for submission
   const [expandedId, setExpandedId] = useState<string | null>(null);
@@ -91,6 +94,47 @@ export function StudentAssignmentsClient() {
   // -----------------------------------------------------------------------
   // Fetch
   // -----------------------------------------------------------------------
+
+  useEffect(() => {
+    let cancelled = false;
+
+    const loadClasses = async () => {
+      setClassesLoading(true);
+      setClassesError(null);
+      try {
+        const res = await fetch('/api/lms/classes');
+        if (!res.ok) {
+          const body = await res.json().catch(() => null);
+          throw new Error(body?.message ?? `Failed to load classes (${res.status})`);
+        }
+        const json = await res.json();
+        const list = (json.data ?? []) as Array<{ id: string; name: string; subject: string; educatorName: string }>;
+        if (!cancelled) {
+          setClasses(list);
+          if (!classId.trim() && list.length > 0) {
+            setClassId(list[0].id);
+          }
+        }
+      } catch (err) {
+        if (!cancelled) {
+          setClassesError(err instanceof Error ? err.message : 'Failed to load classes');
+        }
+      } finally {
+        if (!cancelled) {
+          setClassesLoading(false);
+        }
+      }
+    };
+
+    void loadClasses();
+
+    return () => {
+      cancelled = true;
+    };
+    // Intentionally only run on mount. If the user changes classId manually,
+    // we don't want to refetch the class list.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const fetchAssignments = useCallback(async () => {
     if (!classId.trim()) {
@@ -243,16 +287,53 @@ export function StudentAssignmentsClient() {
       {/* Class ID input */}
       <Card>
         <CardContent className="pt-6">
-          <label htmlFor="classId" className="mb-1 block text-sm font-medium text-neutral-700">
-            Class ID
-          </label>
-          <input
-            id="classId"
-            value={classId}
-            onChange={(e) => setClassId(e.target.value)}
-            placeholder="Enter your class ID to view assignments"
-            className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-          />
+          <div className="space-y-3">
+            <label className="block text-sm font-medium text-neutral-700">Class</label>
+
+            {classesLoading && (
+              <div className="flex items-center gap-2 text-sm text-neutral-600">
+                <Loader2 className="h-4 w-4 animate-spin" />
+                Loading your classes...
+              </div>
+            )}
+
+            {!classesLoading && classesError && (
+              <div className="flex items-center gap-2 rounded-md bg-amber-50 px-3 py-2 text-sm text-amber-800">
+                <AlertCircle className="h-4 w-4 shrink-0" />
+                {classesError}
+              </div>
+            )}
+
+            {!classesLoading && classes.length > 0 ? (
+              <select
+                value={classId}
+                onChange={(e) => setClassId(e.target.value)}
+                className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+              >
+                {classes.map((c) => (
+                  <option key={c.id} value={c.id}>
+                    {c.name} ({c.subject}) {c.educatorName ? `- ${c.educatorName}` : ''}
+                  </option>
+                ))}
+              </select>
+            ) : (
+              <div className="space-y-2">
+                <label htmlFor="classId" className="block text-sm text-neutral-600">
+                  Class ID
+                </label>
+                <input
+                  id="classId"
+                  value={classId}
+                  onChange={(e) => setClassId(e.target.value)}
+                  placeholder="Enter your class ID to view assignments"
+                  className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                />
+                <p className="text-xs text-neutral-500">
+                  If you don&apos;t see any classes, ask your educator to enroll you.
+                </p>
+              </div>
+            )}
+          </div>
         </CardContent>
       </Card>
 
