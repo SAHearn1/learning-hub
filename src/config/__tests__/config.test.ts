@@ -73,8 +73,8 @@ describe('phaseTransitions', () => {
 });
 
 describe('navigation', () => {
-  it('student nav has 9 items total including grade-gated items', () => {
-    expect(studentNavItems).toHaveLength(9);
+  it('student nav has 10 items total including grade-gated items', () => {
+    expect(studentNavItems).toHaveLength(10);
   });
 
 

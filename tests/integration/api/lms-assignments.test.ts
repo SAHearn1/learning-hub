@@ -3,6 +3,7 @@ import { NextRequest } from 'next/server';
 
 const mockRequireUser = vi.fn();
 const mockClassFindUnique = vi.fn();
+const mockClassEnrollmentFindUnique = vi.fn();
 const mockAssignmentFindMany = vi.fn();
 const mockAssignmentCreate = vi.fn();
 
@@ -10,6 +11,7 @@ vi.mock('@/lib/auth', () => ({ requireUser: mockRequireUser }));
 vi.mock('@/lib/db', () => ({
   db: {
     class: { findUnique: mockClassFindUnique },
+    classEnrollment: { findUnique: mockClassEnrollmentFindUnique },
     assignment: { findMany: mockAssignmentFindMany, create: mockAssignmentCreate },
   },
 }));
@@ -66,15 +68,30 @@ describe('/api/lms/assignments', () => {
     it('students see only published assignments', async () => {
       mockRequireUser.mockResolvedValue(studentUser);
       mockClassFindUnique.mockResolvedValue({ id: 'cls_1', tenantId: 'tenant_1' });
+      mockClassEnrollmentFindUnique.mockResolvedValue({ status: 'ACTIVE' });
       mockAssignmentFindMany.mockResolvedValue([{ id: 'a1', title: 'HW1', published: true }]);
       const { GET } = await import('@/app/api/lms/assignments/route');
 
       const req = new NextRequest('http://localhost/api/lms/assignments?classId=cls_1');
       const res = await GET(req, { params: Promise.resolve({}) });
       expect(res.status).toBe(200);
+      expect(mockClassEnrollmentFindUnique).toHaveBeenCalledWith(
+        expect.objectContaining({ where: { classId_studentId: { classId: 'cls_1', studentId: 'stu_1' } } }),
+      );
       expect(mockAssignmentFindMany).toHaveBeenCalledWith(
         expect.objectContaining({ where: { classId: 'cls_1', published: true } }),
       );
+    });
+
+    it('returns 403 when student is not enrolled in class', async () => {
+      mockRequireUser.mockResolvedValue(studentUser);
+      mockClassFindUnique.mockResolvedValue({ id: 'cls_1', tenantId: 'tenant_1' });
+      mockClassEnrollmentFindUnique.mockResolvedValue(null);
+      const { GET } = await import('@/app/api/lms/assignments/route');
+
+      const req = new NextRequest('http://localhost/api/lms/assignments?classId=cls_1');
+      const res = await GET(req, { params: Promise.resolve({}) });
+      expect(res.status).toBe(403);
     });
 
     it('educators see all assignments', async () => {

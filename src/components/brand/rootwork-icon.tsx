@@ -6,6 +6,7 @@ import {
   FileText,
   GraduationCap,
   Heart,
+  Home,
   Library,
   School,
   Settings,
@@ -17,6 +18,7 @@ import {
 const iconClass = 'h-5 w-5';
 
 const iconMap: Record<string, JSX.Element> = {
+  dashboard: <Home className={iconClass} aria-hidden />,
   learn: <BookOpen className={iconClass} aria-hidden />,
   explore: <Compass className={iconClass} aria-hidden />,
   assignments: <ClipboardList className={iconClass} aria-hidden />,

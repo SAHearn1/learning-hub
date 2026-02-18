@@ -6,6 +6,7 @@ const mockAssignmentFindUnique = vi.fn();
 const mockSubmissionFindUnique = vi.fn();
 const mockSubmissionFindMany = vi.fn();
 const mockSubmissionUpsert = vi.fn();
+const mockClassEnrollmentFindUnique = vi.fn();
 
 vi.mock('@/lib/auth', () => ({ requireUser: mockRequireUser }));
 vi.mock('@/lib/db', () => ({
@@ -15,6 +16,9 @@ vi.mock('@/lib/db', () => ({
       findUnique: mockSubmissionFindUnique,
       findMany: mockSubmissionFindMany,
       upsert: mockSubmissionUpsert,
+    },
+    classEnrollment: {
+      findUnique: mockClassEnrollmentFindUnique,
     },
   },
 }));
@@ -145,7 +149,8 @@ describe('/api/lms/submissions', () => {
 
     it('creates submission with audit log and returns 201', async () => {
       mockRequireUser.mockResolvedValue(studentUser);
-      mockAssignmentFindUnique.mockResolvedValue({ id: 'a1', tenantId: 'tenant_1', published: true });
+      mockAssignmentFindUnique.mockResolvedValue({ id: 'a1', tenantId: 'tenant_1', published: true, classId: 'cls_1' });
+      mockClassEnrollmentFindUnique.mockResolvedValue({ status: 'ACTIVE' });
       mockSubmissionUpsert.mockResolvedValue({ id: 'sub_new', assignmentId: 'a1', studentId: 'stu_1', status: 'SUBMITTED' });
       const { POST } = await import('@/app/api/lms/submissions/route');
       const { appendImmutableAuditLog } = await import('@/lib/audit');
@@ -159,6 +164,20 @@ describe('/api/lms/submissions', () => {
       expect(appendImmutableAuditLog).toHaveBeenCalledWith(
         expect.objectContaining({ action: 'SUBMIT_ASSIGNMENT', resource: 'Submission' }),
       );
+    });
+
+    it('returns 403 when student is not enrolled in assignment class', async () => {
+      mockRequireUser.mockResolvedValue(studentUser);
+      mockAssignmentFindUnique.mockResolvedValue({ id: 'a1', tenantId: 'tenant_1', published: true, classId: 'cls_1' });
+      mockClassEnrollmentFindUnique.mockResolvedValue(null);
+
+      const { POST } = await import('@/app/api/lms/submissions/route');
+      const req = new NextRequest('http://localhost/api/lms/submissions', {
+        method: 'POST',
+        body: JSON.stringify({ assignmentId: 'a1', content: 'My work' }),
+      });
+      const res = await POST(req, { params: Promise.resolve({}) });
+      expect(res.status).toBe(403);
     });
   });
 });

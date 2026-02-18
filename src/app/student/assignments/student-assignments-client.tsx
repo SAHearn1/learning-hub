@@ -18,6 +18,7 @@ import {
   MessageSquare,
   Award,
 } from 'lucide-react';
+import { useSearchParams } from 'next/navigation';
 
 // ---------------------------------------------------------------------------
 // Types
@@ -72,12 +73,14 @@ const TYPE_LABELS: Record<AssignmentType, string> = {
 // ---------------------------------------------------------------------------
 
 export function StudentAssignmentsClient() {
+  const searchParams = useSearchParams();
   const [assignments, setAssignments] = useState<Assignment[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
   // Class selector
-  const [classId, setClassId] = useState('');
+  const initialClassId = searchParams.get('classId') ?? '';
+  const [classId, setClassId] = useState(initialClassId);
   const [classesLoading, setClassesLoading] = useState(true);
   const [classesError, setClassesError] = useState<string | null>(null);
   const [classes, setClasses] = useState<Array<{ id: string; name: string; subject: string; educatorName: string }>>([]);
