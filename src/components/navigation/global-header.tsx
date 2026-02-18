@@ -26,6 +26,7 @@ function splitNav(items: readonly NavItem[]) {
 
 export async function GlobalHeader() {
   const authEnabled = Boolean(process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY);
+  // Never let header rendering take down the entire app shell (e.g. if DB env vars are missing in prod).
   let user = null;
 
   if (authEnabled) {
