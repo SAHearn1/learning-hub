@@ -3,7 +3,7 @@ import { redirect } from 'next/navigation';
 import { getCurrentUser } from '@/lib/auth';
 
 /**
- * Dashboard router — redirects authenticated users to their role-specific portal.
+ * Dashboard router - redirects authenticated users to their role-specific portal.
  * This page is the default landing after Clerk sign-in.
  */
 export default async function DashboardPage() {
