@@ -1,36 +1,25 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { auth } from '@clerk/nextjs/server';
 import { db } from '@/lib/db';
+import { withApiHandler } from '@/lib/api-handler';
+import { requireUser } from '@/lib/auth';
+import { ForbiddenError, NotFoundError } from '@/lib/api-errors';
 
 /**
  * GET /api/parent/progress/[studentId]
  * Retrieves a child's progress for a parent user
- * 
+ *
  * @param studentId - Student ID to view progress for
  * @returns Progress data including standards, reasoning moves, and recent sessions
  * @throws 401 if not authenticated
  * @throws 403 if not authorized (must be parent of this student)
  * @throws 404 if student or parent not found
  */
-export async function GET(
-  req: NextRequest,
-  { params }: { params: Promise<{ studentId: string }> }
-) {
-  const { studentId } = await params;
-  const { userId: clerkId } = auth();
-  
-  if (!clerkId) {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-  }
+export const GET = withApiHandler(async (req: NextRequest, ctx) => {
+  const { studentId } = ctx.params;
+  const user = await requireUser();
 
-  // Get parent user
-  const user = await db.user.findUnique({
-    where: { clerkUserId: clerkId },
-    include: { parent: true },
-  });
-
-  if (!user || user.role !== 'PARENT' || !user.parent) {
-    return NextResponse.json({ error: 'Parent profile not found' }, { status: 403 });
+  if (user.role !== 'PARENT' || !user.parent) {
+    throw new ForbiddenError('Parent profile not found');
   }
 
   // Verify student is a child of this parent
@@ -40,11 +29,11 @@ export async function GET(
   });
 
   if (!student) {
-    return NextResponse.json({ error: 'Student not found' }, { status: 404 });
+    throw new NotFoundError('Student not found');
   }
 
   if (!user.parent.childrenIds.includes(student.userId)) {
-    return NextResponse.json({ error: 'Not authorized to view this student\'s progress' }, { status: 403 });
+    throw new ForbiddenError('Not authorized to view this student\'s progress');
   }
 
   // Get subject filter if provided
@@ -54,7 +43,7 @@ export async function GET(
   const progressEntries = await db.progress.findMany({
     where: {
       studentId,
-      ...(subject ? { standard: { subject: subject as 'MATH' | 'SCIENCE' | 'LANGUAGE_ARTS' } } : {}),
+      ...(subject ? { standard: { subject: subject as 'MATH' | 'SCIENCE' | 'LANGUAGE_ARTS' | 'FINANCIAL_LITERACY' } } : {}),
     },
     include: { standard: true },
     orderBy: { updatedAt: 'desc' },
@@ -79,13 +68,13 @@ export async function GET(
     where: { studentId },
     orderBy: { startedAt: 'desc' },
     take: 10,
-    include: { 
-      _count: { 
-        select: { 
-          messages: true, 
-          assessments: true 
-        } 
-      } 
+    include: {
+      _count: {
+        select: {
+          messages: true,
+          assessments: true
+        }
+      }
     },
   });
 
@@ -108,4 +97,4 @@ export async function GET(
       recentSessions,
     },
   });
-}
+});

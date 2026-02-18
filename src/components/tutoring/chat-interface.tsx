@@ -1,22 +1,25 @@
 'use client';
 
 import { useEffect, useRef, useState, useCallback } from 'react';
-import type { Message as PrismaMessage, FiveRPhase, EngagementMode, Session } from '@prisma/client';
+import type { Message as PrismaMessage, FiveRPhase, EngagementMode } from '@prisma/client';
 import { MessageBubble } from './message-bubble';
 import { MessageInput } from './message-input';
 import { StreamingIndicator } from './streaming-indicator';
 import { CalmCorner } from './calm-corner';
 import { detectDysregulation, updateRegulationLevel } from '@/lib/regulation/detector';
 import { cn } from '@/lib/utils';
+import type { SourceCitation, ChatMessageMetadata } from '@/types/chat';
 
 interface ChatMessage extends PrismaMessage {
   id: string;
   role: 'USER' | 'ASSISTANT' | 'SYSTEM';
   content: string;
   createdAt: Date;
+  metadata: ChatMessageMetadata | null;
 }
 
 interface ChatInterfaceProps {
+  id?: string;
   sessionId: string;
   initialMessages: ChatMessage[];
   currentPhase: FiveRPhase;
@@ -28,6 +31,7 @@ interface ChatInterfaceProps {
 }
 
 export function ChatInterface({
+  id,
   sessionId,
   initialMessages,
   currentPhase,
@@ -126,6 +130,7 @@ export function ChatInterface({
       }
 
       let fullText = '';
+      let receivedCitations: SourceCitation[] = [];
 
       while (true) {
         const { done, value } = await reader.read();
@@ -148,15 +153,19 @@ export function ChatInterface({
                 setStreamingContent(fullText);
               }
 
+              if (data.citations) {
+                receivedCitations = data.citations;
+              }
+
               if (data.done) {
-                // Add complete assistant message
+                // Add complete assistant message with citations
                 const assistantMessage: ChatMessage = {
                   id: `assistant-${Date.now()}`,
                   role: 'ASSISTANT',
                   content: fullText,
                   createdAt: new Date(),
                   sessionId,
-                  metadata: null,
+                  metadata: receivedCitations.length > 0 ? { citations: receivedCitations } : null,
                 };
                 setMessages((prev) => [...prev, assistantMessage]);
                 setStreamingContent('');
@@ -198,9 +207,9 @@ export function ChatInterface({
   };
 
   return (
-    <div className={cn('flex h-full flex-col', className)} role="main" aria-label="Chat interface">
+    <div id={id} className={cn('flex h-full flex-col', className)} role="main" aria-label="Chat interface">
       {/* Messages container */}
-      <div className="flex-1 overflow-y-auto px-4 py-6" role="log" aria-label="Chat messages" aria-live="polite">
+      <div className="flex-1 overflow-y-auto px-4 py-6" role="log" aria-label="Chat messages" aria-live="polite" aria-relevant="additions text">
         {messages.length === 0 ? (
           <div className="flex h-full items-center justify-center text-center">
             <div className="max-w-md space-y-2">
@@ -220,6 +229,7 @@ export function ChatInterface({
                 role={message.role}
                 content={message.content}
                 timestamp={message.createdAt}
+                metadata={message.metadata}
               />
             ))}
             {isStreaming && streamingContent && (

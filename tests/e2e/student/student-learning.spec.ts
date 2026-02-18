@@ -1,12 +1,15 @@
-import { test, expect } from '@playwright/test';
+import { test, expect } from '../fixtures/auth.fixture';
 
 test.describe('Student learning page', () => {
-  test.skip('navigate to learn page (requires auth)', async ({ page }) => {
+  // Use authenticated student fixture for all tests in this suite
+  test.use({ authenticatedStudent: undefined });
+
+  test('navigate to learn page', async ({ page }) => {
     await page.goto('/learn');
     await expect(page.locator('body')).toBeVisible();
   });
 
-  test.skip('verify learn page displays chat interface (requires auth)', async ({ page }) => {
+  test('verify learn page displays chat interface', async ({ page }) => {
     await page.goto('/learn');
     
     // Check for session header
@@ -28,7 +31,7 @@ test.describe('Student learning page', () => {
     }
   });
 
-  test.skip('verify empty state message (requires auth)', async ({ page }) => {
+  test('verify empty state message', async ({ page }) => {
     await page.goto('/learn');
     
     // Check for empty state message
@@ -38,7 +41,7 @@ test.describe('Student learning page', () => {
     }
   });
 
-  test.skip('test navigation from home to learn (requires auth)', async ({ page }) => {
+  test('test navigation from home to learn', async ({ page }) => {
     // First go to home/dashboard
     await page.goto('/');
     
@@ -54,7 +57,7 @@ test.describe('Student learning page', () => {
     }
   });
 
-  test.skip('verify page loads without errors (requires auth)', async ({ page }) => {
+  test('verify page loads without errors', async ({ page }) => {
     const errors: string[] = [];
     page.on('console', (msg) => {
       if (msg.type() === 'error') {

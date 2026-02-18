@@ -1,12 +1,10 @@
-import { adminNavItems } from '@/config/navigation';
-import { PortalHome } from '@/components/navigation/portal-home';
+import { auth } from '@clerk/nextjs/server';
+import { redirect } from 'next/navigation';
+import { SuperAdminDashboard } from '@/components/admin/super-admin-dashboard';
 
-export default function AdminDashboardPage() {
-  return (
-    <PortalHome
-      title="Admin Workspace"
-      description="Platform controls, operational health, and governance tools."
-      items={adminNavItems}
-    />
-  );
+export default async function AdminDashboardPage() {
+  const { userId } = await auth();
+  if (!userId) redirect('/sign-in');
+
+  return <SuperAdminDashboard />;
 }

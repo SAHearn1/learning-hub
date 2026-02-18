@@ -1,81 +1,75 @@
 import OpenAI from 'openai';
-import { logger } from '@/lib/logger';
 
 const EMBEDDING_MODEL = 'text-embedding-3-small';
 const EMBEDDING_DIMENSIONS = 1536;
 
 let openaiClient: OpenAI | null = null;
 
-function getOpenAI(): OpenAI {
+function getOpenAIClient(): OpenAI {
+  if (!process.env.OPENAI_API_KEY) {
+    throw new Error('OPENAI_API_KEY is not configured');
+  }
   if (!openaiClient) {
-    const apiKey = process.env.OPENAI_API_KEY;
-    if (!apiKey) {
-      throw new Error('OPENAI_API_KEY is not set');
-    }
-    openaiClient = new OpenAI({ apiKey });
+    openaiClient = new OpenAI({
+      apiKey: process.env.OPENAI_API_KEY,
+    });
   }
   return openaiClient;
 }
 
 /**
- * Generate an embedding vector for a single text input.
+ * Generate semantic embeddings for text using OpenAI
  */
 export async function generateEmbedding(text: string): Promise<number[]> {
-  const openai = getOpenAI();
-
-  const cleaned = text.replace(/\n+/g, ' ').trim();
-  if (!cleaned) {
+  const trimmed = text.trim();
+  if (!trimmed) {
     throw new Error('Cannot generate embedding for empty text');
   }
 
-  const response = await openai.embeddings.create({
-    model: EMBEDDING_MODEL,
-    input: cleaned,
-    dimensions: EMBEDDING_DIMENSIONS,
-  });
+  // Defensive trimming — embeddings models have very high limits,
+  // but chunking should already keep this small.
+  const input = trimmed.slice(0, 8192);
 
-  return response.data[0].embedding;
+  try {
+    const response = await getOpenAIClient().embeddings.create({
+      model: EMBEDDING_MODEL,
+      input,
+    });
+
+    return response.data[0].embedding;
+  } catch (error) {
+    console.error('Embedding generation failed:', error);
+    throw error;
+  }
 }
 
 /**
- * Generate embeddings for multiple texts in a single batch.
- * OpenAI supports up to 2048 inputs per request.
+ * Batch embedding generation
  */
-export async function generateEmbeddings(
-  texts: string[],
-): Promise<number[][]> {
-  const openai = getOpenAI();
-
-  const cleaned = texts.map(t => t.replace(/\n+/g, ' ').trim());
-  const nonEmpty = cleaned.filter(t => t.length > 0);
-  if (nonEmpty.length === 0) {
+export async function generateEmbeddings(texts: string[]): Promise<number[][]> {
+  if (texts.length === 0) {
     return [];
   }
 
-  // Process in batches of 100 to stay well within limits
-  const batchSize = 100;
-  const allEmbeddings: number[][] = [];
+  const input = texts
+    .map(t => t.trim().slice(0, 8192))
+    .filter(Boolean);
 
-  for (let i = 0; i < nonEmpty.length; i += batchSize) {
-    const batch = nonEmpty.slice(i, i + batchSize);
-    const response = await openai.embeddings.create({
-      model: EMBEDDING_MODEL,
-      input: batch,
-      dimensions: EMBEDDING_DIMENSIONS,
-    });
-
-    const sorted = response.data.sort((a, b) => a.index - b.index);
-    allEmbeddings.push(...sorted.map(d => d.embedding));
-
-    if (i + batchSize < nonEmpty.length) {
-      logger.debug('Embedding batch progress', {
-        processed: i + batch.length,
-        total: nonEmpty.length,
-      });
-    }
+  if (input.length === 0) {
+    throw new Error('Cannot generate embeddings for empty text inputs');
   }
 
-  return allEmbeddings;
+  try {
+    const response = await getOpenAIClient().embeddings.create({
+      model: EMBEDDING_MODEL,
+      input,
+    });
+
+    return response.data.map(d => d.embedding);
+  } catch (error) {
+    console.error('Batch embedding generation failed:', error);
+    throw error;
+  }
 }
 
 /**
@@ -91,7 +85,6 @@ export function chunkText(
   const maxChars = maxTokens * 4;
   const overlapChars = overlapTokens * 4;
 
-  // Split on double newlines (paragraphs)
   const paragraphs = text.split(/\n{2,}/);
   const chunks: string[] = [];
   let current = '';
@@ -100,7 +93,6 @@ export function chunkText(
     const trimmed = paragraph.trim();
     if (!trimmed) continue;
 
-    // If a single paragraph exceeds max, split by sentences
     if (trimmed.length > maxChars) {
       if (current) {
         chunks.push(current.trim());
@@ -111,7 +103,6 @@ export function chunkText(
       for (const sentence of sentences) {
         if ((sentenceBuffer + ' ' + sentence).length > maxChars && sentenceBuffer) {
           chunks.push(sentenceBuffer.trim());
-          // Keep overlap from end of previous chunk
           const words = sentenceBuffer.split(' ');
           const overlapWords = words.slice(-Math.ceil(overlapChars / 5));
           sentenceBuffer = overlapWords.join(' ') + ' ' + sentence;
@@ -127,7 +118,6 @@ export function chunkText(
 
     if ((current + '\n\n' + trimmed).length > maxChars && current) {
       chunks.push(current.trim());
-      // Keep overlap from end of previous chunk
       const words = current.split(' ');
       const overlapWords = words.slice(-Math.ceil(overlapChars / 5));
       current = overlapWords.join(' ') + '\n\n' + trimmed;
@@ -147,7 +137,6 @@ export function chunkText(
  * Parse markdown content, splitting on headers.
  */
 export function chunkMarkdown(markdown: string, maxTokens: number = 512): string[] {
-  // Split on ## headers (keep the header with its content)
   const sections = markdown.split(/(?=^## )/m);
   const chunks: string[] = [];
 
@@ -156,7 +145,6 @@ export function chunkMarkdown(markdown: string, maxTokens: number = 512): string
     if (!trimmed) continue;
 
     if (trimmed.length > maxTokens * 4) {
-      // Section too large, chunk it further
       chunks.push(...chunkText(trimmed, maxTokens));
     } else {
       chunks.push(trimmed);
@@ -175,7 +163,6 @@ export function chunkJSON(jsonString: string, maxTokens: number = 512): string[]
   try {
     parsed = JSON.parse(jsonString);
   } catch {
-    // Fall back to text chunking if JSON is invalid
     return chunkText(jsonString, maxTokens);
   }
 

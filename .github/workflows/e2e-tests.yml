@@ -38,6 +38,7 @@ jobs:
       STRIPE_SECRET_KEY: ${{ secrets.STRIPE_SECRET_KEY_TEST || 'sk_test_placeholder' }}
       NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY: ${{ secrets.STRIPE_PUBLISHABLE_KEY_TEST || 'pk_test_placeholder' }}
       STRIPE_WEBHOOK_SECRET: ${{ secrets.STRIPE_WEBHOOK_SECRET_TEST || 'whsec_placeholder' }}
+      N8N_WEBHOOK_SECRET: test_webhook_secret
       NEXT_PUBLIC_APP_URL: http://localhost:3000
       BASE_URL: http://localhost:3000
     
@@ -67,7 +68,11 @@ jobs:
         run: npx playwright install --with-deps
       
       - name: Run E2E tests
-        run: npm run test:e2e
+        run: |
+          npm run build
+          npm run start &
+          npx wait-on http://localhost:3000
+          npm run test:e2e
       
       - name: Upload test results
         uses: actions/upload-artifact@v4
@@ -84,3 +89,82 @@ jobs:
           name: playwright-screenshots
           path: test-results/
           retention-days: 7
+
+  a11y-tests:
+    name: Accessibility Tests
+    timeout-minutes: 30
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_DB: rootwork_test
+          POSTGRES_USER: rootwork
+          POSTGRES_PASSWORD: rootwork_ci
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd="pg_isready -U rootwork"
+          --health-interval=5s
+          --health-timeout=3s
+          --health-retries=5
+    
+    env:
+      DATABASE_URL: postgresql://rootwork:rootwork_ci@localhost:5432/rootwork_test?schema=public
+      NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY: pk_test_placeholder
+      CLERK_SECRET_KEY: sk_test_placeholder
+      ANTHROPIC_API_KEY: sk-ant-placeholder
+      OPENAI_API_KEY: sk-openai-placeholder
+      STRIPE_SECRET_KEY: sk_test_placeholder
+      NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY: pk_test_placeholder
+      STRIPE_WEBHOOK_SECRET: whsec_placeholder
+      N8N_WEBHOOK_SECRET: test_webhook_secret
+      NEXT_PUBLIC_APP_URL: http://localhost:3000
+      BASE_URL: http://localhost:3000
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+      
+      - name: Install dependencies
+        run: npm ci
+      
+      - name: Generate Prisma client
+        run: npx prisma generate
+      
+      - name: Run database migrations
+        run: npx prisma migrate deploy
+      
+      - name: Seed database with test data
+        run: npm run db:seed
+      
+      - name: Install Playwright Browsers
+        run: npx playwright install --with-deps chromium
+      
+      - name: Run accessibility tests
+        run: npm run test:a11y
+      
+      - name: Upload accessibility report
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: accessibility-report
+          path: playwright-report/
+          retention-days: 30
+      
+      - name: Upload accessibility results
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: accessibility-results
+          path: test-results/a11y-results.json
+          retention-days: 30

@@ -1,6 +1,11 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
-  output: "standalone",
+  serverExternalPackages: [
+    'dd-trace',
+    '@datadog/libdatadog',
+    '@datadog/openfeature-node-server',
+    '@opentelemetry/instrumentation',
+  ],
   images: {
     remotePatterns: [
       { protocol: "https", hostname: "img.clerk.com" },
@@ -11,6 +16,17 @@ const nextConfig = {
     serverActions: {
       bodySizeLimit: "2mb",
     },
+  },
+  webpack: (config, { isServer, nextRuntime }) => {
+    config.ignoreWarnings = [
+      ...(config.ignoreWarnings ?? []),
+      {
+        module: /@opentelemetry\/instrumentation\/build\/esm\/platform\/node\/instrumentation\.js/,
+        message: /Critical dependency: the request of a dependency is an expression/,
+      },
+    ];
+
+    return config;
   },
   async headers() {
     return [
@@ -31,7 +47,7 @@ const nextConfig = {
           {
             key: "Content-Security-Policy",
             value:
-              "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://cdn.clerk.io https://js.stripe.com; style-src 'self' 'unsafe-inline'; img-src 'self' data: https://img.clerk.com https://images.unsplash.com; font-src 'self'; connect-src 'self' https://api.clerk.io https://api.stripe.com https://*.pinecone.io https://api.anthropic.com https://api.openai.com; frame-src https://js.stripe.com https://accounts.clerk.dev; object-src 'none'; base-uri 'self'; form-action 'self';",
+              "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://cdn.clerk.io https://*.clerk.accounts.dev https://js.stripe.com https://challenges.cloudflare.com https://vercel.live; worker-src 'self' blob:; style-src 'self' 'unsafe-inline'; img-src 'self' data: https://img.clerk.com https://images.unsplash.com; font-src 'self' https://vercel.live; connect-src 'self' https://api.clerk.io https://*.clerk.accounts.dev https://api.stripe.com https://*.pinecone.io https://api.anthropic.com https://api.openai.com https://challenges.cloudflare.com https://vercel.live; frame-src https://js.stripe.com https://accounts.clerk.dev https://*.clerk.accounts.dev https://challenges.cloudflare.com https://vercel.live; object-src 'none'; base-uri 'self'; form-action 'self';",
           },
         ],
       },

@@ -1,12 +1,25 @@
 import { NextRequest } from 'next/server';
-import { auth } from '@clerk/nextjs/server';
 import { db } from '@/lib/db';
 import { anthropic, AI_MODELS } from '@/lib/ai/client';
 import { buildMasterSystemPrompt } from '@/lib/ai/prompts/master-system-prompt';
-import { generateEmbedding } from '@/lib/pinecone/embeddings';
-import { queryPinecone } from '@/lib/pinecone/client';
-import { enforceUsageLimits, UsageLimitError } from '@/lib/usage-limits';
+import { searchCurriculum, formatCurriculumContext } from '@/lib/vector-search';
+import { enforceUsageLimits, UsageLimitError, evaluateOrganizationTokenUsage } from '@/lib/usage-limits';
+import { detectDysregulation, updateRegulationLevel, analyzeSentiment } from '@/lib/regulation/detector';
+import { classifySentiment, formatInterventionMessage } from '@/lib/regulation/sentiment-classifier';
+import { analyzeThinkingQuality } from '@/lib/trace/tracker';
+import { createNVCEvaluation } from '@/lib/nvc/evaluation-service';
 import { z } from 'zod';
+import { anonymizeForLlmWithMap, reattachPii } from '@/lib/privacy';
+import { appendImmutableAuditLog } from '@/lib/audit';
+import { getCachedUserProfile, getCachedSession, invalidateSessionCache } from '@/lib/redis/cached-queries';
+import { cacheGet, cacheSet, contentHash, CACHE_TTL, CACHE_KEY } from '@/lib/redis/cache';
+import { captureException, recordMetric, trackEvent } from '@/lib/monitoring';
+import { computePhaseTransition, buildFiveRStateSnapshot } from '@/lib/five-rs/state-machine';
+import { withApiHandler } from '@/lib/api-handler';
+import { requireUser } from '@/lib/auth';
+import { NotFoundError, ForbiddenError, BadRequestError, PaymentRequiredError } from '@/lib/api-errors';
+import { hasRequiredMinorConsent } from '@/lib/compliance';
+import type { SourceCitation } from '@/types/chat';
 
 const chatRequestSchema = z.object({
   sessionId: z.string().min(1),
@@ -16,52 +29,101 @@ const chatRequestSchema = z.object({
 // Minimum message length to trigger TRACE analysis (avoid analyzing very short responses)
 const MIN_MESSAGE_LENGTH_FOR_TRACE = 10;
 
-export async function POST(req: NextRequest) {
-  const { userId: clerkId } = auth();
-  if (!clerkId) {
-    return new Response(JSON.stringify({ error: 'Unauthorized' }), { status: 401 });
+/**
+ * Construct GitHub URL for a source file
+ */
+function constructSourceUrl(filename: string): string {
+  const baseUrl = 'https://github.com/SAHearn1/learning-hub/blob/main';
+  // Ensure filename has proper path
+  const cleanPath = filename.startsWith('/') ? filename : `/${filename}`;
+  return `${baseUrl}${cleanPath}`;
+}
+
+const FINLIT_SUBJECT = 'FINANCIAL_LITERACY';
+const FINLIT_KEYWORDS = [
+  'compound interest', 'interest rate', 'budget', 'budgeting', 'saving', 'savings',
+  'invest', 'investing', 'stock', 'stocks', 'bond', 'bonds', 'etf', 'retirement',
+  'credit', 'debt', 'loan', 'apr', 'mortgage', 'portfolio', 'diversification',
+];
+const PERSONAL_TRADE_PATTERNS = [
+  /should\s+i\s+buy\b/i,
+  /what\s+stock\s+should\s+i\s+buy\b/i,
+  /buy\s+[a-z]{1,6}\s+(today|now)\b/i,
+  /is\s+now\s+a\s+good\s+time\s+to\s+buy\b/i,
+  /predict\s+.*price/i,
+];
+
+function messageSuggestsFinlit(message: string): boolean {
+  const normalized = message.toLowerCase();
+  return FINLIT_KEYWORDS.some((keyword) => normalized.includes(keyword));
+}
+
+function buildRetrievalSubjects(message: string, sessionSubject?: string | null): string[] | undefined {
+  if (sessionSubject === FINLIT_SUBJECT) {
+    return [FINLIT_SUBJECT];
   }
 
-  let body;
-  try {
-    body = chatRequestSchema.parse(await req.json());
-  } catch (err) {
-    const message = err instanceof z.ZodError ? err.errors.map(e => e.message).join(', ') : 'Invalid request';
-    return new Response(JSON.stringify({ error: message }), { status: 400 });
+  if (messageSuggestsFinlit(message)) {
+    const subjects = new Set<string>([FINLIT_SUBJECT]);
+    if (sessionSubject) {
+      subjects.add(sessionSubject);
+    }
+    return Array.from(subjects);
   }
 
-  const user = await db.user.findUnique({
-    where: { clerkUserId: clerkId },
-    include: { student: { include: { iepAccommodations: { where: { active: true } } } } },
-  });
-  if (!user?.student) {
-    return new Response(JSON.stringify({ error: 'Student profile not found' }), { status: 404 });
+  return undefined;
+}
+
+function isPersonalTradeAdviceRequest(message: string): boolean {
+  return PERSONAL_TRADE_PATTERNS.some((pattern) => pattern.test(message));
+}
+
+
+export const POST = withApiHandler(async (req) => {
+  const user = await requireUser();
+
+  if (!hasRequiredMinorConsent(user.isMinor, user.consentStatus)) {
+    throw new ForbiddenError('Parental consent required before using chat');
   }
 
-  const session = await db.session.findUnique({
-    where: { id: body.sessionId },
-    include: { messages: { orderBy: { createdAt: 'asc' }, take: 50 } },
-  });
+  if (!user.student) {
+    throw new NotFoundError('Student profile not found');
+  }
+
+  const body = chatRequestSchema.parse(await req.json());
+
+  const session = await getCachedSession(body.sessionId);
   if (!session) {
-    return new Response(JSON.stringify({ error: 'Session not found' }), { status: 404 });
+    throw new NotFoundError('Session not found');
   }
   if (session.studentId !== user.student.id) {
-    return new Response(JSON.stringify({ error: 'Forbidden' }), { status: 403 });
+    throw new ForbiddenError('Access to this session is forbidden');
   }
   if (session.endedAt) {
-    return new Response(JSON.stringify({ error: 'Session has ended' }), { status: 400 });
+    throw new BadRequestError('Session has ended');
   }
 
   try {
     await enforceUsageLimits(user.tenantId, { additionalTokens: 2048 });
   } catch (error) {
     if (error instanceof UsageLimitError) {
-      return new Response(JSON.stringify({ error: error.message }), { status: 402 });
+      throw new PaymentRequiredError(error.message);
     }
     throw error;
   }
 
-  // Save user message
+  const usageGuardrail = await evaluateOrganizationTokenUsage(user.tenantId, { additionalTokens: 2048 });
+  if (usageGuardrail.spikeDetected) {
+    trackEvent('organization.token_usage_spike_detected', {
+      organizationId: usageGuardrail.organizationId,
+      projectedDailyTokens: usageGuardrail.projectedDailyTokens,
+      baselineDailyTokens: usageGuardrail.baselineDailyTokens,
+      spikeRatio: Number(usageGuardrail.spikeRatio.toFixed(2)),
+      dailyHardLimitTokens: usageGuardrail.dailyHardLimitTokens,
+    });
+  }
+
+  // Save user message and invalidate session cache
   const userMessage = await db.message.create({
     data: {
       sessionId: session.id,
@@ -69,6 +131,7 @@ export async function POST(req: NextRequest) {
       content: body.message,
     },
   });
+  await invalidateSessionCache(session.id);
 
   // Check for dysregulation signals
   const messageHistory = session.messages.map((m) => ({
@@ -78,26 +141,141 @@ export async function POST(req: NextRequest) {
   }));
 
   const regulationCheck = detectDysregulation(body.message, messageHistory);
+  const sentiment = analyzeSentiment(body.message, regulationCheck);
   const currentRegulationState = session.regulationState as { level?: number; signals?: string[]; interventionCount?: number } | null;
   const currentLevel = currentRegulationState?.level ?? 70;
   const newRegulationLevel = updateRegulationLevel(currentLevel, regulationCheck);
+  const nextPhase = computePhaseTransition(session.currentPhase, {
+    regulationLevel: newRegulationLevel,
+    sentiment,
+  });
+  const previousStateMachine = (session.metadata as { fiveRState?: { phaseHistory?: Array<{ phase: 'ROOT' | 'REGULATE' | 'REFLECT' | 'RESTORE' | 'RECONNECT'; timestamp: string; reason: string }> } } | null)?.fiveRState;
+  const nextFiveRState = buildFiveRStateSnapshot({
+    currentPhase: session.currentPhase,
+    nextPhase,
+    previousHistory: previousStateMachine?.phaseHistory ?? [],
+    sentiment,
+    regulationLevel: newRegulationLevel,
+  });
 
-  // Update regulation state if changed
-  if (newRegulationLevel !== currentLevel || regulationCheck.signals.length > 0) {
+  // Persist regulation updates and enforce the 5Rs FSM progression.
+  if (
+    newRegulationLevel !== currentLevel ||
+    regulationCheck.signals.length > 0 ||
+    session.currentPhase !== nextPhase
+  ) {
     await db.session.update({
       where: { id: session.id },
       data: {
-        regulationState: {
+        currentPhase: nextPhase,
+        regulationState: JSON.parse(JSON.stringify({
           level: newRegulationLevel,
           signals: regulationCheck.signals,
           interventionCount: (currentRegulationState?.interventionCount ?? 0) + (regulationCheck.severity === 'high' ? 1 : 0),
-        },
+          sentiment,
+          regulationPassed: nextFiveRState.regulationPassed,
+        })),
+        metadata: JSON.parse(JSON.stringify({
+          ...(session.metadata as Record<string, unknown> ?? {}),
+          fiveRState: nextFiveRState,
+        })),
       },
     });
   }
 
+  // ═══════════════════════════════════════════════════════════════
+  // SENTIMENT CLASSIFICATION LAYER (Pre-RAG)
+  // ═══════════════════════════════════════════════════════════════
+  // This classification layer runs BEFORE the RAG pipeline to detect
+  // high-stress patterns and inject regulation exercises when needed.
+  // When high stress is detected, we bypass RAG entirely and return
+  // a regulation intervention immediately.
+  //
+  // WHY PRE-RAG?
+  // - Ensures immediate emotional support (< 50ms latency)
+  // - Prevents academic content from being mixed with regulation needs
+  // - Trauma-informed: prioritize safety/regulation before learning
+  //
+  // STRESS DETECTION APPROACH:
+  // - Pattern matching on content (no ML inference needed)
+  // - Considers cumulative stress from recent message history
+  // - Multiple thresholds: crisis, high, medium, low
+  //
+  // HIGH-PRIORITY PATTERNS:
+  // - Panic/overwhelm: "I can't breathe", "freaking out"
+  // - Crisis language: "I want to give up", "hate myself"
+  // - Acute distress: "I'm so scared", "can't stop crying"
+
+  const sentimentClassification = classifySentiment(
+    body.message,
+    messageHistory,
+    newRegulationLevel
+  );
+
+  // Log sentiment classification for monitoring
+  console.log(`Sentiment classification for session ${session.id}:`, {
+    stressLevel: sentimentClassification.stressLevel,
+    shouldIntervene: sentimentClassification.shouldIntervene,
+    patterns: sentimentClassification.detectedPatterns,
+  });
+
+  // If high stress detected, return regulation intervention and bypass RAG
+  if (sentimentClassification.shouldIntervene && sentimentClassification.exercise) {
+    try {
+      // Format the intervention message
+      const interventionContent = formatInterventionMessage(sentimentClassification.exercise);
+
+      // Save the intervention as an assistant message
+      await db.message.create({
+        data: {
+          sessionId: session.id,
+          role: 'ASSISTANT',
+          content: interventionContent,
+        },
+      });
+
+      // Update session phase to REGULATE
+      await db.session.update({
+        where: { id: session.id },
+        data: {
+          currentPhase: 'REGULATE',
+        },
+      });
+
+      // Invalidate session cache
+      await invalidateSessionCache(session.id);
+
+      // Stream the intervention response back to client
+      // Using same format as normal streaming: { text: "..." }
+      const encoder = new TextEncoder();
+      const readable = new ReadableStream({
+        start(controller) {
+          // Send the complete intervention message
+          controller.enqueue(encoder.encode(`data: ${JSON.stringify({ text: interventionContent })}\n\n`));
+          controller.close();
+        },
+      });
+
+      return new Response(readable, {
+        headers: {
+          'Content-Type': 'text/event-stream',
+          'Cache-Control': 'no-cache',
+          'Connection': 'keep-alive',
+        },
+      });
+    } catch (error) {
+      console.error('Error creating intervention response:', error);
+      captureException(error as Error);
+      // Continue with normal flow if intervention fails (graceful degradation)
+    }
+  }
+
+  // ═══════════════════════════════════════════════════════════════
+  // NORMAL TUTORING FLOW (No intervention needed)
+  // ═══════════════════════════════════════════════════════════════
+
   // Build context for system prompt
-  const regulationState = session.regulationState as { level?: number } | null;
+  const regulationState = { level: newRegulationLevel };
   const learningPrefs = user.student.learningPreferences as { modalities?: string[] } | null;
   const accommodationTypes = user.student.iepAccommodations.map(a => a.type);
 
@@ -106,69 +284,139 @@ export async function POST(req: NextRequest) {
     .map(m => `${m.role}: ${m.content}`)
     .join('\n');
 
-  // RAG: Retrieve relevant curriculum context from Pinecone
+  // RAG: Retrieve relevant curriculum context (with Redis cache)
   let curriculumContext = '';
   let ragMetrics = { retrieved: 0, durationMs: 0 };
-  
+  let citations: SourceCitation[] = [];
+  const retrievalSubjects = buildRetrievalSubjects(body.message, session.subject);
+  const isFinlitSession = session.subject === FINLIT_SUBJECT;
+
   try {
     const ragStartTime = Date.now();
-    
-    // Generate embedding for the user's query
-    const queryEmbedding = await generateEmbedding(body.message);
-    
-    // Query Pinecone for relevant curriculum content
-    const filter: Record<string, any> = {
-      subject: session.subject,
-    };
-    
-    // Add grade level filter if available
-    if (user.student.gradeLevel) {
-      filter.gradeLevel = user.student.gradeLevel;
-    }
-    
-    const matches = await queryPinecone(queryEmbedding, 5, filter);
-    ragMetrics.retrieved = matches.length;
-    ragMetrics.durationMs = Date.now() - ragStartTime;
-    
-    // Format retrieved context
-    if (matches.length > 0) {
-      curriculumContext = matches
-        .map((match, idx) => {
-          const metadata = match.metadata as Record<string, any> || {};
-          const content = metadata.content || metadata.text || 'No content available';
-          const source = metadata.source || metadata.title || 'Unknown source';
-          const score = match.score?.toFixed(3) || 'N/A';
-          
-          return `[Context ${idx + 1}] (Relevance: ${score})\nSource: ${source}\n${content}`;
-        })
-        .join('\n\n---\n\n');
-      
-      console.log(`RAG: Retrieved ${matches.length} curriculum contexts in ${ragMetrics.durationMs}ms for session ${session.id}`);
+    const grade = String(user.student.gradeLevel ?? 'any');
+    const ragSubjectKey = retrievalSubjects?.slice().sort().join(',') || session.subject;
+    const ragCacheKey = CACHE_KEY.curriculum(ragSubjectKey, grade, contentHash(body.message));
+
+    const cachedRag = await cacheGet<string>(ragCacheKey);
+    if (cachedRag) {
+      curriculumContext = cachedRag;
+      ragMetrics.durationMs = Date.now() - ragStartTime;
+      ragMetrics.retrieved = -1;
+    } else {
+      const results = await searchCurriculum(body.message, {
+        subject: retrievalSubjects ? undefined : session.subject,
+        subjects: retrievalSubjects,
+        gradeLevel: user.student.gradeLevel ?? undefined,
+        topK: 5,
+        minScore: 0.3,
+      });
+
+      ragMetrics.retrieved = results.length;
+      ragMetrics.durationMs = Date.now() - ragStartTime;
+
+      if (results.length > 0) {
+        citations = results.map((result, idx) => ({
+          id: `citation-${idx}`,
+          filename: result.filename || 'Unknown',
+          chunkIndex: idx,
+          totalChunks: results.length,
+          text: result.text || '',
+          relevanceScore: result.score ?? 0,
+          sourceUrl: constructSourceUrl(result.filename || ''),
+          subject: result.subject || '',
+          gradeLevel: result.gradeLevel ?? 0,
+          standardCodes: result.standardCodes || [],
+        }));
+
+        curriculumContext = formatCurriculumContext(results);
+        await cacheSet(ragCacheKey, curriculumContext, CACHE_TTL.CURRICULUM);
+        console.log(`RAG: Retrieved ${results.length} curriculum contexts in ${ragMetrics.durationMs}ms for session ${session.id}`);
+      }
     }
   } catch (error) {
     console.error(`RAG retrieval error for session ${session.id}:`, error);
-    // Continue without RAG context if Pinecone fails
     curriculumContext = '';
+    citations = [];
   }
 
+  // Enrich context with pre-selected topic data (from curriculum explore flow)
+  const sessionMetadata = session.metadata as Record<string, unknown> | null;
+  const preselectedTopicId = sessionMetadata?.topicId as string | undefined;
+  let preselectedTopicContext = '';
+
+  if (preselectedTopicId) {
+    try {
+      const topic = await db.topic.findUnique({
+        where: { id: preselectedTopicId },
+        select: {
+          name: true,
+          description: true,
+          conceptualUnderstanding: true,
+          commonMisconceptions: true,
+          learningObjectives: { select: { description: true, bloomsLevel: true } },
+        },
+      });
+
+      if (topic) {
+        const parts = [
+          `## Pre-selected Topic: ${topic.name}`,
+          topic.description,
+          '',
+          '### Key Concepts',
+          topic.conceptualUnderstanding,
+        ];
+
+        if (topic.learningObjectives.length > 0) {
+          parts.push('', '### Learning Objectives');
+          topic.learningObjectives.forEach(obj => {
+            parts.push(`- [${obj.bloomsLevel}] ${obj.description}`);
+          });
+        }
+
+        if (topic.commonMisconceptions.length > 0) {
+          parts.push('', '### Common Misconceptions to Address');
+          topic.commonMisconceptions.forEach(m => {
+            parts.push(`- ${m}`);
+          });
+        }
+
+        preselectedTopicContext = parts.join('\n');
+      }
+    } catch (error) {
+      console.error('Error fetching pre-selected topic:', error);
+    }
+  }
+
+  const usedFinlitContext = citations.some(c => c.subject === FINLIT_SUBJECT);
+  // Combine curriculum context with pre-selected topic context
+  const combinedTopicContext = preselectedTopicContext
+    ? `${preselectedTopicContext}\n\n${curriculumContext}`
+    : curriculumContext;
+
+  const finlitSafetyInstructions = usedFinlitContext || isFinlitSession || messageSuggestsFinlit(body.message)
+    ? `\n\n### Financial Literacy Safety\n- Financial literacy content is educational only, not financial advice.\n- Do not recommend specific trades, stocks, or timing decisions.\n- Do not predict security prices.\n- Cite relevant FINANCIAL_LITERACY sources when available.\n- If no financial literacy sources are available, ask a clarifying question before giving specific guidance.`
+    : '';
+
   const systemPrompt = buildMasterSystemPrompt({
-    currentPhase: session.currentPhase,
+    currentPhase: nextPhase,
     gradeLevel: user.student.gradeLevel,
     subject: session.subject,
     regulationBaseline: regulationState?.level ?? 70,
     accommodations: accommodationTypes,
     modalities: learningPrefs?.modalities ?? [],
     sessionHistory,
-    topicContext: curriculumContext,
+    topicContext: combinedTopicContext,
     engagementMode: session.engagementMode,
   });
 
   // Build message history for API call
+  const piiTokenMap: Record<string, string> = {};
   const apiMessages = session.messages.map(m => ({
     role: (m.role === 'USER' ? 'user' : 'assistant') as 'user' | 'assistant',
-    content: m.content,
+    content: anonymizeForLlmWithMap(m.content, piiTokenMap).sanitizedText,
   }));
-  apiMessages.push({ role: 'user', content: body.message });
+  const anonymizedInput = anonymizeForLlmWithMap(body.message, piiTokenMap);
+  apiMessages.push({ role: 'user', content: anonymizedInput.sanitizedText });
 
   // Filter consecutive same-role messages (Anthropic requires alternating)
   const filteredMessages: { role: 'user' | 'assistant'; content: string }[] = [];
@@ -186,11 +434,45 @@ export async function POST(req: NextRequest) {
 
   const startTime = Date.now();
 
+  if (isPersonalTradeAdviceRequest(body.message)) {
+    const refusalMessage = `I can’t provide personalized buy/sell recommendations or price predictions. I can help with general investing principles for learning, such as diversification, risk tolerance, and long-term planning. ${usedFinlitContext ? 'This is educational only, not financial advice.' : 'Tell me what concept you want to learn, and I can explain it with educational examples.'}`;
+
+    await db.message.create({
+      data: {
+        sessionId: session.id,
+        role: 'ASSISTANT',
+        content: refusalMessage,
+        metadata: citations.length > 0 ? JSON.parse(JSON.stringify({ citations })) : undefined,
+      },
+    });
+    await invalidateSessionCache(session.id);
+
+    const encoder = new TextEncoder();
+    const readable = new ReadableStream({
+      start(controller) {
+        controller.enqueue(encoder.encode(`data: ${JSON.stringify({ text: refusalMessage })}\n\n`));
+        if (citations.length > 0) {
+          controller.enqueue(encoder.encode(`data: ${JSON.stringify({ citations })}\n\n`));
+        }
+        controller.enqueue(encoder.encode(`data: ${JSON.stringify({ done: true })}\n\n`));
+        controller.close();
+      },
+    });
+
+    return new Response(readable, {
+      headers: {
+        'Content-Type': 'text/event-stream',
+        'Cache-Control': 'no-cache',
+        Connection: 'keep-alive',
+      },
+    });
+  }
+
   // Stream response
   const stream = await anthropic.messages.stream({
     model: AI_MODELS.primary,
     max_tokens: 1024,
-    system: systemPrompt,
+    system: anonymizeForLlmWithMap(`${systemPrompt}${finlitSafetyInstructions}`, piiTokenMap).sanitizedText,
     messages: filteredMessages,
   });
 
@@ -203,22 +485,32 @@ export async function POST(req: NextRequest) {
         for await (const event of stream) {
           if (event.type === 'content_block_delta' && event.delta.type === 'text_delta') {
             fullText += event.delta.text;
-            controller.enqueue(encoder.encode(`data: ${JSON.stringify({ text: event.delta.text })}\n\n`));
+            const deidentifiedChunk = reattachPii(event.delta.text, anonymizedInput.tokenMap);
+            controller.enqueue(encoder.encode(`data: ${JSON.stringify({ text: deidentifiedChunk })}\n\n`));
           }
         }
 
-        // Save assistant message
-        await db.message.create({
+        const restoredAssistantText = reattachPii(fullText, anonymizedInput.tokenMap);
+
+        // Save assistant message and invalidate session cache
+        const assistantMessage = await db.message.create({
           data: {
             sessionId: session.id,
             role: 'ASSISTANT',
-            content: fullText,
+            content: restoredAssistantText,
+            metadata: citations.length > 0 ? JSON.parse(JSON.stringify({ citations })) : undefined,
           },
         });
+        await invalidateSessionCache(session.id);
+
+        // TODO: Add guardrail post-checks and HITL review when implemented
+        // if (!postCheck.passed || postCheck.confidenceScore < 0.7) {
+        //   await createSuggestionReview({ ... });
+        // }
 
         // Track thinking quality with TRACE protocol (async, don't block response)
         if (body.message.length > MIN_MESSAGE_LENGTH_FOR_TRACE) {
-          analyzeThinkingQuality(body.message, fullText)
+          analyzeThinkingQuality(body.message, restoredAssistantText)
             .then(async (traceData) => {
               if (!traceData) return;
 
@@ -270,9 +562,31 @@ export async function POST(req: NextRequest) {
               }
             })
             .catch((error) => {
-              console.error('Error tracking TRACE data:', error);
+              captureException(error, {
+                tags: { endpoint: 'chat', phase: 'trace_analysis' },
+                extra: { sessionId: session.id },
+              });
             });
         }
+
+        // Evaluate NVC compliance (async, don't block response)
+        const conversationContext = session.messages
+          .slice(-5)
+          .map(m => `${m.role}: ${m.content}`)
+          .join('\n');
+
+        createNVCEvaluation({
+          messageId: assistantMessage.id,
+          sessionId: session.id,
+          tenantId: user.tenantId,
+          assistantResponse: restoredAssistantText,
+          conversationContext,
+        }).catch((error) => {
+          captureException(error, {
+            tags: { endpoint: 'chat', phase: 'nvc_evaluation' },
+            extra: { sessionId: session.id, messageId: assistantMessage.id },
+          });
+        });
 
         // Track AI usage
         const finalMessage = await stream.finalMessage();
@@ -299,9 +613,51 @@ export async function POST(req: NextRequest) {
           },
         });
 
+        // Record latency metric for monitoring dashboards
+        await recordMetric('chat.latency_ms', latencyMs, {
+          model: AI_MODELS.primary,
+          subject: session.subject,
+        });
+
+        await recordMetric('chat.organization_tokens_projected_daily', usageGuardrail.projectedDailyTokens, {
+          tenantId: usageGuardrail.organizationId,
+          subject: session.subject,
+        });
+
+        if (usageGuardrail.spikeDetected) {
+          await recordMetric('chat.organization_token_spike_ratio', usageGuardrail.spikeRatio, {
+            tenantId: usageGuardrail.organizationId,
+            subject: session.subject,
+          });
+        }
+
+
+        await appendImmutableAuditLog({
+          tenantId: user.tenantId,
+          userId: user.id,
+          action: 'LLM_CHAT_COMPLETED',
+          resource: 'Session',
+          resourceId: session.id,
+          metadata: {
+            anonymizationTokens: Object.keys(anonymizedInput.tokenMap).length,
+            inputLength: body.message.length,
+          },
+        });
+        
+        // Send citations if available
+        if (citations.length > 0) {
+          controller.enqueue(encoder.encode(`data: ${JSON.stringify({ citations })}\n\n`));
+        }
+        
         controller.enqueue(encoder.encode(`data: ${JSON.stringify({ done: true })}\n\n`));
         controller.close();
       } catch (err) {
+        await captureException(err, {
+          tags: { endpoint: 'chat', phase: 'stream' },
+          extra: { sessionId: session.id },
+          userId: user.id,
+          tenantId: user.tenantId,
+        });
         const errorMessage = err instanceof Error ? err.message : 'Stream error';
         controller.enqueue(encoder.encode(`data: ${JSON.stringify({ error: errorMessage })}\n\n`));
         controller.close();
@@ -316,4 +672,4 @@ export async function POST(req: NextRequest) {
       Connection: 'keep-alive',
     },
   });
-}
+});

@@ -34,12 +34,16 @@ describe('auth helpers', () => {
     expect(mockDb.user.findUnique).toHaveBeenCalledWith(
       expect.objectContaining({
         where: { clerkUserId: 'clerk_123' },
-        include: {
-          student: true,
+        include: expect.objectContaining({
+          student: expect.objectContaining({
+            include: expect.objectContaining({
+              iepAccommodations: expect.any(Object),
+            }),
+          }),
           educator: true,
           parent: true,
           tenant: true,
-        },
+        }),
       }),
     );
   });

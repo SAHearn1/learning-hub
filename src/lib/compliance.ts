@@ -60,3 +60,27 @@ export type DataRightsRequestType = 'EXPORT' | 'DELETE';
 export function requiresGuardianForDataRequest(isMinor: boolean, role: UserRole): boolean {
   return isMinor && !canManageMinorConsent(role);
 }
+
+export function hasRequiredMinorConsent(
+  isMinor: boolean,
+  consentStatus: ConsentStatus | null | undefined,
+): boolean {
+  if (!isMinor) return true;
+  return consentStatus === 'GRANTED';
+}
+
+
+export const regulatoryControls = {
+  FERPA: [
+    'Least-privilege access to education records',
+    'Immutable access audit logging for record views and updates',
+  ],
+  COPPA: [
+    'Guardian-managed consent lifecycle for users under 13',
+    'PII minimization before external model processing',
+  ],
+  GDPR: [
+    'Data minimization and purpose limitation',
+    'Deletion/export support through data-rights workflows',
+  ],
+} as const;

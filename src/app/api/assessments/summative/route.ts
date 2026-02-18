@@ -1,15 +1,17 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { auth } from '@clerk/nextjs/server';
 import { db } from '@/lib/db';
 import { generateSummativeAssessment, calculateMasteryScore } from '@/lib/assessments/summative-generator';
 import { updateProgress } from '@/lib/assessments/progress-calculator';
 import { Subject } from '@prisma/client';
+import { requireUser } from '@/lib/auth';
+import { hasRequiredMinorConsent } from '@/lib/compliance';
 
 export async function POST(request: NextRequest) {
   try {
-    const { userId: clerkId } = auth();
-    if (!clerkId) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    const user = await requireUser();
+
+    if (!hasRequiredMinorConsent(user.isMinor, user.consentStatus)) {
+      return NextResponse.json({ error: 'Parental consent required before summative assessments' }, { status: 403 });
     }
 
     const body = await request.json();
@@ -21,11 +23,6 @@ export async function POST(request: NextRequest) {
         { error: 'Missing required fields: studentId, sessionId, topicName, learningObjectives' },
         { status: 400 }
       );
-    }
-
-    const user = await db.user.findUnique({ where: { clerkUserId: clerkId } });
-    if (!user) {
-      return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
     }
 
     // Get session info
@@ -112,14 +109,10 @@ export async function POST(request: NextRequest) {
 
 export async function GET(request: NextRequest) {
   try {
-    const { userId: clerkId } = auth();
-    if (!clerkId) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    }
+    const user = await requireUser();
 
-    const user = await db.user.findUnique({ where: { clerkUserId: clerkId } });
-    if (!user) {
-      return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+    if (!hasRequiredMinorConsent(user.isMinor, user.consentStatus)) {
+      return NextResponse.json({ error: 'Parental consent required before summative assessments' }, { status: 403 });
     }
 
     const { searchParams } = new URL(request.url);

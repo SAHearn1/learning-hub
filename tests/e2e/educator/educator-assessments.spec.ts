@@ -1,7 +1,9 @@
-import { test, expect } from '@playwright/test';
+import { test, expect } from '../fixtures/auth.fixture';
 
 test.describe('Educator assessments', () => {
-  test.skip('navigate to student assessments page (requires auth)', async ({ page }) => {
+  test.use({ authenticatedEducator: undefined });
+
+  test('navigate to student assessments page', async ({ page }) => {
     // This would require a valid student ID
     // Using a placeholder for now
     const studentId = 'test-student-id';
@@ -11,7 +13,7 @@ test.describe('Educator assessments', () => {
     await expect(page.locator('body')).toBeVisible();
   });
 
-  test.skip('verify tabs render (requires auth)', async ({ page }) => {
+  test('verify tabs render', async ({ page }) => {
     const studentId = 'test-student-id';
     await page.goto(`/students/${studentId}/assessments`);
     
@@ -30,7 +32,7 @@ test.describe('Educator assessments', () => {
     }
   });
 
-  test.skip('test tab switching (requires auth)', async ({ page }) => {
+  test('test tab switching', async ({ page }) => {
     const studentId = 'test-student-id';
     await page.goto(`/students/${studentId}/assessments`);
     
@@ -50,7 +52,7 @@ test.describe('Educator assessments', () => {
     }
   });
 
-  test.skip('check diagnostic card displays (requires auth)', async ({ page }) => {
+  test('check diagnostic card displays', async ({ page }) => {
     const studentId = 'test-student-id';
     await page.goto(`/students/${studentId}/assessments`);
     
@@ -63,7 +65,7 @@ test.describe('Educator assessments', () => {
     }
   });
 
-  test.skip('check formative card displays (requires auth)', async ({ page }) => {
+  test('check formative card displays', async ({ page }) => {
     const studentId = 'test-student-id';
     await page.goto(`/students/${studentId}/assessments`);
     
@@ -76,7 +78,7 @@ test.describe('Educator assessments', () => {
     }
   });
 
-  test.skip('check summative card displays (requires auth)', async ({ page }) => {
+  test('check summative card displays', async ({ page }) => {
     const studentId = 'test-student-id';
     await page.goto(`/students/${studentId}/assessments`);
     
@@ -89,7 +91,7 @@ test.describe('Educator assessments', () => {
     }
   });
 
-  test.skip('test Start New buttons (requires auth)', async ({ page }) => {
+  test('test Start New buttons', async ({ page }) => {
     const studentId = 'test-student-id';
     await page.goto(`/students/${studentId}/assessments`);
     
@@ -103,7 +105,7 @@ test.describe('Educator assessments', () => {
     }
   });
 
-  test.skip('check assessment history tab loads (requires auth)', async ({ page }) => {
+  test('check assessment history tab loads', async ({ page }) => {
     const studentId = 'test-student-id';
     await page.goto(`/students/${studentId}/assessments`);
     
@@ -125,7 +127,7 @@ test.describe('Educator assessments', () => {
     }
   });
 
-  test.skip('check reasoning tracker tab loads (requires auth)', async ({ page }) => {
+  test('check reasoning tracker tab loads', async ({ page }) => {
     const studentId = 'test-student-id';
     await page.goto(`/students/${studentId}/assessments`);
     

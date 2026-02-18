@@ -2,34 +2,36 @@ import { NextRequest, NextResponse } from 'next/server';
 import { Webhook } from 'svix';
 import { db } from '@/lib/db';
 
-interface ClerkWebhookEvent {
-  type: string;
+const WEBHOOK_TIMESTAMP_TOLERANCE_MS = 5 * 60 * 1000;
+const WEBHOOK_REPLAY_TTL_MS = 10 * 60 * 1000;
+const processedWebhookIds = new Map<string, number>();
+
+type ProvisionableRole = 'STUDENT' | 'EDUCATOR' | 'PARENT' | 'SCHOOL_ADMIN' | 'DISTRICT_ADMIN';
+
+type ClerkWebhookEvent = {
+  type: 'user.created' | 'user.updated' | 'user.deleted';
   data: {
     id: string;
-    email_addresses: { email_address: string; id: string }[];
+    email_addresses: Array<{ email_address: string }>;
     first_name: string | null;
     last_name: string | null;
-    public_metadata: Record<string, unknown>;
+    public_metadata?: {
+      role?: ProvisionableRole;
+      tenantId?: string;
+      schoolId?: string;
+    };
+    unsafe_metadata?: {
+      gradeLevel?: number;
+      learningPreferences?: unknown;
+    };
   };
-}
+};
 
-/**
- * POST /api/webhooks/clerk
- * Handles Clerk webhook events for user lifecycle management
- *
- * Uses Svix signature verification as required by Clerk's webhook security.
- *
- * Supported events:
- * - user.created: Creates User and role-specific profile in database
- * - user.updated: Updates User record with latest data
- * - user.deleted: Soft deletes user for FERPA compliance
- *
- * @returns 200 OK for all cases to prevent retries
- */
 export async function POST(req: NextRequest) {
   const webhookSecret = process.env.CLERK_WEBHOOK_SECRET;
+
   if (!webhookSecret) {
-    console.error('CLERK_WEBHOOK_SECRET is not configured');
+    console.error('CLERK_WEBHOOK_SECRET not configured');
     return NextResponse.json({ error: 'Webhook not configured' }, { status: 500 });
   }
 
@@ -38,149 +40,194 @@ export async function POST(req: NextRequest) {
   const svixSignature = req.headers.get('svix-signature');
 
   if (!svixId || !svixTimestamp || !svixSignature) {
-    return NextResponse.json({ error: 'Missing webhook signature headers' }, { status: 401 });
+    return NextResponse.json({ error: 'Missing svix headers' }, { status: 400 });
   }
+
+  const timestampMs = Number(svixTimestamp) * 1000;
+  if (!Number.isFinite(timestampMs)) {
+    return NextResponse.json({ error: 'Invalid svix timestamp' }, { status: 400 });
+  }
+
+  const now = Date.now();
+  pruneReplayCache(now);
+
+  if (Math.abs(now - timestampMs) > WEBHOOK_TIMESTAMP_TOLERANCE_MS) {
+    return NextResponse.json({ error: 'Stale svix timestamp' }, { status: 400 });
+  }
+
+  if (processedWebhookIds.has(svixId)) {
+    return NextResponse.json({ error: 'Duplicate webhook event' }, { status: 409 });
+  }
+
+  const body = await req.text();
+  const webhook = new Webhook(webhookSecret);
 
   let event: ClerkWebhookEvent;
   try {
-    const body = await req.text();
-    const wh = new Webhook(webhookSecret);
-    event = wh.verify(body, {
+    event = webhook.verify(body, {
       'svix-id': svixId,
       'svix-timestamp': svixTimestamp,
       'svix-signature': svixSignature,
     }) as ClerkWebhookEvent;
   } catch (error) {
     console.error('Webhook signature verification failed:', error);
-    return NextResponse.json({ error: 'Invalid webhook signature' }, { status: 401 });
+    return NextResponse.json({ error: 'Invalid signature' }, { status: 401 });
   }
 
-  const { type, data } = event;
+  try {
+    processedWebhookIds.set(svixId, now + WEBHOOK_REPLAY_TTL_MS);
 
-  if (type === 'user.created' || type === 'user.updated') {
-    try {
-      const email = data.email_addresses?.[0]?.email_address;
-      if (!email) {
-        return NextResponse.json({ error: 'No email found' }, { status: 400 });
-      }
+    switch (event.type) {
+      case 'user.created':
+        await handleUserCreated(event.data);
+        break;
+      case 'user.updated':
+        await handleUserUpdated(event.data);
+        break;
+      case 'user.deleted':
+        await handleUserDeleted(event.data);
+        break;
+      default:
+        console.log('Unhandled webhook event:', event.type);
+    }
 
-      const role = (data.public_metadata?.role as string) || 'STUDENT';
-      const tenantId = data.public_metadata?.tenantId as string | undefined;
+    return NextResponse.json({ success: true }, { status: 200 });
+  } catch (error) {
+    console.error('Webhook processing error:', error);
+    return NextResponse.json({ error: 'Processing failed' }, { status: 500 });
+  }
+}
 
-      let tenant;
-      if (tenantId) {
-        tenant = await db.tenant.findUnique({ where: { id: tenantId } });
-      }
-      if (!tenant) {
-        tenant = await db.tenant.upsert({
-          where: { slug: 'default' },
-          update: {},
-          create: { name: 'Default', slug: 'default' },
-        });
-      }
-
-      const user = await db.user.upsert({
-        where: { clerkUserId: data.id },
-        update: {
-          email,
-          firstName: data.first_name ?? '',
-          lastName: data.last_name ?? '',
-          role: role as 'STUDENT' | 'EDUCATOR' | 'PARENT' | 'SCHOOL_ADMIN' | 'DISTRICT_ADMIN' | 'PLATFORM_ADMIN',
-        },
-        create: {
-          clerkUserId: data.id,
-          tenantId: tenant.id,
-          email,
-          firstName: data.first_name ?? '',
-          lastName: data.last_name ?? '',
-          role: role as 'STUDENT' | 'EDUCATOR' | 'PARENT' | 'SCHOOL_ADMIN' | 'DISTRICT_ADMIN' | 'PLATFORM_ADMIN',
-          // Calculate if user is a minor (under 13) based on metadata
-          isMinor: (data.public_metadata?.isMinor ?? false) as boolean,
-        },
-      });
-
-      if (role === 'STUDENT' && type === 'user.created') {
-        const gradeLevel = (data.public_metadata?.gradeLevel as number) || 5;
-        await db.student.upsert({
-          where: { userId: user.id },
-          update: {},
-          create: {
-            userId: user.id,
-            gradeLevel,
-            learningPreferences: { modalities: ['visual', 'reading'], pacing: 'moderate', scaffoldingLevel: 'medium' },
-            regulationProfile: { baselineLevel: 70, knownTriggers: [], preferredStrategies: [] },
-          },
-        });
-      }
-
-      if (role === 'EDUCATOR' && type === 'user.created') {
-        await db.educator.upsert({
-          where: { userId: user.id },
-          update: {},
-          create: {
-            userId: user.id,
-            certifications: [],
-            specializations: [],
-          },
-        });
-      }
-
-      if (role === 'PARENT' && type === 'user.created') {
-        await db.parent.upsert({
-          where: { userId: user.id },
-          update: {},
-          create: {
-            userId: user.id,
-            childrenIds: [],
-          },
-        });
-      }
-
-      return NextResponse.json({ data: { userId: user.id } });
-    } catch (error) {
-      console.error(`Error handling ${type}:`, error);
-      // Return 200 to prevent retries, but log the error
-      return NextResponse.json({ 
-        data: { 
-          error: `Failed to ${type === 'user.created' ? 'create' : 'update'} user`,
-          logged: true 
-        } 
-      });
+function pruneReplayCache(now: number) {
+  for (const [id, expiresAt] of processedWebhookIds.entries()) {
+    if (expiresAt <= now) {
+      processedWebhookIds.delete(id);
     }
   }
+}
 
-  if (type === 'user.deleted') {
-    // FERPA compliance: Don't hard delete user data
-    // Instead, we mark the user as deleted by clearing sensitive data
-    // and keeping records for audit/compliance purposes
-    try {
-      await db.user.updateMany({
-        where: { clerkUserId: data.id },
-        data: {
-          email: `deleted_${data.id}@deleted.local`,
-          firstName: 'Deleted',
-          lastName: 'User',
-          // Note: For full FERPA compliance, consider adding an 'isActive' field
-          // to the User model and set it to false instead
-        },
-      });
-      return NextResponse.json({ 
-        data: { 
-          deactivated: true,
-          message: 'User deactivated for FERPA compliance' 
-        } 
-      });
-    } catch (error) {
-      console.error('Error deactivating user:', error);
-      // Return 200 to prevent webhook retries
-      return NextResponse.json({ 
-        data: { 
-          error: 'Failed to deactivate user',
-          logged: true 
-        } 
-      });
-    }
+async function handleUserCreated(data: ClerkWebhookEvent['data']) {
+  const email = data.email_addresses[0]?.email_address;
+  if (!email) {
+    throw new Error(`No email provided for Clerk user ${data.id}`);
   }
 
-  return NextResponse.json({ data: { ignored: true } });
+  const role = data.public_metadata?.role ?? 'STUDENT';
+  const tenantId = data.public_metadata?.tenantId ?? (await getDefaultTenantId());
+  const schoolId = data.public_metadata?.schoolId;
+
+  const existingUser = await db.user.findUnique({
+    where: { clerkUserId: data.id },
+  });
+
+  if (existingUser) {
+    console.log('User already exists, skipping:', data.id);
+    return;
+  }
+
+  const user = await db.user.create({
+    data: {
+      clerkUserId: data.id,
+      tenantId,
+      schoolId,
+      email,
+      firstName: data.first_name ?? 'User',
+      lastName: data.last_name ?? '',
+      role,
+    },
+  });
+
+  if (role === 'STUDENT') {
+    await db.student.create({
+      data: {
+        userId: user.id,
+        gradeLevel: data.unsafe_metadata?.gradeLevel ?? 6,
+        learningPreferences: data.unsafe_metadata?.learningPreferences ?? {},
+        regulationProfile: {
+          dysregulationTriggers: [],
+          calmingStrategies: [],
+          preferredBreakDuration: 5,
+        },
+      },
+    });
+  } else if (role === 'EDUCATOR') {
+    await db.educator.create({
+      data: {
+        userId: user.id,
+        certifications: [],
+        specializations: [],
+      },
+    });
+  } else if (role === 'PARENT') {
+    await db.parent.create({
+      data: {
+        userId: user.id,
+        childrenIds: [],
+        communicationPrefs: {
+          emailNotifications: true,
+          smsNotifications: false,
+        },
+      },
+    });
+  }
+
+  console.log('User created successfully:', user.id);
+}
+
+async function handleUserUpdated(data: ClerkWebhookEvent['data']) {
+  const user = await db.user.findUnique({
+    where: { clerkUserId: data.id },
+  });
+
+  if (!user) {
+    console.error('User not found for update:', data.id);
+    return;
+  }
+
+  await db.user.update({
+    where: { id: user.id },
+    data: {
+      email: data.email_addresses[0]?.email_address ?? user.email,
+      firstName: data.first_name ?? user.firstName,
+      lastName: data.last_name ?? user.lastName,
+    },
+  });
+
+  console.log('User updated successfully:', user.id);
+}
+
+async function handleUserDeleted(data: ClerkWebhookEvent['data']) {
+  const user = await db.user.findUnique({
+    where: { clerkUserId: data.id },
+  });
+
+  if (!user) {
+    console.log('User not found for deletion:', data.id);
+    return;
+  }
+
+  await db.user.delete({
+    where: { id: user.id },
+  });
+
+  console.log('User deleted successfully:', user.id);
+}
+
+async function getDefaultTenantId(): Promise<string> {
+  let tenant = await db.tenant.findFirst({
+    where: { slug: 'default' },
+  });
+
+  if (!tenant) {
+    tenant = await db.tenant.create({
+      data: {
+        name: 'Default Tenant',
+        slug: 'default',
+        subscriptionTier: 'FREE',
+        subscriptionStatus: 'ACTIVE',
+      },
+    });
+  }
+
+  return tenant.id;
 }

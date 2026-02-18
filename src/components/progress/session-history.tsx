@@ -1,5 +1,7 @@
 'use client';
 
+import Link from 'next/link';
+
 interface Session {
   id: string;
   subject: string;
@@ -13,12 +15,14 @@ const SUBJECT_LABELS: Record<string, string> = {
   MATH: 'Math',
   SCIENCE: 'Science',
   LANGUAGE_ARTS: 'ELA',
+  FINANCIAL_LITERACY: 'FinLit',
 };
 
 const SUBJECT_DOT_COLORS: Record<string, string> = {
   MATH: 'bg-blue-500',
   SCIENCE: 'bg-emerald-500',
   LANGUAGE_ARTS: 'bg-violet-500',
+  FINANCIAL_LITERACY: 'bg-amber-500',
 };
 
 const PHASE_LABELS: Record<string, string> = {
@@ -70,6 +74,7 @@ export function SessionHistory({ sessions }: { sessions: Session[] }) {
               <th className="pb-2 pr-4 font-medium">Duration</th>
               <th className="pb-2 pr-4 font-medium">Messages</th>
               <th className="pb-2 font-medium">Assessments</th>
+              <th className="pb-2 pl-4 font-medium">Open</th>
             </tr>
           </thead>
           <tbody>
@@ -86,6 +91,14 @@ export function SessionHistory({ sessions }: { sessions: Session[] }) {
                 <td className="py-2.5 pr-4 text-neutral-600">{formatDuration(s.startedAt, s.endedAt)}</td>
                 <td className="py-2.5 pr-4 text-neutral-600">{s._count.messages}</td>
                 <td className="py-2.5 text-neutral-600">{s._count.assessments}</td>
+                <td className="py-2.5 pl-4">
+                  <Link
+                    href={`/learn?resume=${encodeURIComponent(s.id)}`}
+                    className="text-sm font-medium text-primary-700 hover:text-primary-900"
+                  >
+                    Resume
+                  </Link>
+                </td>
               </tr>
             ))}
           </tbody>

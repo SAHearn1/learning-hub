@@ -1,24 +1,44 @@
 import { generateEmbedding } from '@/lib/embeddings';
-import { queryVectors, type CurriculumMetadata } from '@/lib/pinecone';
+import { queryVectors } from '@/lib/pinecone';
+import { searchCurriculumHybrid } from '@/lib/hybrid-search';
 import { logger } from '@/lib/logger';
 
 export interface SearchResult {
   text: string;
   score: number;
   filename: string;
+  sourcePath?: string;
+  sectionHeading?: string;
+  chunkIndex?: number;
+  totalChunks?: number;
   subject?: string;
   gradeLevel?: number;
   standardCodes?: string[];
 }
 
+const searchCache = new Map<string, SearchResult[]>();
+
+function cacheKey(query: string, options: { subject?: string; subjects?: string[]; gradeLevel?: number; topK?: number; minScore?: number }): string {
+  return JSON.stringify({
+    query: query.trim().toLowerCase(),
+    subject: options.subject,
+    subjects: options.subjects?.slice().sort(),
+    gradeLevel: options.gradeLevel,
+    topK: options.topK,
+    minScore: options.minScore,
+  });
+}
+
 /**
  * Search the curriculum vector store for content relevant to a student's query.
- * Returns formatted context string for injection into the system prompt.
+ * Uses Supabase hybrid retrieval (keyword + vector) when configured, then reranks via cross-encoder.
+ * Falls back to Pinecone vector-only search when Supabase is unavailable.
  */
 export async function searchCurriculum(
   query: string,
   options: {
     subject?: string;
+    subjects?: string[];
     gradeLevel?: number;
     topK?: number;
     minScore?: number;
@@ -26,38 +46,74 @@ export async function searchCurriculum(
 ): Promise<SearchResult[]> {
   const { topK = 5, minScore = 0.3 } = options;
 
-  // Check that required services are configured
-  if (!process.env.OPENAI_API_KEY || !process.env.PINECONE_API_KEY) {
-    logger.debug('RAG search skipped — OPENAI_API_KEY or PINECONE_API_KEY not configured');
+  if (!process.env.OPENAI_API_KEY) {
+    logger.debug('RAG search skipped — OPENAI_API_KEY not configured');
     return [];
+  }
+
+  const key = cacheKey(query, options);
+  const cached = searchCache.get(key);
+  if (cached) {
+    return cached;
   }
 
   try {
     const embedding = await generateEmbedding(query);
 
-    const results = await queryVectors(embedding, {
-      topK,
-      subject: options.subject,
-      gradeLevel: options.gradeLevel,
-    });
+    let filtered: SearchResult[] = [];
 
-    const filtered = results
-      .filter(r => r.score >= minScore)
-      .map(r => ({
-        text: r.metadata.text,
-        score: r.score,
-        filename: r.metadata.filename,
-        subject: r.metadata.subject,
-        gradeLevel: r.metadata.gradeLevel,
-        standardCodes: r.metadata.standardCodes,
-      }));
+    if (process.env.SUPABASE_URL && process.env.SUPABASE_SERVICE_ROLE_KEY) {
+      const hybridResults = await searchCurriculumHybrid(query, embedding, {
+        topK,
+        subject: options.subject,
+        subjects: options.subjects,
+        gradeLevel: options.gradeLevel,
+      });
+
+      filtered = hybridResults
+        .filter(r => r.hybridScore >= minScore)
+        .map(r => ({
+          text: r.text,
+          score: r.hybridScore,
+          filename: r.filename,
+          sourcePath: r.filename,
+          subject: r.subject,
+          gradeLevel: r.gradeLevel,
+          standardCodes: r.standardCodes,
+        }));
+    } else if (process.env.PINECONE_API_KEY) {
+      const results = await queryVectors(embedding, {
+        topK,
+        subject: options.subject,
+        subjects: options.subjects,
+        gradeLevel: options.gradeLevel,
+      });
+
+      filtered = results
+        .filter(r => r.score >= minScore)
+        .map(r => ({
+          text: r.metadata.text,
+          score: r.score,
+          filename: r.metadata.filename,
+          sourcePath: (r.metadata as any).sourcePath || r.metadata.filename,
+          sectionHeading: (r.metadata as any).sectionHeading || (r.metadata as any).section,
+          chunkIndex: r.metadata.chunkIndex,
+          totalChunks: r.metadata.totalChunks,
+          subject: r.metadata.subject,
+          gradeLevel: Array.isArray(r.metadata.gradeLevel) ? r.metadata.gradeLevel[0] : r.metadata.gradeLevel,
+          standardCodes: r.metadata.standardCodes,
+        }));
+    } else {
+      logger.debug('RAG search skipped — neither Supabase nor Pinecone is configured');
+    }
 
     logger.debug('Curriculum search results', {
       query: query.substring(0, 80),
-      resultsFound: results.length,
       afterFilter: filtered.length,
+      retrievalMode: process.env.SUPABASE_URL ? 'hybrid' : 'vector-only',
     });
 
+    searchCache.set(key, filtered);
     return filtered;
   } catch (error) {
     logger.error('Curriculum search failed', { error });

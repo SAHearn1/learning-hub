@@ -1,3 +1,5 @@
+export const dynamic = 'force-dynamic';
+
 import { auth } from '@clerk/nextjs/server';
 import { db } from '@/lib/db';
 import { CurriculumClient } from './curriculum-client';
@@ -18,7 +20,7 @@ async function getCurriculumData() {
   });
 
   // Try to get user progress if logged in
-  const { userId: clerkId } = auth();
+  const { userId: clerkId } = await auth();
   let userProgress: { topicId: string; masteryLevel: number }[] = [];
 
   if (clerkId) {

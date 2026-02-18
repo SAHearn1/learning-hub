@@ -18,6 +18,11 @@ describe('Prisma schema — models', () => {
     'Educator',
     'Parent',
     'IepAccommodation',
+    'ItemCalibration',
+    'StudentAbility',
+    'ResponseData',
+    'ReviewSchedule',
+    'ReviewHistory',
     'Session',
     'Message',
     'Assessment',
@@ -31,11 +36,19 @@ describe('Prisma schema — models', () => {
     'AIUsageLedger',
     'AuditLog',
     'IngestLog',
+    'PlatformConfig',
+    'NVCQualityEvaluation',
+    'Term',
+    'Course',
+    'Assignment',
+    'Submission',
+    'Grade',
+    'FiveRTemplate',
   ];
 
-  it('generates all 22 expected models', () => {
+  it('generates all 35 expected models', () => {
     const modelNames = Object.values(Prisma.ModelName);
-    expect(modelNames).toHaveLength(22);
+    expect(modelNames).toHaveLength(35);
   });
 
   it.each(expectedModels)('includes model %s', (model) => {
@@ -250,6 +263,8 @@ describe('Prisma schema — AI usage & compliance', () => {
     expect(fields).toContain('resource');
     expect(fields).toContain('resourceId');
     expect(fields).toContain('ipAddress');
+    expect(fields).toContain('previousHash');
+    expect(fields).toContain('chainHash');
     expect(fields).toContain('timestamp');
   });
 });
@@ -265,7 +280,7 @@ describe('Prisma schema — enums', () => {
 
   it('Subject has 3 subjects', () => {
     const values = Object.values(PrismaExports.Subject);
-    expect(values).toEqual(['MATH', 'SCIENCE', 'LANGUAGE_ARTS']);
+    expect(values).toEqual(['MATH', 'SCIENCE', 'LANGUAGE_ARTS', 'FINANCIAL_LITERACY']);
   });
 
   it('FiveRPhase has 5 phases in correct order', () => {

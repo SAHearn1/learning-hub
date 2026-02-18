@@ -23,7 +23,7 @@ describe('POST /api/stripe/webhook', () => {
     process.env.STRIPE_WEBHOOK_SECRET = 'whsec_test';
   });
 
-  it('returns 400 when signature or secret is missing', async () => {
+  it('returns 400 when signature is missing', async () => {
     const { POST } = await import('../route');
     delete process.env.STRIPE_WEBHOOK_SECRET;
 
@@ -35,7 +35,23 @@ describe('POST /api/stripe/webhook', () => {
     const response = await POST(request);
 
     expect(response.status).toBe(400);
-    await expect(response.json()).resolves.toEqual({ error: 'Webhook signature verification failed.' });
+    await expect(response.json()).resolves.toEqual({ error: 'Missing signature.' });
+  });
+
+  it('returns 500 when webhook secret is missing', async () => {
+    const { POST } = await import('../route');
+    delete process.env.STRIPE_WEBHOOK_SECRET;
+
+    const request = new Request('http://localhost/api/stripe/webhook', {
+      method: 'POST',
+      headers: { 'stripe-signature': 'sig_123' },
+      body: '{}',
+    });
+
+    const response = await POST(request);
+
+    expect(response.status).toBe(500);
+    await expect(response.json()).resolves.toEqual({ error: 'Webhook not configured.' });
   });
 
   it('syncs tenant after checkout session completion with a subscription id', async () => {
@@ -80,7 +96,7 @@ describe('POST /api/stripe/webhook', () => {
     expect(mockHandleSubscriptionCanceled).toHaveBeenCalledWith(deletedSubscription);
   });
 
-  it('returns 400 when Stripe event parsing fails', async () => {
+  it('returns 401 when Stripe signature verification fails', async () => {
     const { POST } = await import('../route');
     mockConstructEvent.mockImplementation(() => {
       throw new Error('Bad signature');
@@ -94,7 +110,7 @@ describe('POST /api/stripe/webhook', () => {
 
     const response = await POST(request);
 
-    expect(response.status).toBe(400);
-    await expect(response.json()).resolves.toEqual({ error: 'Invalid webhook payload.' });
+    expect(response.status).toBe(401);
+    await expect(response.json()).resolves.toEqual({ error: 'Invalid signature.' });
   });
 });

@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import { featureFlags } from '../feature-flags';
 import { phaseOrder, phaseTransitions } from '../five-rs';
-import { studentNavItems, educatorNavItems, parentNavItems, adminNavItems } from '../navigation';
+import { studentNavItems, getStudentNavItems, educatorNavItems, parentNavItems, adminNavItems } from '../navigation';
 import { pricingPlans } from '../pricing';
 import { siteConfig } from '../site';
 import { gradeSubjectMap } from '../subjects';
@@ -73,8 +73,20 @@ describe('phaseTransitions', () => {
 });
 
 describe('navigation', () => {
-  it('student nav has 5 items', () => {
-    expect(studentNavItems).toHaveLength(5);
+  it('student nav has 9 items total including grade-gated items', () => {
+    expect(studentNavItems).toHaveLength(9);
+  });
+
+
+  it('hides grade-gated Financial Literacy learn link for grades below 9', () => {
+    const items = getStudentNavItems(8);
+    const finlitLearnItem = items.find((i) => i.href === '/learn?subject=FINANCIAL_LITERACY');
+    expect(finlitLearnItem).toBeUndefined();
+  });
+
+  it('shows Financial Literacy for grade 9 and above', () => {
+    const labels = getStudentNavItems(9).map((i) => i.label);
+    expect(labels).toContain('Financial Literacy');
   });
 
   it('student nav includes Learn and Calm Corner', () => {
@@ -83,8 +95,8 @@ describe('navigation', () => {
     expect(labels).toContain('Calm Corner');
   });
 
-  it('educator nav has 5 items', () => {
-    expect(educatorNavItems).toHaveLength(5);
+  it('educator nav has 4 items', () => {
+    expect(educatorNavItems).toHaveLength(4);
   });
 
   it('educator nav includes Compliance', () => {
@@ -93,11 +105,11 @@ describe('navigation', () => {
   });
 
   it('parent nav has 2 items', () => {
-    expect(parentNavItems).toHaveLength(2);
+    expect(parentNavItems).toHaveLength(3);
   });
 
-  it('admin nav has 1 item', () => {
-    expect(adminNavItems).toHaveLength(1);
+  it('admin nav has 2 items', () => {
+    expect(adminNavItems).toHaveLength(2);
   });
 
   it('all nav items have label, href, and icon', () => {

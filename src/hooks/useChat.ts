@@ -5,9 +5,18 @@ import { useSessionStore } from '@/stores/session-store';
 import { useRegulationStore } from '@/stores/regulation-store';
 import { detectDysregulation, detectTRACEStep, type TRACEStep } from '@/lib/regulation/detect-dysregulation';
 
+export interface SessionSummary {
+  subject: string;
+  duration: string;
+  messageCount: number;
+  userMessageCount: number;
+  phasesVisited: string[];
+}
+
 interface UseChatReturn {
   sendMessage: (content: string) => Promise<void>;
-  createSession: (subject: 'MATH' | 'SCIENCE' | 'LANGUAGE_ARTS', mode?: string) => Promise<string | null>;
+  createSession: (subject: 'MATH' | 'SCIENCE' | 'LANGUAGE_ARTS' | 'FINANCIAL_LITERACY', mode?: string, topicId?: string) => Promise<string | null>;
+  loadSession: (sessionId: string) => Promise<void>;
   endSession: () => Promise<void>;
   updatePhase: (phase: string) => Promise<void>;
   updateEngagementMode: (mode: string) => Promise<void>;
@@ -26,6 +35,7 @@ export function useChat(): UseChatReturn {
   const finishStreamingMessage = useSessionStore((s) => s.finishStreamingMessage);
   const setLoading = useSessionStore((s) => s.setLoading);
   const startSession = useSessionStore((s) => s.startSession);
+  const hydrateSession = useSessionStore((s) => s.hydrateSession);
   const endSessionStore = useSessionStore((s) => s.endSession);
   const setPhase = useSessionStore((s) => s.setPhase);
   const setEngagementMode = useSessionStore((s) => s.setEngagementMode);
@@ -33,6 +43,19 @@ export function useChat(): UseChatReturn {
   const regulationLevel = useRegulationStore((s) => s.level);
   const addSignal = useRegulationStore((s) => s.addSignal);
   const triggerIntervention = useRegulationStore((s) => s.triggerIntervention);
+
+  const updatePhaseInternal = useCallback(async (sid: string, phase: string) => {
+    setPhase(phase as Parameters<typeof setPhase>[0]);
+    try {
+      await fetch(`/api/sessions/${sid}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ currentPhase: phase }),
+      });
+    } catch {
+      // Silently fail phase persistence -- local state is updated
+    }
+  }, [setPhase]);
 
   const sendMessage = useCallback(async (content: string) => {
     if (!sessionId || !content.trim()) return;
@@ -158,22 +181,26 @@ export function useChat(): UseChatReturn {
     sessionId, messages, currentPhase, regulationLevel,
     addMessage, startStreamingMessage, appendToStreamingMessage,
     finishStreamingMessage, setLoading, addSignal, triggerIntervention,
+    updatePhaseInternal,
   ]);
 
   const createSession = useCallback(async (
-    subject: 'MATH' | 'SCIENCE' | 'LANGUAGE_ARTS',
+    subject: 'MATH' | 'SCIENCE' | 'LANGUAGE_ARTS' | 'FINANCIAL_LITERACY',
     mode: string = 'FORWARD',
+    topicId?: string,
   ): Promise<string | null> => {
     setLoading(true);
     try {
       const response = await fetch('/api/sessions', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ subject, engagementMode: mode }),
+        body: JSON.stringify({ subject, engagementMode: mode, ...(topicId && { topicId }) }),
       });
 
       if (!response.ok) {
-        throw new Error('Failed to create session');
+        const errData = await response.json().catch(() => ({}));
+        const message = errData.error || `Request failed (${response.status})`;
+        throw new Error(message);
       }
 
       const { data } = await response.json();
@@ -181,29 +208,47 @@ export function useChat(): UseChatReturn {
       setEngagementMode(mode as Parameters<typeof setEngagementMode>[0]);
       setLoading(false);
       return data.id;
-    } catch {
+    } catch (err) {
       setLoading(false);
-      return null;
+      throw err;
     }
   }, [setLoading, startSession, setEngagementMode]);
 
-  async function updatePhaseInternal(sid: string, phase: string) {
-    setPhase(phase as Parameters<typeof setPhase>[0]);
+  const loadSession = useCallback(async (sid: string) => {
+    if (!sid) return;
+    setLoading(true);
     try {
-      await fetch(`/api/sessions/${sid}`, {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ currentPhase: phase }),
+      const res = await fetch(`/api/sessions/${encodeURIComponent(sid)}`);
+      if (!res.ok) {
+        const body = await res.json().catch(() => ({}));
+        const message = body?.error || `Failed to load session (${res.status})`;
+        throw new Error(message);
+      }
+
+      const { data } = await res.json();
+      const msgs = Array.isArray(data?.messages) ? data.messages : [];
+
+      hydrateSession({
+        sessionId: data.id,
+        subject: data.subject,
+        currentPhase: data.currentPhase,
+        engagementMode: data.engagementMode,
+        messages: msgs.map((m: any) => ({
+          id: m.id,
+          role: m.role,
+          content: m.content,
+          timestamp: new Date(m.createdAt ?? Date.now()),
+        })),
       });
-    } catch {
-      // Silently fail phase persistence -- local state is updated
+    } finally {
+      setLoading(false);
     }
-  }
+  }, [hydrateSession, setLoading]);
 
   const updatePhase = useCallback(async (phase: string) => {
     if (!sessionId) return;
     await updatePhaseInternal(sessionId, phase);
-  }, [sessionId, setPhase]);
+  }, [sessionId, updatePhaseInternal]);
 
   const updateEngagementMode = useCallback(async (mode: string) => {
     if (!sessionId) return;
@@ -246,6 +291,7 @@ export function useChat(): UseChatReturn {
   return {
     sendMessage,
     createSession,
+    loadSession,
     endSession,
     updatePhase,
     updateEngagementMode,

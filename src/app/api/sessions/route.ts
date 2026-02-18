@@ -1,73 +1,112 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { auth } from '@clerk/nextjs/server';
 import { db } from '@/lib/db';
 import { enforceUsageLimits, UsageLimitError } from '@/lib/usage-limits';
 import { z } from 'zod';
+import { withApiHandler } from '@/lib/api-handler';
+import { requireUser } from '@/lib/auth';
+import { NotFoundError, PaymentRequiredError, ForbiddenError } from '@/lib/api-errors';
+import { hasRequiredMinorConsent } from '@/lib/compliance';
 
 const createSessionSchema = z.object({
-  subject: z.enum(['MATH', 'SCIENCE', 'LANGUAGE_ARTS']),
+  subject: z.enum(['MATH', 'SCIENCE', 'LANGUAGE_ARTS', 'FINANCIAL_LITERACY']),
   engagementMode: z.enum(['FORWARD', 'REVERSE', 'ERROR_ANALYSIS', 'MULTIPLE_PATHWAYS', 'PROBLEM_POSING']).default('FORWARD'),
+  topicId: z.string().optional(),
 });
 
-export async function POST(req: NextRequest) {
-  const { userId: clerkId } = auth();
-  if (!clerkId) {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+export const POST = withApiHandler(async (req) => {
+  const user = await requireUser();
+
+  if (!hasRequiredMinorConsent(user.isMinor, user.consentStatus)) {
+    throw new ForbiddenError('Parental consent required before starting sessions');
   }
 
-  const user = await db.user.findUnique({
-    where: { clerkUserId: clerkId },
-    include: { student: true },
+  const tenant = await db.tenant.findUnique({
+    where: { id: user.tenantId },
+    select: { id: true },
   });
-  if (!user?.student) {
-    return NextResponse.json({ error: 'Student profile not found' }, { status: 404 });
+  if (!tenant) {
+    throw new NotFoundError('Tenant not found for current user');
   }
 
-  let body;
-  try {
-    body = createSessionSchema.parse(await req.json());
-  } catch (err) {
-    const message = err instanceof z.ZodError ? err.errors.map(e => e.message).join(', ') : 'Invalid request';
-    return NextResponse.json({ error: message }, { status: 400 });
+  let studentId = user.student?.id ?? null;
+  if (!studentId && user.role === 'STUDENT') {
+    const student = await db.student.upsert({
+      where: { userId: user.id },
+      update: {},
+      create: {
+        userId: user.id,
+        gradeLevel: 6,
+        learningPreferences: {},
+        regulationProfile: {
+          dysregulationTriggers: [],
+          calmingStrategies: [],
+          preferredBreakDuration: 5,
+        },
+      },
+      select: { id: true },
+    });
+    studentId = student.id;
   }
+
+  if (!studentId) {
+    throw new NotFoundError('Student profile not found');
+  }
+
+  const body = createSessionSchema.parse(await req.json());
 
   try {
     await enforceUsageLimits(user.tenantId);
   } catch (error) {
     if (error instanceof UsageLimitError) {
-      return NextResponse.json({ error: error.message }, { status: 402 });
+      throw new PaymentRequiredError(error.message);
     }
     throw error;
+  }
+
+  // If a topicId was provided, validate it exists and capture its name
+  let topicMeta: { topicId: string; topicName: string } | undefined;
+  if (body.topicId) {
+    const topic = await db.topic.findUnique({
+      where: { id: body.topicId },
+      select: { id: true, name: true },
+    });
+    if (topic) {
+      topicMeta = { topicId: topic.id, topicName: topic.name };
+    }
   }
 
   const session = await db.session.create({
     data: {
       tenantId: user.tenantId,
-      studentId: user.student.id,
+      studentId,
       subject: body.subject,
       currentPhase: 'ROOT',
       engagementMode: body.engagementMode,
       regulationState: { level: 70, signals: [], interventionCount: 0 },
-      metadata: {},
+      metadata: {
+        ...(topicMeta && { topicId: topicMeta.topicId, topicName: topicMeta.topicName }),
+        fiveRState: {
+          currentPhase: 'ROOT',
+          phaseHistory: [
+            {
+              phase: 'ROOT',
+              timestamp: new Date().toISOString(),
+              reason: 'Session initialized at Root phase.',
+            },
+          ],
+          sentiment: { label: 'neutral', score: 0 },
+          regulationPassed: true,
+          updatedAt: new Date().toISOString(),
+        },
+      },
     },
   });
 
   return NextResponse.json({ data: session }, { status: 201 });
-}
+});
 
-export async function GET(req: NextRequest) {
-  const { userId: clerkId } = auth();
-  if (!clerkId) {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-  }
-
-  const user = await db.user.findUnique({
-    where: { clerkUserId: clerkId },
-    include: { student: true },
-  });
-  if (!user) {
-    return NextResponse.json({ error: 'User not found' }, { status: 404 });
-  }
+export const GET = withApiHandler(async (req) => {
+  const user = await requireUser();
 
   const page = parseInt(req.nextUrl.searchParams.get('page') ?? '1', 10);
   const pageSize = Math.min(parseInt(req.nextUrl.searchParams.get('pageSize') ?? '20', 10), 100);
@@ -95,4 +134,4 @@ export async function GET(req: NextRequest) {
     pageSize,
     hasMore: skip + pageSize < total,
   });
-}
+});

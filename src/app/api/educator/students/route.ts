@@ -1,16 +1,14 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { auth } from '@clerk/nextjs/server';
 import { db } from '@/lib/db';
+import { withApiHandler } from '@/lib/api-handler';
+import { requireUser } from '@/lib/auth';
+import { ForbiddenError } from '@/lib/api-errors';
 
-export async function GET(req: NextRequest) {
-  const { userId: clerkId } = auth();
-  if (!clerkId) {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-  }
+export const GET = withApiHandler(async (req: NextRequest) => {
+  const user = await requireUser();
 
-  const user = await db.user.findUnique({ where: { clerkUserId: clerkId } });
-  if (!user || !['EDUCATOR', 'SCHOOL_ADMIN', 'DISTRICT_ADMIN', 'PLATFORM_ADMIN'].includes(user.role)) {
-    return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+  if (!['EDUCATOR', 'SCHOOL_ADMIN', 'DISTRICT_ADMIN', 'PLATFORM_ADMIN'].includes(user.role)) {
+    throw new ForbiddenError();
   }
 
   const classId = req.nextUrl.searchParams.get('classId');
@@ -18,9 +16,21 @@ export async function GET(req: NextRequest) {
   const pageSize = Math.min(parseInt(req.nextUrl.searchParams.get('pageSize') ?? '30', 10), 100);
   const skip = (page - 1) * pageSize;
 
-  const whereClause = classId
-    ? { enrollments: { some: { classId } } }
-    : { user: { tenantId: user.tenantId } };
+  if (classId) {
+    const targetClass = await db.class.findUnique({
+      where: { id: classId },
+      select: { tenantId: true },
+    });
+
+    if (!targetClass || targetClass.tenantId !== user.tenantId) {
+      throw new ForbiddenError();
+    }
+  }
+
+  const whereClause = {
+    user: { tenantId: user.tenantId },
+    ...(classId ? { enrollments: { some: { classId } } } : {}),
+  };
 
   const [students, total] = await Promise.all([
     db.student.findMany({
@@ -44,4 +54,4 @@ export async function GET(req: NextRequest) {
     pageSize,
     hasMore: skip + pageSize < total,
   });
-}
+});

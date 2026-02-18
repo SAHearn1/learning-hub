@@ -2,6 +2,8 @@ import type { Metadata } from 'next';
 import { ClerkProvider } from '@clerk/nextjs';
 import type { ReactNode } from 'react';
 import { siteConfig } from '@/config/site';
+import { GlobalHeader } from '@/components/navigation/global-header';
+import { Footer } from '@/components/navigation/footer';
 import './globals.css';
 
 function AuthProvider({ children }: { children: ReactNode }) {
@@ -21,8 +23,8 @@ export const metadata: Metadata = {
   },
   description: siteConfig.description,
   icons: {
-    icon: '/icon.svg',
-    apple: '/apple-icon.svg',
+    icon: '/brand/favicon.png',
+    apple: '/brand/favicon.png',
   },
 };
 
@@ -34,7 +36,11 @@ export default function RootLayout({
   return (
     <AuthProvider>
       <html lang="en" suppressHydrationWarning>
-        <body className="min-h-screen antialiased">{children}</body>
+        <body className="min-h-screen antialiased">
+          <GlobalHeader />
+          <main>{children}</main>
+          <Footer />
+        </body>
       </html>
     </AuthProvider>
   );

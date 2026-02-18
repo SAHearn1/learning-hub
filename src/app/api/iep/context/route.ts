@@ -1,0 +1,141 @@
+import { NextRequest, NextResponse } from 'next/server';
+import { z } from 'zod';
+import { db } from '@/lib/db';
+import { buildOptimizedContext } from '@/lib/rag/context-window-manager';
+import { withApiHandler } from '@/lib/api-handler';
+import { requireUser } from '@/lib/auth';
+import { NotFoundError, ForbiddenError, InternalServerError } from '@/lib/api-errors';
+
+// =================================================================
+// IEP Context Retrieval API
+// GET /api/iep/context
+// Students can only retrieve their own IEP context.
+// Educators can retrieve context for students in their classes.
+// =================================================================
+
+const contextQuerySchema = z.object({
+  studentId: z.string().min(1, 'studentId is required'),
+  query: z.string().min(1, 'query is required').max(2000),
+  sessionPhase: z.string().optional().default('ROOT'),
+  subject: z.string().optional().default('MATH'),
+  maxTokens: z
+    .string()
+    .optional()
+    .transform((val) => (val ? parseInt(val, 10) : undefined))
+    .pipe(z.number().int().min(1000).max(32000).optional()),
+});
+
+export const GET = withApiHandler(async (req) => {
+  const user = await requireUser();
+
+  // Parse and validate query parameters
+  const searchParams = Object.fromEntries(req.nextUrl.searchParams.entries());
+  const params = contextQuerySchema.parse(searchParams);
+
+  // Authorization: verify the user can access this student's data
+  const canAccess = await verifyStudentAccess(user, params.studentId);
+  if (!canAccess) {
+    throw new ForbiddenError('You do not have access to this student\'s IEP data');
+  }
+
+  // Fetch student details for context building
+  const student = await db.student.findUnique({
+    where: { id: params.studentId },
+    include: {
+      iepAccommodations: { where: { active: true } },
+    },
+  });
+
+  if (!student) {
+    throw new NotFoundError('Student not found');
+  }
+
+  try {
+    const optimizedContext = await buildOptimizedContext({
+      studentId: params.studentId,
+      query: params.query,
+      sessionPhase: params.sessionPhase,
+      subject: params.subject,
+      gradeLevel: student.gradeLevel,
+      accommodations: student.iepAccommodations.map((a) => a.type),
+      sessionHistory: '', // No session history for standalone context retrieval
+      maxTokens: params.maxTokens,
+    });
+
+    return NextResponse.json({
+      success: true,
+      context: optimizedContext,
+    });
+  } catch (err) {
+    const errorMessage =
+      err instanceof Error ? err.message : 'Unknown error during context retrieval';
+
+    console.error('IEP context retrieval failed:', errorMessage);
+
+    throw new InternalServerError(`Context retrieval failed: ${errorMessage}`);
+  }
+});
+
+/**
+ * Verifies that the authenticated user has access to a student's IEP data.
+ *
+ * Access rules:
+ * - Students can only access their own data
+ * - Educators can access data for students enrolled in their classes
+ * - School admins, district admins, and platform admins can access
+ *   any student within their tenant
+ */
+async function verifyStudentAccess(
+  user: {
+    id: string;
+    role: string;
+    tenantId: string;
+    student?: { id: string } | null;
+    educator?: { id: string } | null;
+  },
+  studentId: string,
+): Promise<boolean> {
+  // Students can only see their own IEP data
+  if (user.role === 'STUDENT') {
+    return user.student?.id === studentId;
+  }
+
+  // Admins can access any student in their tenant
+  if (['SCHOOL_ADMIN', 'DISTRICT_ADMIN', 'PLATFORM_ADMIN'].includes(user.role)) {
+    const student = await db.student.findUnique({
+      where: { id: studentId },
+      include: { user: { select: { tenantId: true } } },
+    });
+    return student?.user.tenantId === user.tenantId;
+  }
+
+  // Educators can access students in their classes
+  if (user.role === 'EDUCATOR') {
+    const enrollment = await db.classEnrollment.findFirst({
+      where: {
+        studentId,
+        class: {
+          educatorId: user.id,
+        },
+        status: 'ACTIVE',
+      },
+    });
+    return enrollment !== null;
+  }
+
+  // Parents: check if the student is one of their children
+  if (user.role === 'PARENT') {
+    const parent = await db.parent.findUnique({
+      where: { userId: user.id },
+    });
+    if (!parent) return false;
+
+    const student = await db.student.findUnique({
+      where: { id: studentId },
+      select: { userId: true },
+    });
+    return student ? parent.childrenIds.includes(student.userId) : false;
+  }
+
+  return false;
+}

@@ -108,8 +108,12 @@ describe('PERMISSIONS constant', () => {
     const expectedKeys = [
       'VIEW_OWN_PROGRESS',
       'VIEW_STUDENT_DATA',
+      'VIEW_CURRICULUM',
       'MANAGE_CLASSES',
       'MANAGE_IEP',
+      'MANAGE_GLOBAL_CURRICULUM',
+      'MANAGE_SCHOOL_CURRICULUM',
+      'MANAGE_CLASSROOM_LEARNING_PATHS',
       'VIEW_COMPLIANCE',
       'MANAGE_BILLING',
       'MANAGE_TENANT',

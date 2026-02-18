@@ -1,39 +1,43 @@
 :root {
   /* ═══════════════════════════════════════════════════════════════════════
      ROOTWORK DESIGN TOKENS
-     Single source of truth for all visual styling
+     Derived from /styles/tokens.json — forest green + gold brand palette
      ═══════════════════════════════════════════════════════════════════════ */
 
   /* ─────────────────────────────────────────────────────────────────────
-     COLOR PALETTE: CORE
+     COLOR PALETTE: PRIMARY — Forest Green
+     Deep, grounded, nature-inspired greens
      ───────────────────────────────────────────────────────────────────── */
+  --color-primary-50: #f0f7f4;
+  --color-primary-100: #d6ebe0;
+  --color-primary-200: #aad7c1;
+  --color-primary-300: #73b99a;
+  --color-primary-400: #419973;
+  --color-primary-500: #1E6B45;   /* forest.glow — primary action */
+  --color-primary-600: #186040;
+  --color-primary-700: #14532D;   /* forest.primary */
+  --color-primary-800: #0F4425;
+  --color-primary-900: #0C3B2E;   /* forest.deep */
+  --color-primary-950: #062318;
 
-  /* Primary: Deep forest green (growth, stability, nature) */
-  --color-primary-50: #f0fdf4;
-  --color-primary-100: #dcfce7;
-  --color-primary-200: #bbf7d0;
-  --color-primary-300: #86efac;
-  --color-primary-400: #4ade80;
-  --color-primary-500: #22c55e;
-  --color-primary-600: #16a34a;
-  --color-primary-700: #15803d;
-  --color-primary-800: #166534;
-  --color-primary-900: #14532d;
-  --color-primary-950: #052e16;
+  /* ─────────────────────────────────────────────────────────────────────
+     COLOR PALETTE: SECONDARY — Gold
+     Warm, achievement-oriented, wisdom tones
+     ───────────────────────────────────────────────────────────────────── */
+  --color-secondary-50: #fbf7eb;
+  --color-secondary-100: #f5ecd1;
+  --color-secondary-200: #ebdaa4;
+  --color-secondary-300: #E5C76B;  /* gold.light */
+  --color-secondary-400: #d4ac4e;
+  --color-secondary-500: #C9A23E;  /* gold.primary */
+  --color-secondary-600: #B68D2E;  /* gold.muted */
+  --color-secondary-700: #8f6e24;
+  --color-secondary-800: #6e561d;
+  --color-secondary-900: #574516;
 
-  /* Secondary: Warm gold (achievement, warmth, wisdom) */
-  --color-secondary-50: #fffbeb;
-  --color-secondary-100: #fef3c7;
-  --color-secondary-200: #fde68a;
-  --color-secondary-300: #fcd34d;
-  --color-secondary-400: #fbbf24;
-  --color-secondary-500: #f59e0b;
-  --color-secondary-600: #d97706;
-  --color-secondary-700: #b45309;
-  --color-secondary-800: #92400e;
-  --color-secondary-900: #78350f;
-
-  /* Neutral: Warm gray (calm, professional) */
+  /* ─────────────────────────────────────────────────────────────────────
+     COLOR PALETTE: NEUTRAL — Warm Gray
+     ───────────────────────────────────────────────────────────────────── */
   --color-neutral-50: #fafaf9;
   --color-neutral-100: #f5f5f4;
   --color-neutral-200: #e7e5e4;
@@ -46,34 +50,38 @@
   --color-neutral-900: #1c1917;
 
   /* ─────────────────────────────────────────────────────────────────────
-     SEMANTIC COLORS
+     SEMANTIC COLORS — mapped from spec tokens.json
      ───────────────────────────────────────────────────────────────────── */
-
-  --color-surface: var(--color-neutral-50);
-  --color-surface-elevated: #ffffff;
+  --color-surface: #F8F7F2;       /* surface.soft */
+  --color-surface-elevated: #FFFFFF;
   --color-surface-sunken: var(--color-neutral-100);
 
-  --color-text-primary: var(--color-neutral-900);
-  --color-text-secondary: var(--color-neutral-600);
+  --color-text-primary: #0F172A;  /* text.primary */
+  --color-text-secondary: #475569; /* text.muted */
   --color-text-muted: var(--color-neutral-400);
-  --color-text-inverse: #ffffff;
+  --color-text-inverse: #FFFFFF;
 
-  --color-border: var(--color-neutral-200);
+  --color-border: #E2E8F0;        /* border.subtle */
   --color-border-strong: var(--color-neutral-300);
 
-  --color-focus: var(--color-primary-500);
-  --color-focus-ring: rgba(34, 197, 94, 0.4);
+  --color-focus: #C9A23E;         /* border.focus = gold */
+  --color-focus-ring: rgba(201, 162, 62, 0.4);
 
-  /* Status colors */
-  --color-success: #22c55e;
-  --color-warning: #f59e0b;
-  --color-error: #ef4444;
+  /* Status colors from spec */
+  --color-success: #1E6B45;       /* status.success = forest.glow */
+  --color-warning: #C48A1D;       /* status.warning */
+  --color-error: #B91C1C;         /* status.danger */
   --color-info: #3b82f6;
+
+  /* ─────────────────────────────────────────────────────────────────────
+     BRAND GRADIENT
+     ───────────────────────────────────────────────────────────────────── */
+  --brand-gradient-start: #0C3B2E;
+  --brand-gradient-end: #1E6B45;
 
   /* ─────────────────────────────────────────────────────────────────────
      TYPOGRAPHY
      ───────────────────────────────────────────────────────────────────── */
-
   --font-family-sans: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
   --font-family-mono: 'JetBrains Mono', 'Fira Code', monospace;
   --font-family-dyslexic: 'OpenDyslexic', var(--font-family-sans);
@@ -93,7 +101,6 @@
   /* ─────────────────────────────────────────────────────────────────────
      SPACING
      ───────────────────────────────────────────────────────────────────── */
-
   --space-1: 0.25rem;
   --space-2: 0.5rem;
   --space-3: 0.75rem;
@@ -106,27 +113,24 @@
   --space-16: 4rem;
 
   /* ─────────────────────────────────────────────────────────────────────
-     BORDERS & RADIUS
+     BORDERS & RADIUS — from spec tokens.json
      ───────────────────────────────────────────────────────────────────── */
-
-  --radius-sm: 0.25rem;
-  --radius-md: 0.5rem;
-  --radius-lg: 0.75rem;
+  --radius-sm: 6px;
+  --radius-md: 12px;
+  --radius-lg: 18px;
   --radius-xl: 1rem;
   --radius-full: 9999px;
 
   /* ─────────────────────────────────────────────────────────────────────
-     SHADOWS
+     SHADOWS — from spec tokens.json
      ───────────────────────────────────────────────────────────────────── */
-
   --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
-  --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
-  --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
+  --shadow-md: 0 6px 24px rgba(0, 0, 0, 0.08);
+  --shadow-lg: 0 12px 40px rgba(0, 0, 0, 0.12);
 
   /* ─────────────────────────────────────────────────────────────────────
      TRANSITIONS
      ───────────────────────────────────────────────────────────────────── */
-
   --transition-fast: 150ms ease;
   --transition-normal: 250ms ease;
   --transition-slow: 350ms ease;
