@@ -6,6 +6,8 @@ import { withApiHandler } from '@/lib/api-handler';
 import { requireUser } from '@/lib/auth';
 import { NotFoundError, PaymentRequiredError, ForbiddenError } from '@/lib/api-errors';
 import { hasRequiredMinorConsent } from '@/lib/compliance';
+import { trackEvent } from '@/lib/monitoring';
+import { featureFlags } from '@/lib/feature-flags';
 
 const createSessionSchema = z.object({
   subject: z.enum(['MATH', 'SCIENCE', 'LANGUAGE_ARTS', 'FINANCIAL_LITERACY']),
@@ -15,6 +17,11 @@ const createSessionSchema = z.object({
 
 export const POST = withApiHandler(async (req) => {
   const user = await requireUser();
+
+  if (featureFlags.strictRoleEnforcement && user.role !== 'STUDENT') {
+    trackEvent('access_denied.non_student_student_endpoint', { endpoint: '/api/sessions', role: user.role });
+    throw new ForbiddenError('Only students can start learning sessions');
+  }
 
   if (!hasRequiredMinorConsent(user.isMinor, user.consentStatus)) {
     throw new ForbiddenError('Parental consent required before starting sessions');
@@ -108,6 +115,11 @@ export const POST = withApiHandler(async (req) => {
 export const GET = withApiHandler(async (req) => {
   const user = await requireUser();
 
+  if (featureFlags.strictRoleEnforcement && user.role !== 'STUDENT') {
+    trackEvent('access_denied.non_student_student_endpoint', { endpoint: '/api/sessions', role: user.role });
+    throw new ForbiddenError('Only students can start learning sessions');
+  }
+
   const page = parseInt(req.nextUrl.searchParams.get('page') ?? '1', 10);
   const pageSize = Math.min(parseInt(req.nextUrl.searchParams.get('pageSize') ?? '20', 10), 100);
   const skip = (page - 1) * pageSize;
@@ -135,3 +147,5 @@ export const GET = withApiHandler(async (req) => {
     hasMore: skip + pageSize < total,
   });
 });
+
+

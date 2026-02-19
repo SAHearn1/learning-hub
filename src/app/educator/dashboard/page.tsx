@@ -1,11 +1,9 @@
-import { auth } from '@clerk/nextjs/server';
-import { redirect } from 'next/navigation';
 import { educatorNavItems } from '@/config/navigation';
 import { PortalHome } from '@/components/navigation/portal-home';
+import { requirePageUser } from '@/lib/page-auth';
 
 export default async function EducatorDashboardPage() {
-  const { userId } = await auth();
-  if (!userId) redirect('/sign-in');
+  await requirePageUser(['EDUCATOR', 'SCHOOL_ADMIN']);
 
   return (
     <PortalHome

@@ -1,5 +1,5 @@
-import { auth } from '@clerk/nextjs/server';
 import { db } from '@/lib/db';
+import { requirePageUser } from '@/lib/page-auth';
 import { ProgressSummary } from '@/components/progress/progress-summary';
 import { MasteryByStandard } from '@/components/progress/mastery-by-standard';
 import { SessionHistory } from '@/components/progress/session-history';
@@ -8,14 +8,8 @@ import { BloomsTaxonomy } from '@/components/progress/blooms-taxonomy';
 import { ExportButton } from '@/components/progress/export-button';
 
 async function getProgressData() {
-  const { userId: clerkId } = await auth();
-  if (!clerkId) return null;
-
-  const user = await db.user.findUnique({
-    where: { clerkUserId: clerkId },
-    include: { student: true },
-  });
-  if (!user?.student) return null;
+  const user = await requirePageUser(['STUDENT']);
+  if (!user.student) return null;
 
   const studentId = user.student.id;
 
@@ -45,24 +39,24 @@ async function getProgressData() {
   const averageMastery = totalStandards > 0
     ? Math.round((progressEntries.reduce((sum, p) => sum + p.masteryLevel, 0) / totalStandards) * 10) / 10
     : 0;
-  const masteredCount = progressEntries.filter(p => p.masteryLevel >= 80).length;
-  const inProgressCount = progressEntries.filter(p => p.masteryLevel > 0 && p.masteryLevel < 80).length;
+  const masteredCount = progressEntries.filter((p) => p.masteryLevel >= 80).length;
+  const inProgressCount = progressEntries.filter((p) => p.masteryLevel > 0 && p.masteryLevel < 80).length;
 
   return {
     summary: { totalStandards, averageMastery, masteredCount, inProgressCount, totalSessions: recentSessions.length },
-    standards: progressEntries.map(p => ({
+    standards: progressEntries.map((p) => ({
       masteryLevel: p.masteryLevel,
       assessmentCount: p.assessmentCount,
       standard: { code: p.standard.code, subject: p.standard.subject, description: p.standard.description },
     })),
-    reasoningMoves: reasoningMoves.map(m => ({
+    reasoningMoves: reasoningMoves.map((m) => ({
       move: m.move,
       usageCount: m.usageCount,
       promptedUsage: m.promptedUsage,
       spontaneousUsage: m.spontaneousUsage,
       proficiencyLevel: m.proficiencyLevel,
     })),
-    recentSessions: recentSessions.map(s => ({
+    recentSessions: recentSessions.map((s) => ({
       id: s.id,
       subject: s.subject,
       currentPhase: s.currentPhase,
@@ -70,7 +64,7 @@ async function getProgressData() {
       endedAt: s.endedAt?.toISOString() ?? null,
       _count: s._count,
     })),
-    assessments: assessments.map(a => ({
+    assessments: assessments.map((a) => ({
       bloomsLevel: a.bloomsLevel,
       isCorrect: a.isCorrect,
       score: a.score,
@@ -125,7 +119,7 @@ export default async function ProgressPage() {
 
       {/* Print footer */}
       <div className="mt-6 hidden text-center text-xs text-neutral-400 print:block">
-        RootWork Learning Hub Progress Report &mdash; Generated {new Date().toLocaleDateString()}
+        RootWork Learning Hub Progress Report - Generated {new Date().toLocaleDateString()}
       </div>
     </main>
   );

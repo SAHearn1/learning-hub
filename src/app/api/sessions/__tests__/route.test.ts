@@ -32,6 +32,7 @@ vi.mock('@/lib/api/metrics', () => ({
 }));
 vi.mock('@/lib/monitoring', () => ({
   captureError: vi.fn(),
+  trackEvent: vi.fn(),
 }));
 
 const routeContext = { params: Promise.resolve({}) };
@@ -88,6 +89,7 @@ describe('POST /api/sessions', () => {
     expect(body.error).toBe('Monthly session limit reached for current subscription tier.');
     expect(body.code).toBe('PAYMENT_REQUIRED');
     expect(mockDb.session.create).not.toHaveBeenCalled();
+    delete process.env.STRICT_ROLE_ENFORCEMENT;
   });
 
   it('auto-creates a student profile for student-role users missing student relation', async () => {
@@ -149,5 +151,37 @@ describe('POST /api/sessions', () => {
     expect(body.code).toBe('NOT_FOUND');
     expect(body.error).toBe('Tenant not found for current user');
     expect(mockDb.session.create).not.toHaveBeenCalled();
+    delete process.env.STRICT_ROLE_ENFORCEMENT;
+  });
+  it('rejects non-student users from creating sessions', async () => {
+    process.env.STRICT_ROLE_ENFORCEMENT = 'true';
+    const { POST } = await import('../route');
+    mockRequireUser.mockResolvedValue({
+      id: 'user_2',
+      tenantId: 'tenant_1',
+      role: 'EDUCATOR',
+      isMinor: false,
+      consentStatus: null,
+      student: null,
+    });
+
+    const request = new NextRequest('http://localhost/api/sessions', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ subject: 'MATH' }),
+    });
+
+    const response = await POST(request, routeContext);
+    const body = await response.json();
+
+    expect(response.status).toBe(403);
+    expect(body.code).toBe('FORBIDDEN');
+    expect(body.error).toBe('Only students can start learning sessions');
+    expect(mockDb.session.create).not.toHaveBeenCalled();
+    delete process.env.STRICT_ROLE_ENFORCEMENT;
   });
 });
+
+
+
+

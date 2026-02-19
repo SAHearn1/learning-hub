@@ -19,6 +19,7 @@ import { withApiHandler } from '@/lib/api-handler';
 import { requireUser } from '@/lib/auth';
 import { NotFoundError, ForbiddenError, BadRequestError, PaymentRequiredError } from '@/lib/api-errors';
 import { hasRequiredMinorConsent } from '@/lib/compliance';
+import { featureFlags } from '@/lib/feature-flags';
 import type { SourceCitation } from '@/types/chat';
 
 const chatRequestSchema = z.object({
@@ -81,6 +82,11 @@ function isPersonalTradeAdviceRequest(message: string): boolean {
 
 export const POST = withApiHandler(async (req) => {
   const user = await requireUser();
+
+  if (featureFlags.strictRoleEnforcement && user.role !== 'STUDENT') {
+    trackEvent('access_denied.non_student_student_endpoint', { endpoint: '/api/chat', role: user.role });
+    throw new ForbiddenError('Only students can access chat sessions');
+  }
 
   if (!hasRequiredMinorConsent(user.isMinor, user.consentStatus)) {
     throw new ForbiddenError('Parental consent required before using chat');
@@ -673,3 +679,5 @@ export const POST = withApiHandler(async (req) => {
     },
   });
 });
+
+

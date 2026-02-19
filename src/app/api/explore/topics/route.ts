@@ -5,6 +5,8 @@ import { withApiHandler } from '@/lib/api-handler';
 import { requireUser } from '@/lib/auth';
 import { NotFoundError } from '@/lib/api-errors';
 import { calculateTopicMastery, determineMasteryStatus } from '@/lib/assessments/progress-calculator';
+import { trackEvent } from '@/lib/monitoring';
+import { featureFlags } from '@/lib/feature-flags';
 
 const subjectEnum = z.enum(['MATH', 'SCIENCE', 'LANGUAGE_ARTS', 'FINANCIAL_LITERACY']);
 
@@ -14,6 +16,11 @@ const subjectEnum = z.enum(['MATH', 'SCIENCE', 'LANGUAGE_ARTS', 'FINANCIAL_LITER
  */
 export const GET = withApiHandler(async (req) => {
   const user = await requireUser();
+
+  if (featureFlags.strictRoleEnforcement && user.role !== 'STUDENT') {
+    trackEvent('access_denied.non_student_student_endpoint', { endpoint: '/api/explore/topics', role: user.role });
+    throw new NotFoundError('Only students can view topic recommendations');
+  }
 
   if (!user.student) {
     throw new NotFoundError('Student profile not found');
@@ -66,3 +73,5 @@ export const GET = withApiHandler(async (req) => {
 
   return NextResponse.json({ data: topicsWithMastery });
 });
+
+

@@ -16,7 +16,7 @@ export interface SessionSummary {
 interface UseChatReturn {
   sendMessage: (content: string) => Promise<void>;
   createSession: (subject: 'MATH' | 'SCIENCE' | 'LANGUAGE_ARTS' | 'FINANCIAL_LITERACY', mode?: string, topicId?: string) => Promise<string | null>;
-  loadSession: (sessionId: string) => Promise<void>;
+  resumeSession: (sessionId: string) => Promise<void>;
   endSession: () => Promise<void>;
   updatePhase: (phase: string) => Promise<void>;
   updateEngagementMode: (mode: string) => Promise<void>;
@@ -35,7 +35,7 @@ export function useChat(): UseChatReturn {
   const finishStreamingMessage = useSessionStore((s) => s.finishStreamingMessage);
   const setLoading = useSessionStore((s) => s.setLoading);
   const startSession = useSessionStore((s) => s.startSession);
-  const hydrateSession = useSessionStore((s) => s.hydrateSession);
+  const loadSession = useSessionStore((s) => s.loadSession);
   const endSessionStore = useSessionStore((s) => s.endSession);
   const setPhase = useSessionStore((s) => s.setPhase);
   const setEngagementMode = useSessionStore((s) => s.setEngagementMode);
@@ -60,13 +60,11 @@ export function useChat(): UseChatReturn {
   const sendMessage = useCallback(async (content: string) => {
     if (!sessionId || !content.trim()) return;
 
-    // Abort any in-flight request
     if (abortRef.current) {
       abortRef.current.abort();
     }
     abortRef.current = new AbortController();
 
-    // Add user message
     const userMsgId = `msg-${Date.now()}-user`;
     addMessage({
       id: userMsgId,
@@ -75,7 +73,6 @@ export function useChat(): UseChatReturn {
       timestamp: new Date(),
     });
 
-    // Run dysregulation detection on the user message
     const analysis = detectDysregulation(
       content,
       messages.map((m) => ({
@@ -93,7 +90,6 @@ export function useChat(): UseChatReturn {
       if (analysis.shouldTriggerIntervention) {
         triggerIntervention();
 
-        // If severe dysregulation and not already in REGULATE phase, transition
         if (currentPhase !== 'REGULATE' && regulationLevel - analysis.regulationDelta < 40) {
           await updatePhaseInternal(sessionId, 'REGULATE');
         }
@@ -119,7 +115,6 @@ export function useChat(): UseChatReturn {
         throw new Error('No response body');
       }
 
-      // Start streaming assistant message
       const assistantMsgId = `msg-${Date.now()}-assistant`;
       startStreamingMessage(assistantMsgId);
       setLoading(false);
@@ -133,8 +128,6 @@ export function useChat(): UseChatReturn {
         if (done) break;
 
         buffer += decoder.decode(value, { stream: true });
-
-        // Process SSE events in buffer
         const lines = buffer.split('\n');
         buffer = lines.pop() || '';
 
@@ -169,7 +162,6 @@ export function useChat(): UseChatReturn {
       finishStreamingMessage();
       setLoading(false);
 
-      // Add error message to chat
       addMessage({
         id: `msg-${Date.now()}-error`,
         role: 'SYSTEM',
@@ -214,36 +206,33 @@ export function useChat(): UseChatReturn {
     }
   }, [setLoading, startSession, setEngagementMode]);
 
-  const loadSession = useCallback(async (sid: string) => {
-    if (!sid) return;
+  const resumeSession = useCallback(async (resumeSessionId: string): Promise<void> => {
     setLoading(true);
     try {
-      const res = await fetch(`/api/sessions/${encodeURIComponent(sid)}`);
-      if (!res.ok) {
-        const body = await res.json().catch(() => ({}));
-        const message = body?.error || `Failed to load session (${res.status})`;
-        throw new Error(message);
+      const response = await fetch(`/api/sessions/${resumeSessionId}`);
+      if (!response.ok) {
+        const errData = await response.json().catch(() => ({}));
+        throw new Error(errData.error || `Unable to load session (${response.status})`);
       }
 
-      const { data } = await res.json();
-      const msgs = Array.isArray(data?.messages) ? data.messages : [];
-
-      hydrateSession({
+      const { data } = await response.json();
+      console.info('session.resume_loaded', { sessionId: data.id });
+      loadSession({
         sessionId: data.id,
         subject: data.subject,
         currentPhase: data.currentPhase,
         engagementMode: data.engagementMode,
-        messages: msgs.map((m: any) => ({
-          id: m.id,
-          role: m.role,
-          content: m.content,
-          timestamp: new Date(m.createdAt ?? Date.now()),
+        messages: (data.messages ?? []).map((msg: { id: string; role: 'USER' | 'ASSISTANT' | 'SYSTEM'; content: string; createdAt: string }) => ({
+          id: msg.id,
+          role: msg.role,
+          content: msg.content,
+          timestamp: new Date(msg.createdAt),
         })),
       });
     } finally {
       setLoading(false);
     }
-  }, [hydrateSession, setLoading]);
+  }, [loadSession, setLoading]);
 
   const updatePhase = useCallback(async (phase: string) => {
     if (!sessionId) return;
@@ -291,10 +280,11 @@ export function useChat(): UseChatReturn {
   return {
     sendMessage,
     createSession,
-    loadSession,
+    resumeSession,
     endSession,
     updatePhase,
     updateEngagementMode,
     detectTraceStep,
   };
 }
+

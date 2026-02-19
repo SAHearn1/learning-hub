@@ -14,12 +14,12 @@ export default async function DashboardPage() {
   try {
     user = await getCurrentUser();
   } catch (err) {
-    console.error('Dashboard: failed to get user, falling back to /learn', err);
-    redirect('/learn');
+    console.error('Dashboard: failed to get user, falling back to /explore', err);
+    redirect('/explore');
   }
 
   if (!user) {
-    redirect('/learn');
+    redirect('/explore');
   }
 
   switch (user.role) {
@@ -33,6 +33,7 @@ export default async function DashboardPage() {
     case 'STUDENT':
       redirect('/student/dashboard');
     default:
-      redirect('/learn');
+      redirect('/explore');
   }
 }
+

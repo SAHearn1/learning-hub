@@ -1,10 +1,7 @@
-import { auth } from '@clerk/nextjs/server';
-import { redirect } from 'next/navigation';
 import { SuperAdminDashboard } from '@/components/admin/super-admin-dashboard';
+import { requirePageUser } from '@/lib/page-auth';
 
 export default async function AdminDashboardPage() {
-  const { userId } = await auth();
-  if (!userId) redirect('/sign-in');
-
+  await requirePageUser(['DISTRICT_ADMIN', 'PLATFORM_ADMIN']);
   return <SuperAdminDashboard />;
 }

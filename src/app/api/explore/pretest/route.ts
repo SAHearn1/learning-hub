@@ -9,6 +9,8 @@ import { generateDiagnosticQuestions } from '@/lib/assessments/diagnostic-genera
 import { getStudentAbility } from '@/lib/irt/ability-estimation';
 import { getRecommendedDifficultyRange } from '@/lib/irt/adaptive-selection';
 import { hasRequiredMinorConsent } from '@/lib/compliance';
+import { trackEvent } from '@/lib/monitoring';
+import { featureFlags } from '@/lib/feature-flags';
 
 const pretestSchema = z.object({
   subject: z.enum(['MATH', 'SCIENCE', 'LANGUAGE_ARTS', 'FINANCIAL_LITERACY']),
@@ -21,6 +23,11 @@ const pretestSchema = z.object({
  */
 export const POST = withApiHandler(async (req) => {
   const user = await requireUser();
+
+  if (featureFlags.strictRoleEnforcement && user.role !== 'STUDENT') {
+    trackEvent('access_denied.non_student_student_endpoint', { endpoint: '/api/explore/pretest', role: user.role });
+    throw new ForbiddenError('Only students can start pretests');
+  }
 
   if (!hasRequiredMinorConsent(user.isMinor, user.consentStatus)) {
     throw new ForbiddenError('Parental consent required before pretests');
@@ -149,3 +156,5 @@ export const POST = withApiHandler(async (req) => {
     },
   }, { status: 201 });
 });
+
+

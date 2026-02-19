@@ -316,7 +316,7 @@ export default async function TopicDetailPage({ params }: PageProps) {
                   {topic.problems.map((problem, index) => (
                     <Link
                       key={problem.id}
-                      href={`/curriculum/problem/${problem.id}`}
+                      href={`/learn?topic=${topic.id}`}
                       className="block rounded-lg border border-neutral-200 p-4 transition-colors hover:border-primary-300 hover:bg-primary-50"
                     >
                       <div className="mb-2 flex items-center justify-between">
@@ -331,6 +331,7 @@ export default async function TopicDetailPage({ params }: PageProps) {
                         </div>
                       </div>
                       <p className="text-sm text-neutral-600 line-clamp-2">{problem.stem}</p>
+                      <p className="mt-2 text-sm font-medium text-primary-700">Open in guided learning</p>
                     </Link>
                   ))}
                 </div>
@@ -342,3 +343,5 @@ export default async function TopicDetailPage({ params }: PageProps) {
     </div>
   );
 }
+
+

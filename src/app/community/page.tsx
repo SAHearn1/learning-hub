@@ -1,6 +1,8 @@
 import Link from 'next/link';
 import { db } from '@/lib/db';
 
+export const dynamic = 'force-dynamic';
+
 const subjectLabels: Record<string, string> = {
   MATH: 'Math',
   SCIENCE: 'Science',
@@ -77,3 +79,4 @@ export default async function CommunityPage() {
     </main>
   );
 }
+

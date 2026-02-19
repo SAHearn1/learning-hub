@@ -16,6 +16,8 @@ import {
   getRecommendedDifficultyRange,
 } from '@/lib/irt/adaptive-selection';
 import { hasRequiredMinorConsent } from '@/lib/compliance';
+import { trackEvent } from '@/lib/monitoring';
+import { featureFlags } from '@/lib/feature-flags';
 
 const nextSchema = z.object({
   sessionId: z.string().min(1),
@@ -28,6 +30,11 @@ const nextSchema = z.object({
  */
 export const POST = withApiHandler(async (req) => {
   const user = await requireUser();
+
+  if (featureFlags.strictRoleEnforcement && user.role !== 'STUDENT') {
+    trackEvent('access_denied.non_student_student_endpoint', { endpoint: '/api/explore/pretest/next', role: user.role });
+    throw new ForbiddenError('Only students can continue pretests');
+  }
 
   if (!hasRequiredMinorConsent(user.isMinor, user.consentStatus)) {
     throw new ForbiddenError('Parental consent required before continuing pretests');
@@ -188,3 +195,5 @@ export const POST = withApiHandler(async (req) => {
     },
   });
 });
+
+

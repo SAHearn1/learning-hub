@@ -1,11 +1,9 @@
-import { auth } from '@clerk/nextjs/server';
-import { redirect } from 'next/navigation';
 import { parentNavItems } from '@/config/navigation';
 import { PortalHome } from '@/components/navigation/portal-home';
+import { requirePageUser } from '@/lib/page-auth';
 
 export default async function ParentDashboardPage() {
-  const { userId } = await auth();
-  if (!userId) redirect('/sign-in');
+  await requirePageUser(['PARENT']);
 
   return (
     <PortalHome

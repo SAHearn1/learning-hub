@@ -1,12 +1,28 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { Webhook } from 'svix';
+import type { UserRole } from '@prisma/client';
 import { db } from '@/lib/db';
 
 const WEBHOOK_TIMESTAMP_TOLERANCE_MS = 5 * 60 * 1000;
 const WEBHOOK_REPLAY_TTL_MS = 10 * 60 * 1000;
 const processedWebhookIds = new Map<string, number>();
 
-type ProvisionableRole = 'STUDENT' | 'EDUCATOR' | 'PARENT' | 'SCHOOL_ADMIN' | 'DISTRICT_ADMIN';
+type ProvisionableRole =
+  | 'STUDENT'
+  | 'EDUCATOR'
+  | 'PARENT'
+  | 'SCHOOL_ADMIN'
+  | 'DISTRICT_ADMIN'
+  | 'PLATFORM_ADMIN';
+
+const VALID_ROLES = new Set<ProvisionableRole>([
+  'STUDENT',
+  'EDUCATOR',
+  'PARENT',
+  'SCHOOL_ADMIN',
+  'DISTRICT_ADMIN',
+  'PLATFORM_ADMIN',
+]);
 
 type ClerkWebhookEvent = {
   type: 'user.created' | 'user.updated' | 'user.deleted';
@@ -106,15 +122,85 @@ function pruneReplayCache(now: number) {
   }
 }
 
+function parseRole(input?: string): UserRole | null {
+  if (!input) return null;
+  if (!VALID_ROLES.has(input as ProvisionableRole)) return null;
+  return input as UserRole;
+}
+
+async function resolveTenantId(candidate?: string): Promise<string> {
+  if (!candidate) {
+    return getDefaultTenantId();
+  }
+
+  const tenant = await db.tenant.findUnique({ where: { id: candidate }, select: { id: true } });
+  return tenant?.id ?? (await getDefaultTenantId());
+}
+
+async function ensureRoleProfile(
+  userId: string,
+  role: UserRole,
+  unsafe?: ClerkWebhookEvent['data']['unsafe_metadata'],
+) {
+  if (role === 'STUDENT') {
+    await db.student.upsert({
+      where: { userId },
+      update: {
+        gradeLevel: typeof unsafe?.gradeLevel === 'number' ? unsafe.gradeLevel : 6,
+        learningPreferences: unsafe?.learningPreferences ?? {},
+      },
+      create: {
+        userId,
+        gradeLevel: typeof unsafe?.gradeLevel === 'number' ? unsafe.gradeLevel : 6,
+        learningPreferences: unsafe?.learningPreferences ?? {},
+        regulationProfile: {
+          dysregulationTriggers: [],
+          calmingStrategies: [],
+          preferredBreakDuration: 5,
+        },
+      },
+    });
+    return;
+  }
+
+  if (role === 'EDUCATOR') {
+    await db.educator.upsert({
+      where: { userId },
+      update: {},
+      create: {
+        userId,
+        certifications: [],
+        specializations: [],
+      },
+    });
+    return;
+  }
+
+  if (role === 'PARENT') {
+    await db.parent.upsert({
+      where: { userId },
+      update: {},
+      create: {
+        userId,
+        childrenIds: [],
+        communicationPrefs: {
+          emailNotifications: true,
+          smsNotifications: false,
+        },
+      },
+    });
+  }
+}
+
 async function handleUserCreated(data: ClerkWebhookEvent['data']) {
   const email = data.email_addresses[0]?.email_address;
   if (!email) {
     throw new Error(`No email provided for Clerk user ${data.id}`);
   }
 
-  const role = data.public_metadata?.role ?? 'STUDENT';
-  const tenantId = data.public_metadata?.tenantId ?? (await getDefaultTenantId());
-  const schoolId = data.public_metadata?.schoolId;
+  const role = parseRole(data.public_metadata?.role) ?? 'STUDENT';
+  const tenantId = await resolveTenantId(data.public_metadata?.tenantId);
+  const schoolId = data.public_metadata?.schoolId ?? null;
 
   const existingUser = await db.user.findUnique({
     where: { clerkUserId: data.id },
@@ -137,39 +223,7 @@ async function handleUserCreated(data: ClerkWebhookEvent['data']) {
     },
   });
 
-  if (role === 'STUDENT') {
-    await db.student.create({
-      data: {
-        userId: user.id,
-        gradeLevel: data.unsafe_metadata?.gradeLevel ?? 6,
-        learningPreferences: data.unsafe_metadata?.learningPreferences ?? {},
-        regulationProfile: {
-          dysregulationTriggers: [],
-          calmingStrategies: [],
-          preferredBreakDuration: 5,
-        },
-      },
-    });
-  } else if (role === 'EDUCATOR') {
-    await db.educator.create({
-      data: {
-        userId: user.id,
-        certifications: [],
-        specializations: [],
-      },
-    });
-  } else if (role === 'PARENT') {
-    await db.parent.create({
-      data: {
-        userId: user.id,
-        childrenIds: [],
-        communicationPrefs: {
-          emailNotifications: true,
-          smsNotifications: false,
-        },
-      },
-    });
-  }
+  await ensureRoleProfile(user.id, role, data.unsafe_metadata);
 
   console.log('User created successfully:', user.id);
 }
@@ -184,18 +238,43 @@ async function handleUserUpdated(data: ClerkWebhookEvent['data']) {
     return;
   }
 
+  const incomingRole = parseRole(data.public_metadata?.role);
+  const updateData: {
+    email: string;
+    firstName: string;
+    lastName: string;
+    role?: UserRole;
+    tenantId?: string;
+    schoolId?: string | null;
+  } = {
+    email: data.email_addresses[0]?.email_address ?? user.email,
+    firstName: data.first_name ?? user.firstName,
+    lastName: data.last_name ?? user.lastName,
+  };
+
+  if (incomingRole) {
+    updateData.role = incomingRole;
+  }
+
+  if (data.public_metadata?.tenantId) {
+    updateData.tenantId = data.public_metadata.tenantId;
+  }
+
+  if (data.public_metadata && Object.prototype.hasOwnProperty.call(data.public_metadata, 'schoolId')) {
+    updateData.schoolId = data.public_metadata.schoolId ?? null;
+  }
+
   await db.user.update({
     where: { id: user.id },
-    data: {
-      email: data.email_addresses[0]?.email_address ?? user.email,
-      firstName: data.first_name ?? user.firstName,
-      lastName: data.last_name ?? user.lastName,
-    },
+    data: updateData,
   });
+
+  if (incomingRole) {
+    await ensureRoleProfile(user.id, incomingRole, data.unsafe_metadata);
+  }
 
   console.log('User updated successfully:', user.id);
 }
-
 async function handleUserDeleted(data: ClerkWebhookEvent['data']) {
   const user = await db.user.findUnique({
     where: { clerkUserId: data.id },
@@ -231,3 +310,4 @@ async function getDefaultTenantId(): Promise<string> {
 
   return tenant.id;
 }
+

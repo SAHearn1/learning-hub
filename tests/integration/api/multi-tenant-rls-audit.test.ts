@@ -115,6 +115,7 @@ describe('Multi-tenant isolation audit (RLS-style negative paths)', () => {
     vi.mocked(requireUser).mockResolvedValueOnce({
       id: 'user_school_b',
       tenantId: 'school_b',
+      role: 'EDUCATOR',
       isMinor: false,
       consentStatus: null,
       student: {
@@ -149,3 +150,6 @@ describe('Multi-tenant isolation audit (RLS-style negative paths)', () => {
     expect(body.error).toBe('Access to this session is forbidden');
   }, 15000);
 });
+
+
+

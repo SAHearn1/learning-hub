@@ -14,7 +14,7 @@ const FIVE_R_PHASES = [
 ] as const;
 
 const rolePortals = [
-  { label: 'Student Dashboard', href: '/learn' },
+  { label: 'Student Dashboard', href: '/explore' },
   { label: 'Educator Dashboard', href: '/educator/students' },
   { label: 'Parent Dashboard', href: '/parent/dashboard' },
   { label: 'Admin Dashboard', href: '/admin/dashboard' },
@@ -113,3 +113,4 @@ export default function HomePage() {
     </main>
   );
 }
+

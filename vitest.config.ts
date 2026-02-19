@@ -1,11 +1,31 @@
 import { defineConfig } from 'vitest/config';
 import path from 'path';
 
+const isCI = Boolean(process.env.CI) || Boolean(process.env.GITHUB_ACTIONS);
+const isWindows = process.platform === 'win32';
+
 export default defineConfig({
   test: {
     globals: true,
     environment: 'node',
     exclude: ['**/node_modules/**', '**/e2e/**'],
+
+    // Windows CI can be flaky with multi-worker runs ("Worker exited unexpectedly")
+    // and can also hit worker-thread memory issues. Keep local/dev fast, but force
+    // deterministic single-worker execution in CI.
+    ...(isCI && isWindows
+      ? {
+          pool: 'forks',
+          fileParallelism: false,
+          maxWorkers: 1,
+          minWorkers: 1,
+          poolOptions: {
+            forks: {
+              singleFork: true,
+            },
+          },
+        }
+      : {}),
     coverage: {
       provider: 'v8',
       reporter: ['text', 'json', 'html', 'lcov'],

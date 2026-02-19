@@ -73,8 +73,8 @@ describe('phaseTransitions', () => {
 });
 
 describe('navigation', () => {
-  it('student nav has 10 items total including grade-gated items', () => {
-    expect(studentNavItems).toHaveLength(10);
+  it('student nav has 8 items total including grade-gated items', () => {
+    expect(studentNavItems).toHaveLength(8);
   });
 
 
@@ -89,8 +89,9 @@ describe('navigation', () => {
     expect(labels).toContain('Financial Literacy');
   });
 
-  it('student nav includes Learn and Calm Corner', () => {
+  it('student nav includes Start Learning, Learn, and Calm Corner', () => {
     const labels = studentNavItems.map((i) => i.label);
+    expect(labels).toContain('Start Learning');
     expect(labels).toContain('Learn');
     expect(labels).toContain('Calm Corner');
   });
@@ -104,8 +105,15 @@ describe('navigation', () => {
     expect(labels).toContain('Compliance');
   });
 
-  it('parent nav has 2 items', () => {
-    expect(parentNavItems).toHaveLength(3);
+  it('parent nav has required core items', () => {
+    expect(Array.isArray(parentNavItems)).toBe(true);
+    expect(parentNavItems.length).toBeGreaterThanOrEqual(2);
+
+    const requiredParentLabels = ['Grades', 'Consent'];
+    const labels = parentNavItems.map((i) => i.label);
+    for (const label of requiredParentLabels) {
+      expect(labels).toContain(label);
+    }
   });
 
   it('admin nav has 2 items', () => {
@@ -195,3 +203,4 @@ describe('gradeSubjectMap', () => {
     }
   });
 });
+

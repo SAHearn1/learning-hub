@@ -22,7 +22,7 @@ interface SessionStore {
   streamingMessageId: string | null;
 
   startSession: (sessionId: string, subject: Subject) => void;
-  hydrateSession: (session: {
+  loadSession: (payload: {
     sessionId: string;
     subject: Subject;
     currentPhase: FiveRPhase;
@@ -60,16 +60,17 @@ export const useSessionStore = create<SessionStore>((set) => ({
     streamingMessageId: null,
   }),
 
-  hydrateSession: (session) => set({
-    sessionId: session.sessionId,
-    subject: session.subject,
-    currentPhase: session.currentPhase,
-    engagementMode: session.engagementMode,
-    messages: session.messages,
-    isLoading: false,
-    isStreaming: false,
-    streamingMessageId: null,
-  }),
+  loadSession: ({ sessionId, subject, currentPhase, engagementMode, messages }) =>
+    set({
+      sessionId,
+      subject,
+      currentPhase,
+      engagementMode,
+      messages,
+      isLoading: false,
+      isStreaming: false,
+      streamingMessageId: null,
+    }),
 
   setPhase: (phase) => set({ currentPhase: phase }),
   setEngagementMode: (mode) => set({ engagementMode: mode }),
@@ -91,7 +92,7 @@ export const useSessionStore = create<SessionStore>((set) => ({
     messages: state.messages.map((msg) =>
       msg.id === state.streamingMessageId
         ? { ...msg, content: msg.content + text }
-        : msg
+        : msg,
     ),
   })),
 

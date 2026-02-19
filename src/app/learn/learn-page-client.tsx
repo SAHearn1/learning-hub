@@ -1,7 +1,6 @@
 'use client';
 
-import { useCallback, useEffect, useState } from 'react';
-import { useSearchParams } from 'next/navigation';
+import { useCallback, useState } from 'react';
 import { useSessionStore } from '@/stores/session-store';
 import { useRegulationStore } from '@/stores/regulation-store';
 import { useChat } from '@/hooks/useChat';
@@ -24,7 +23,6 @@ interface LearnPageClientProps {
 }
 
 export function LearnPageClient({ preselectedTopic, preselectedSubject }: LearnPageClientProps) {
-  const searchParams = useSearchParams();
   const sessionId = useSessionStore((s) => s.sessionId);
   const subject = useSessionStore((s) => s.subject);
   const currentPhase = useSessionStore((s) => s.currentPhase);
@@ -46,7 +44,7 @@ export function LearnPageClient({ preselectedTopic, preselectedSubject }: LearnP
   const {
     sendMessage,
     createSession,
-    loadSession,
+    resumeSession,
     endSession,
     updatePhase,
     updateEngagementMode,
@@ -74,25 +72,18 @@ export function LearnPageClient({ preselectedTopic, preselectedSubject }: LearnP
   );
 
   const handleResumeSession = useCallback(
-    async (sid: string) => {
+    async (existingSessionId: string) => {
       setStartError(null);
       setCompletedSummary(null);
       try {
-        await loadSession(sid);
+        await resumeSession(existingSessionId);
       } catch (err) {
         const message = err instanceof Error ? err.message : 'Unknown error';
         setStartError(message);
       }
     },
-    [loadSession],
+    [resumeSession],
   );
-
-  useEffect(() => {
-    const resumeId = searchParams.get('resume');
-    if (!resumeId) return;
-    if (sessionId) return;
-    void handleResumeSession(resumeId);
-  }, [handleResumeSession, searchParams, sessionId]);
 
   const handleSendMessage = useCallback(
     (content: string) => {
@@ -138,12 +129,12 @@ export function LearnPageClient({ preselectedTopic, preselectedSubject }: LearnP
       <main className="min-h-screen px-6 py-12">
         <SessionSetup
           onStart={handleStartSession}
-          onResume={handleResumeSession}
           isLoading={isLoading}
           startError={startError}
           onClearError={() => setStartError(null)}
           preselectedTopic={preselectedTopic}
           preselectedSubject={preselectedSubject}
+          onResumeSession={handleResumeSession}
         />
       </main>
     );
@@ -189,3 +180,4 @@ export function LearnPageClient({ preselectedTopic, preselectedSubject }: LearnP
     </main>
   );
 }
+

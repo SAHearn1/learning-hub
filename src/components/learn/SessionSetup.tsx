@@ -1,10 +1,10 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { BRAND } from '@/brand/brand';
+import { featureFlags } from '@/lib/feature-flags';
 
 type Subject = 'MATH' | 'SCIENCE' | 'LANGUAGE_ARTS' | 'FINANCIAL_LITERACY';
 type EngagementMode = 'FORWARD' | 'REVERSE' | 'ERROR_ANALYSIS' | 'MULTIPLE_PATHWAYS' | 'PROBLEM_POSING';
@@ -16,9 +16,17 @@ interface PreselectedTopic {
   description: string;
 }
 
+interface RecentSession {
+  id: string;
+  subject: Subject;
+  engagementMode: EngagementMode;
+  startedAt: string;
+  endedAt?: string | null;
+}
+
 interface SessionSetupProps {
   onStart: (subject: Subject, mode: EngagementMode) => void;
-  onResume?: (sessionId: string) => void | Promise<void>;
+  onResumeSession?: (sessionId: string) => void;
   isLoading: boolean;
   startError?: string | null;
   onClearError?: () => void;
@@ -88,7 +96,7 @@ function formatRelativeTime(dateStr: string): string {
 
 export function SessionSetup({
   onStart,
-  onResume,
+  onResumeSession,
   isLoading,
   startError,
   onClearError,
@@ -99,58 +107,57 @@ export function SessionSetup({
     preselectedTopic?.subject ?? preselectedSubject ?? null,
   );
   const [selectedMode, setSelectedMode] = useState<EngagementMode>('FORWARD');
-
   const [historyLoading, setHistoryLoading] = useState(true);
-  const [historyError, setHistoryError] = useState<string | null>(null);
-  const [recentSessions, setRecentSessions] = useState<
-    Array<{ id: string; subject: Subject; engagementMode: EngagementMode; startedAt: string; endedAt: string | null }>
-  >([]);
+  const [recentSessions, setrecentSessions] = useState<RecentSession[]>([]);
 
   useEffect(() => {
     let cancelled = false;
 
-    const loadHistory = async () => {
-      setHistoryLoading(true);
-      setHistoryError(null);
+    async function fetchrecentSessions() {
       try {
-        const res = await fetch('/api/sessions?page=1&pageSize=5');
-        if (!res.ok) {
-          const body = await res.json().catch(() => ({}));
-          throw new Error(body?.error || `Failed to load session history (${res.status})`);
+        const response = await fetch('/api/sessions?pageSize=10');
+        if (!response.ok) {
+          if (!cancelled) {
+            setrecentSessions([]);
+            setHistoryLoading(false);
+          }
+          return;
         }
-        const payload = await res.json();
+
+        const payload = await response.json();
+        if (cancelled) return;
+
         const sessions = Array.isArray(payload?.data) ? payload.data : [];
-
-        const normalized = sessions
-          .map((s: any) => ({
-            id: String(s.id),
-            subject: s.subject as Subject,
-            engagementMode: s.engagementMode as EngagementMode,
-            startedAt: String(s.startedAt),
-            endedAt: s.endedAt ? String(s.endedAt) : null,
-          }))
-          .filter((s: any) => Boolean(s.id) && Boolean(s.subject) && Boolean(s.engagementMode) && Boolean(s.startedAt));
-
+        setrecentSessions(
+          sessions.map((session: { id: string; subject: Subject; engagementMode: EngagementMode; startedAt: string; endedAt?: string | null }) => ({
+            id: session.id,
+            subject: session.subject,
+            engagementMode: session.engagementMode,
+            startedAt: session.startedAt,
+            endedAt: session.endedAt ?? null,
+          })),
+        );
+      } catch {
         if (!cancelled) {
-          setRecentSessions(normalized);
-        }
-      } catch (err) {
-        if (!cancelled) {
-          setHistoryError(err instanceof Error ? err.message : 'Failed to load session history');
+          setrecentSessions([]);
         }
       } finally {
         if (!cancelled) {
           setHistoryLoading(false);
         }
       }
-    };
+    }
 
-    void loadHistory();
-
+    fetchrecentSessions();
     return () => {
       cancelled = true;
     };
   }, []);
+
+  const resumableSession = useMemo(
+    () => recentSessions.find((session) => !session.endedAt) ?? null,
+    [recentSessions],
+  );
 
   return (
     <div className="mx-auto max-w-3xl space-y-8">
@@ -165,16 +172,35 @@ export function SessionSetup({
           Back to Home
         </Link>
       </div>
+
       <div className="text-center">
         <h1 className="text-3xl font-bold text-neutral-900">Start a Learning Session</h1>
         <p className="mt-2 text-neutral-600">
           {preselectedTopic
-            ? 'Choose how you\u2019d like to explore this topic.'
-            : 'Choose your subject and how you\u2019d like to learn today.'}
+            ? 'Choose how you\'d like to explore this topic.'
+            : 'Choose your subject and how you\'d like to learn today.'}
         </p>
       </div>
 
-      {/* Topic Banner */}
+      {featureFlags.sessionResumeEnabled && resumableSession && onResumeSession && (
+        <div className="rounded-lg border border-emerald-200 bg-emerald-50 p-4">
+          <p className="text-sm font-semibold text-emerald-800">Continue your active session</p>
+          <p className="mt-1 text-sm text-emerald-700">
+            {SUBJECT_DETAILS[resumableSession.subject]?.name ?? resumableSession.subject} started {formatRelativeTime(resumableSession.startedAt)}
+          </p>
+          <Button
+            className="mt-3"
+            onClick={() => {
+              onClearError?.();
+              onResumeSession(resumableSession.id);
+            }}
+            disabled={isLoading}
+          >
+            Continue Session
+          </Button>
+        </div>
+      )}
+
       {preselectedTopic && (
         <div className="rounded-lg border border-primary-200 bg-primary-50 px-5 py-4">
           <p className="text-xs font-medium uppercase tracking-wide text-primary-600">Topic</p>
@@ -183,7 +209,6 @@ export function SessionSetup({
         </div>
       )}
 
-      {/* Subject Selection */}
       <div>
         <h2 className="mb-3 text-lg font-semibold text-neutral-800">
           {preselectedTopic ? 'Subject' : 'Choose a Subject'}
@@ -217,7 +242,6 @@ export function SessionSetup({
         </div>
       </div>
 
-      {/* Engagement Mode Selection */}
       <div>
         <h2 className="mb-3 text-lg font-semibold text-neutral-800">How Would You Like to Learn?</h2>
         <div className="grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-3">
@@ -245,7 +269,6 @@ export function SessionSetup({
         </div>
       </div>
 
-      {/* Start Button */}
       <div className="flex justify-center">
         <Button
           size="lg"
@@ -262,28 +285,28 @@ export function SessionSetup({
         </Button>
       </div>
 
-
       {startError && (
         <div className="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700" role="alert">
           {startError}
         </div>
       )}
 
-      {/* Recent Sessions */}
-      {!historyLoading && recentSessions.length > 0 && (
+      {featureFlags.sessionResumeEnabled && !historyLoading && recentSessions.length > 0 && onResumeSession && (
         <div>
           <h2 className="mb-3 text-lg font-semibold text-neutral-800">Recent Sessions</h2>
           <div className="space-y-2">
-            {recentSessions.map((session) => {
+            {recentSessions.map((session: { id: string; subject: Subject; engagementMode: EngagementMode; startedAt: string; endedAt?: string | null }) => {
               const subjectInfo = SUBJECT_DETAILS[session.subject] ?? { name: session.subject, color: '#6B7280' };
               const modeInfo = MODE_DETAILS[session.engagementMode];
+              const canResume = !session.endedAt;
+
               return (
                 <button
                   key={session.id}
                   onClick={() => {
                     onClearError?.();
-                    if (onResume) {
-                      void onResume(session.id);
+                    if (canResume) {
+                      onResumeSession(session.id);
                       return;
                     }
                     setSelectedSubject(session.subject);
@@ -297,7 +320,7 @@ export function SessionSetup({
                   >
                     {subjectInfo.name[0]}
                   </div>
-                  <div className="flex-1 min-w-0">
+                  <div className="min-w-0 flex-1">
                     <div className="text-sm font-medium text-neutral-800">
                       {subjectInfo.name}
                       {modeInfo && (
@@ -305,37 +328,23 @@ export function SessionSetup({
                           {modeInfo.name}
                         </span>
                       )}
-                      {session.endedAt === null && (
-                        <span className="ml-2 rounded-full bg-blue-50 px-2 py-0.5 text-[10px] font-semibold text-blue-700">
-                          In progress
-                        </span>
-                      )}
                     </div>
                     <div className="text-xs text-neutral-500">
                       {formatRelativeTime(session.startedAt)}
                     </div>
                   </div>
-                  <svg className="h-4 w-4 shrink-0 text-neutral-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5" />
-                  </svg>
+                  <span className={`text-xs font-medium ${canResume ? 'text-emerald-700' : 'text-neutral-500'}`}>
+                    {canResume ? 'Resume' : 'Use Setup'}
+                  </span>
                 </button>
               );
             })}
           </div>
         </div>
       )}
-
-      {!historyLoading && recentSessions.length === 0 && !historyError && (
-        <div className="rounded-lg border border-neutral-200 bg-white px-4 py-3 text-sm text-neutral-600">
-          No recent sessions yet. Start one above to begin building your progress history.
-        </div>
-      )}
-
-      {!historyLoading && historyError && (
-        <div className="rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
-          {historyError}
-        </div>
-      )}
     </div>
   );
 }
+
+
+

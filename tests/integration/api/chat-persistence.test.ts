@@ -64,6 +64,7 @@ describe('Chat session persistence', () => {
     mockRequireUser.mockResolvedValue({
       id: 'user_1',
       tenantId: 'tenant_1',
+      role: 'STUDENT',
       student: { id: 'student_1' },
     });
 
@@ -161,3 +162,4 @@ describe('Chat session persistence', () => {
     );
   });
 });
+

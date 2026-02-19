@@ -15,7 +15,8 @@
     "db:setup": "./scripts/db-setup.sh",
     "db:reset": "./scripts/db-setup.sh --reset",
     "db:studio": "prisma studio",
-    "test": "vitest",
+    "test": "vitest run",
+    "test:ci": "vitest run",
     "test:coverage": "vitest run --coverage",
     "test:coverage:ui": "vitest --ui --coverage",
     "test:e2e": "playwright test",
@@ -36,7 +37,8 @@
     "vercel-build": "prisma generate && next build",
     "ops:parallel": "node ./scripts/parallel-task-agents.mjs",
     "ops:doctor": "node ./scripts/ops-doctor.mjs",
-    "db:seed:check": "node scripts/validate-seed-schema-sync.mjs"
+    "db:seed:check": "node scripts/validate-seed-schema-sync.mjs",
+    "verify:prod": "npm run lint && npm run test:ci && npm run build"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.30.0",
@@ -102,3 +104,6 @@
     "vitest": "^2.0.0"
   }
 }
+
+
+

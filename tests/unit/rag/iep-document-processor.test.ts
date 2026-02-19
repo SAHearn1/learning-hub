@@ -88,13 +88,25 @@ describe('IEP Document Processor', () => {
         'Extended time on state assessments.',
       ].join('\n');
 
+      // Sanity check the fixture itself (guards against invisible prefix chars).
+      const lines = rawContent.split('\n');
+      expect(lines[0]).toBe('Current Level of Performance');
+      expect(lines[0].toLowerCase().startsWith('current level')).toBe(true);
+      expect(lines[lines.length - 2]).toBe('Assessment Accommodations');
+      expect(lines[lines.length - 2].toLowerCase().startsWith('assessment accommodations')).toBe(true);
+
       const sections = parseIepSections(rawContent);
 
-      expect(sections.some((s) => s.type === 'present_levels')).toBe(true); // "Current Level" -> present_levels
-      expect(sections.some((s) => s.type === 'short_term_objectives')).toBe(true);
-      expect(sections.some((s) => s.type === 'related_services')).toBe(true);
-      expect(sections.some((s) => s.type === 'behavior_plan')).toBe(true);
-      expect(sections.some((s) => s.type === 'assessment_accommodations')).toBe(true);
+      const types = sections.map((s) => s.type);
+      expect(types).toEqual(
+        expect.arrayContaining([
+          'present_levels', // "Current Level" -> present_levels
+          'short_term_objectives',
+          'related_services',
+          'behavior_plan',
+          'assessment_accommodations',
+        ]),
+      );
     });
 
     it('should handle content with no detectable sections (general section)', () => {
@@ -241,6 +253,53 @@ describe('IEP Document Processor', () => {
 
       expect(chunks.length).toBeGreaterThan(1);
     });
+
+    it(
+      'should not stall when the final remainder is <= overlap chars (regression)',
+      () => {
+        // Regression test for a previous infinite-loop condition in forceSplitText:
+        // when end reaches text.length and remaining length is <= overlapChars,
+        // the overlap math can cause start to not advance.
+        //
+        // We construct a single "paragraph" with no spaces or punctuation so the
+        // splitter uses deterministic fixed-width slicing.
+        const MAX_CHUNK_CHARS = 1000 * 4; // mirrors src/lib/rag/iep-document-processor.ts
+        const OVERLAP_CHARS = 100 * 4; // mirrors src/lib/rag/iep-document-processor.ts
+        const headerPrefix = `[Present Levels of Performance] Present Levels\n\n`;
+        const availableChars = MAX_CHUNK_CHARS - headerPrefix.length;
+
+        // Choose a length that deterministically leads to the buggy "start doesn't advance"
+        // state on the previous logic: length = 2*maxChars - overlapChars.
+        const contentLength = 2 * availableChars - OVERLAP_CHARS;
+        const longContent = 'a'.repeat(contentLength);
+
+        const doc = makeDocument({
+          sections: [
+            {
+              type: 'present_levels',
+              title: 'Present Levels',
+              content: longContent,
+            },
+          ],
+        });
+
+        const chunks = processIepDocument(doc);
+
+        expect(chunks.length).toBeGreaterThan(0);
+        expect(chunks.length).toBeLessThan(10);
+
+        // Ensure we didn't produce any empty or whitespace-only chunk bodies.
+        const bodies = chunks.map((c) =>
+          c.content.startsWith(headerPrefix) ? c.content.slice(headerPrefix.length) : c.content,
+        );
+        expect(bodies.every((b) => b.trim().length > 0)).toBe(true);
+
+        // Specifically guard against duplicate empty chunks.
+        const emptyBodies = bodies.map((b) => b.trim()).filter((b) => b.length === 0);
+        expect(emptyBodies).toHaveLength(0);
+      },
+      500,
+    );
 
     it('should keep short sections as single chunks', () => {
       const doc = makeDocument({

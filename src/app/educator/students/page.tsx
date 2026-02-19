@@ -1,20 +1,10 @@
 'use client';
 
-import { useAuth } from '@clerk/nextjs';
-import { useRouter } from 'next/navigation';
-import { FormEvent, useEffect, useMemo, useState } from 'react';
+import { FormEvent, useMemo, useState } from 'react';
 import { accommodationCatalog, SupportTier } from '@/app/educator/mock-data';
 import { useEducatorPortalStore } from '@/app/educator/portal-store';
 
 export default function EducatorStudentsPage() {
-  const { isLoaded, isSignedIn } = useAuth();
-  const router = useRouter();
-
-  useEffect(() => {
-    if (isLoaded && !isSignedIn) {
-      router.replace('/sign-in');
-    }
-  }, [isLoaded, isSignedIn, router]);
   const students = useEducatorPortalStore((state) => state.students);
   const addStudent = useEducatorPortalStore((state) => state.addStudent);
   const setStudentTier = useEducatorPortalStore((state) => state.setStudentTier);
@@ -186,3 +176,5 @@ export default function EducatorStudentsPage() {
     </main>
   );
 }
+
+

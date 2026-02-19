@@ -6,17 +6,15 @@ export type NavItem = {
 };
 
 export const studentNavItems: readonly NavItem[] = [
-  { label: 'Dashboard', href: '/student/dashboard', icon: 'home' },
+  { label: 'Start Learning', href: '/explore', icon: 'compass' },
   { label: 'Learn', href: '/learn', icon: 'book-open' },
-  { label: 'Explore', href: '/explore', icon: 'compass' },
-  { label: 'Assignments', href: '/student/assignments', icon: 'clipboard-list' },
+  { label: 'Browse Curriculum', href: '/curriculum', icon: 'library' },
   {
     label: 'Financial Literacy',
     href: '/learn?subject=FINANCIAL_LITERACY',
-    icon: 'book-open',
+    icon: 'banknote',
     minGradeLevel: 9,
   },
-  { label: 'Browse Curriculum', href: '/curriculum', icon: 'library' },
   { label: 'Calm Corner', href: '/regulate', icon: 'heart' },
   { label: 'My Progress', href: '/progress', icon: 'bar-chart' },
   { label: 'Community', href: '/community', icon: 'users' },

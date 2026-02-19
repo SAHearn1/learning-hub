@@ -24,27 +24,29 @@ const OVERLAP_CHARS = OVERLAP_TOKENS * 4; // ~400 chars
  * in raw IEP document text. Each pattern maps to an IepSectionType.
  */
 const SECTION_PATTERNS: { pattern: RegExp; type: IepSectionType }[] = [
-  { pattern: /present\s+level/i, type: 'present_levels' },
-  { pattern: /present\s+performance/i, type: 'present_levels' },
-  { pattern: /current\s+level/i, type: 'present_levels' },
-  { pattern: /annual\s+goal/i, type: 'annual_goals' },
-  { pattern: /measurable\s+annual\s+goal/i, type: 'annual_goals' },
-  { pattern: /short[- ]term\s+objective/i, type: 'short_term_objectives' },
-  { pattern: /benchmark/i, type: 'short_term_objectives' },
-  { pattern: /accommodation/i, type: 'accommodations' },
-  { pattern: /supplementary\s+aid/i, type: 'accommodations' },
-  { pattern: /modification/i, type: 'modifications' },
-  { pattern: /program\s+modification/i, type: 'modifications' },
-  { pattern: /related\s+service/i, type: 'related_services' },
-  { pattern: /special\s+education\s+service/i, type: 'related_services' },
-  { pattern: /transition\s+plan/i, type: 'transition_plan' },
-  { pattern: /transition\s+service/i, type: 'transition_plan' },
-  { pattern: /post[- ]secondary/i, type: 'transition_plan' },
-  { pattern: /behavior\s+(intervention\s+)?plan/i, type: 'behavior_plan' },
-  { pattern: /behavioral\s+support/i, type: 'behavior_plan' },
-  { pattern: /assessment\s+accommodation/i, type: 'assessment_accommodations' },
-  { pattern: /testing\s+accommodation/i, type: 'assessment_accommodations' },
-  { pattern: /state\s+assessment/i, type: 'assessment_accommodations' },
+  // Anchor patterns to the start of the line to avoid matching phrases inside
+  // normal sentences (IEP content often mentions e.g. "current levels").
+  { pattern: /^present\s+levels?\b/i, type: 'present_levels' },
+  { pattern: /^present\s+performance\b/i, type: 'present_levels' },
+  { pattern: /^current\s+level\b/i, type: 'present_levels' },
+  { pattern: /^annual\s+goals?\b/i, type: 'annual_goals' },
+  { pattern: /^measurable\s+annual\s+goals?\b/i, type: 'annual_goals' },
+  { pattern: /^short[- ]term\s+objectives?\b/i, type: 'short_term_objectives' },
+  { pattern: /^benchmarks?\b/i, type: 'short_term_objectives' },
+  { pattern: /^accommodations?\b/i, type: 'accommodations' },
+  { pattern: /^supplementary\s+aids?\b/i, type: 'accommodations' },
+  { pattern: /^modifications?\b/i, type: 'modifications' },
+  { pattern: /^program\s+modifications?\b/i, type: 'modifications' },
+  { pattern: /^related\s+services?\b/i, type: 'related_services' },
+  { pattern: /^special\s+education\s+services?\b/i, type: 'related_services' },
+  { pattern: /^transition\s+plans?\b/i, type: 'transition_plan' },
+  { pattern: /^transition\s+services?\b/i, type: 'transition_plan' },
+  { pattern: /^post[- ]secondary\b/i, type: 'transition_plan' },
+  { pattern: /^behavior\s+(intervention\s+)?plans?\b/i, type: 'behavior_plan' },
+  { pattern: /^behavioral\s+supports?\b/i, type: 'behavior_plan' },
+  { pattern: /^assessment\s+accommodations?\b/i, type: 'assessment_accommodations' },
+  { pattern: /^testing\s+accommodations?\b/i, type: 'assessment_accommodations' },
+  { pattern: /^state\s+assessments?\b/i, type: 'assessment_accommodations' },
 ];
 
 /**
@@ -308,8 +310,34 @@ function detectSectionType(line: string): IepSectionType | null {
   const trimmed = line.trim();
   if (trimmed.length === 0) return null;
 
+  // Normalize whitespace (including NBSP) so header detection is robust against
+  // copy/pasted document content.
+  const normalized = trimmed.replace(/[\s\u00A0]+/g, ' ').trim();
+  // Strip a few common invisible "format" characters that can sneak in when
+  // copying text from PDFs/Word.
+  const cleaned = normalized.replace(/[\uFEFF\u200E\u200F\u202A-\u202E]/g, '');
+  // Some copy/paste sources include leading bullets/markers or zero-width chars.
+  const canonical = cleaned.replace(/^[^A-Za-z0-9]+/, '');
+  // Normalize compatibility forms (e.g., fullwidth Latin characters) so simple
+  // ASCII patterns still match copy/pasted text.
+  const compat = canonical.normalize('NFKC');
+
+  // Fast-path for common headers. This intentionally overlaps with regex patterns
+  // below, but avoids any regex edge cases and keeps behavior obvious.
+  const lower = compat.toLowerCase();
+  if (lower.startsWith('current level')) return 'present_levels';
+  if (lower.startsWith('present level') || lower.startsWith('present levels'))
+    return 'present_levels';
+  if (lower.startsWith('annual goal') || lower.startsWith('annual goals'))
+    return 'annual_goals';
+  if (
+    lower.startsWith('assessment accommodation') ||
+    lower.startsWith('assessment accommodations')
+  )
+    return 'assessment_accommodations';
+
   for (const { pattern, type } of SECTION_PATTERNS) {
-    if (pattern.test(trimmed)) {
+    if (pattern.test(compat)) {
       return type;
     }
   }
@@ -401,6 +429,10 @@ function forceSplitText(
     }
 
     chunks.push(text.slice(start, end).trim());
+
+    // If we reached the end, don't apply overlap math (can stall when remaining
+    // text length is <= overlapChars).
+    if (end >= text.length) break;
 
     // Move start forward, accounting for overlap
     start = end - overlapChars;
