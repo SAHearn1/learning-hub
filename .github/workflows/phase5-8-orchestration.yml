@@ -39,8 +39,8 @@ jobs:
       DATABASE_URL: postgresql://rootwork:rootwork_ci@localhost:5432/rootwork_test?schema=public
       DIRECT_URL: postgresql://rootwork:rootwork_ci@localhost:5432/rootwork_test?schema=public
       REDIS_URL: redis://localhost:6379
-      NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY: pk_test_placeholder
-      CLERK_SECRET_KEY: sk_test_placeholder
+      NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY: pk_test_c2FtcGxlX3B1Ymxpc2hhYmxl
+      CLERK_SECRET_KEY: sk_test_c2FtcGxlX3NlY3JldA
       ANTHROPIC_API_KEY: sk-ant-placeholder
       OPENAI_API_KEY: sk-openai-placeholder
       STRIPE_SECRET_KEY: sk_test_placeholder
@@ -82,8 +82,8 @@ jobs:
     env:
       DATABASE_URL: postgresql://rootwork:rootwork_ci@localhost:5432/rootwork_test?schema=public
       DIRECT_URL: postgresql://rootwork:rootwork_ci@localhost:5432/rootwork_test?schema=public
-      NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY: pk_test_placeholder
-      CLERK_SECRET_KEY: sk_test_placeholder
+      NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY: pk_test_c2FtcGxlX3B1Ymxpc2hhYmxl
+      CLERK_SECRET_KEY: sk_test_c2FtcGxlX3NlY3JldA
       ANTHROPIC_API_KEY: sk-ant-placeholder
       OPENAI_API_KEY: sk-openai-placeholder
       STRIPE_SECRET_KEY: sk_test_placeholder
@@ -140,8 +140,8 @@ jobs:
     env:
       DATABASE_URL: postgresql://rootwork:rootwork_ci@localhost:5432/rootwork_test?schema=public
       DIRECT_URL: postgresql://rootwork:rootwork_ci@localhost:5432/rootwork_test?schema=public
-      NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY: pk_test_placeholder
-      CLERK_SECRET_KEY: sk_test_placeholder
+      NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY: pk_test_c2FtcGxlX3B1Ymxpc2hhYmxl
+      CLERK_SECRET_KEY: sk_test_c2FtcGxlX3NlY3JldA
       ANTHROPIC_API_KEY: sk-ant-placeholder
       OPENAI_API_KEY: sk-openai-placeholder
       STRIPE_SECRET_KEY: sk_test_placeholder
@@ -188,6 +188,7 @@ jobs:
             echo "- Phase 7 UX and accessibility gate: PASS"
             echo "- Recommendation: proceed with staged rollout per docs/PHASE_5_8_PARALLEL_AGENT_PLAN.md"
           } >> "$GITHUB_STEP_SUMMARY"
+
 
 
 
