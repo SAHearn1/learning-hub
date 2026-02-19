@@ -59,6 +59,11 @@ case "${SCENARIO}" in
     echo -e "${YELLOW}Running Steady State Test (100 concurrent users for 10 minutes)...${NC}"
     SCRIPT="tests/load/student-journey.js"
     ;;
+  "ci_smoke"|"smoke")
+    echo -e "${YELLOW}Running CI Smoke Load Test (10 concurrent users for 90 seconds)...${NC}"
+    SCRIPT="tests/load/student-journey.js"
+    export K6_SCENARIO="ci_smoke"
+    ;;
   "ramp_up"|"ramp")
     echo -e "${YELLOW}Running Ramp-Up Test (0 → 100 users over 15 minutes)...${NC}"
     SCRIPT="tests/load/student-journey.js"
@@ -122,3 +127,5 @@ echo -e "${GREEN}━━━━━━━━━━━━━━━━━━━━━
 echo ""
 
 exit ${EXIT_CODE}
+
+

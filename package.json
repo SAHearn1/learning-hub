@@ -38,7 +38,15 @@
     "ops:parallel": "node ./scripts/parallel-task-agents.mjs",
     "ops:doctor": "node ./scripts/ops-doctor.mjs",
     "db:seed:check": "node scripts/validate-seed-schema-sync.mjs",
-    "verify:prod": "npm run lint && npm run test:ci && npm run build"
+    "verify:prod": "npm run lint && npm run test:ci && npm run build",
+    "test:e2e:roles": "playwright test tests/e2e/student tests/e2e/educator tests/e2e/parent tests/e2e/admin",
+    "test:e2e:smoke:roles": "playwright test tests/e2e/shared/smoke.spec.ts tests/e2e/student/student-navigation.spec.ts tests/e2e/educator/educator-dashboard.spec.ts tests/e2e/parent/parent-dashboard.spec.ts tests/e2e/admin/admin-compliance.spec.ts",
+    "test:load:ci": "bash tests/load/run-load-tests.sh ci_smoke",
+    "ops:phase5-8": "node ./scripts/phase5-8-orchestrator.mjs",
+    "phase5:gate": "npm run verify:prod && npm run test:e2e:smoke:roles",
+    "phase6:gate": "npm run test:load:ci",
+    "phase7:gate": "npm run test:e2e:roles && npm run test:a11y",
+    "phase8:gate": "npm run phase5:gate && npm run phase6:gate && npm run phase7:gate"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.30.0",
@@ -104,6 +112,3 @@
     "vitest": "^2.0.0"
   }
 }
-
-
-

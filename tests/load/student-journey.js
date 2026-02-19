@@ -4,12 +4,20 @@ import { Rate, Trend, Counter, Gauge } from 'k6/metrics';
 import { config, endpoints, testData } from './config.js';
 
 // Export k6 configuration
+const selectedScenario = __ENV.K6_SCENARIO || 'steady_state';
+const selectedThresholds = selectedScenario === 'ci_smoke'
+  ? {
+      http_req_duration: ['p(95)<1500', 'p(99)<3000'],
+      http_req_failed: ['rate<0.05'],
+      http_reqs: ['rate>5'],
+    }
+  : config.thresholds;
+
 export const options = {
-  // Use only the steady_state scenario by default
   scenarios: {
-    steady_state: config.scenarios.steady_state,
+    [selectedScenario]: config.scenarios[selectedScenario] || config.scenarios.steady_state,
   },
-  thresholds: config.thresholds,
+  thresholds: selectedThresholds,
 };
 
 // Custom metrics
@@ -249,3 +257,4 @@ function textSummary(data, options) {
 
   return summary;
 }
+

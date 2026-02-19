@@ -1,0 +1,187 @@
+name: Phase 5-8 Orchestration
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: '0 9 * * 1-5'
+
+env:
+  NODE_VERSION: '22'
+
+jobs:
+  phase5_reliability:
+    name: Phase 5 Reliability Gate
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_DB: rootwork_test
+          POSTGRES_USER: rootwork
+          POSTGRES_PASSWORD: rootwork_ci
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd="pg_isready -U rootwork"
+          --health-interval=5s
+          --health-timeout=3s
+          --health-retries=5
+      redis:
+        image: redis:7-alpine
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd="redis-cli ping"
+          --health-interval=5s
+          --health-timeout=3s
+          --health-retries=5
+    env:
+      DATABASE_URL: postgresql://rootwork:rootwork_ci@localhost:5432/rootwork_test?schema=public
+      REDIS_URL: redis://localhost:6379
+      NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY: pk_test_placeholder
+      CLERK_SECRET_KEY: sk_test_placeholder
+      ANTHROPIC_API_KEY: sk-ant-placeholder
+      OPENAI_API_KEY: sk-openai-placeholder
+      STRIPE_SECRET_KEY: sk_test_placeholder
+      NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY: pk_test_placeholder
+      STRIPE_WEBHOOK_SECRET: whsec_placeholder
+      N8N_WEBHOOK_SECRET: test_webhook_secret
+      NEXT_PUBLIC_APP_URL: http://localhost:3000
+      BASE_URL: http://localhost:3000
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+      - run: npm ci
+      - run: npx prisma generate
+      - run: npx prisma migrate deploy
+      - run: npm run db:seed
+      - run: npm run verify:prod
+
+  phase6_performance:
+    name: Phase 6 Performance Gate
+    runs-on: ubuntu-latest
+    needs: phase5_reliability
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_DB: rootwork_test
+          POSTGRES_USER: rootwork
+          POSTGRES_PASSWORD: rootwork_ci
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd="pg_isready -U rootwork"
+          --health-interval=5s
+          --health-timeout=3s
+          --health-retries=5
+    env:
+      DATABASE_URL: postgresql://rootwork:rootwork_ci@localhost:5432/rootwork_test?schema=public
+      NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY: pk_test_placeholder
+      CLERK_SECRET_KEY: sk_test_placeholder
+      ANTHROPIC_API_KEY: sk-ant-placeholder
+      OPENAI_API_KEY: sk-openai-placeholder
+      STRIPE_SECRET_KEY: sk_test_placeholder
+      NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY: pk_test_placeholder
+      STRIPE_WEBHOOK_SECRET: whsec_placeholder
+      N8N_WEBHOOK_SECRET: test_webhook_secret
+      NEXT_PUBLIC_APP_URL: http://localhost:3000
+      BASE_URL: http://localhost:3000
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+      - run: npm ci
+      - run: npx prisma generate
+      - run: npx prisma migrate deploy
+      - run: npm run db:seed
+      - name: Install k6
+        run: |
+          sudo gpg -k
+          sudo gpg --no-default-keyring --keyring /usr/share/keyrings/k6-archive-keyring.gpg --keyserver hkp://keyserver.ubuntu.com:80 --recv-keys C5AD17C747E3415A3642D57D77C6C491D6AC1D69
+          echo 'deb [signed-by=/usr/share/keyrings/k6-archive-keyring.gpg] https://dl.k6.io/deb stable main' | sudo tee /etc/apt/sources.list.d/k6.list
+          sudo apt-get update
+          sudo apt-get install -y k6
+      - run: npm run build
+      - run: npm run start &
+      - run: npx wait-on http://localhost:3000
+      - run: npm run phase6:gate
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: phase6-load-results
+          path: tests/load/results/
+
+  phase7_ux_a11y:
+    name: Phase 7 UX + Accessibility Gate
+    runs-on: ubuntu-latest
+    needs: phase5_reliability
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_DB: rootwork_test
+          POSTGRES_USER: rootwork
+          POSTGRES_PASSWORD: rootwork_ci
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd="pg_isready -U rootwork"
+          --health-interval=5s
+          --health-timeout=3s
+          --health-retries=5
+    env:
+      DATABASE_URL: postgresql://rootwork:rootwork_ci@localhost:5432/rootwork_test?schema=public
+      NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY: pk_test_placeholder
+      CLERK_SECRET_KEY: sk_test_placeholder
+      ANTHROPIC_API_KEY: sk-ant-placeholder
+      OPENAI_API_KEY: sk-openai-placeholder
+      STRIPE_SECRET_KEY: sk_test_placeholder
+      NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY: pk_test_placeholder
+      STRIPE_WEBHOOK_SECRET: whsec_placeholder
+      N8N_WEBHOOK_SECRET: test_webhook_secret
+      NEXT_PUBLIC_APP_URL: http://localhost:3000
+      BASE_URL: http://localhost:3000
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+      - run: npm ci
+      - run: npx prisma generate
+      - run: npx prisma migrate deploy
+      - run: npm run db:seed
+      - run: npx playwright install --with-deps
+      - run: npm run build
+      - run: npm run start &
+      - run: npx wait-on http://localhost:3000
+      - run: npm run phase7:gate
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: phase7-playwright-report
+          path: playwright-report/
+
+  phase8_release_readiness:
+    name: Phase 8 Release Readiness Gate
+    runs-on: ubuntu-latest
+    needs:
+      - phase5_reliability
+      - phase6_performance
+      - phase7_ux_a11y
+    steps:
+      - name: Publish release readiness summary
+        run: |
+          {
+            echo "## Phase 8 Release Readiness"
+            echo "- Phase 5 reliability gate: PASS"
+            echo "- Phase 6 performance gate: PASS"
+            echo "- Phase 7 UX and accessibility gate: PASS"
+            echo "- Recommendation: proceed with staged rollout per docs/PHASE_5_8_PARALLEL_AGENT_PLAN.md"
+          } >> "$GITHUB_STEP_SUMMARY"
