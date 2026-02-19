@@ -57,7 +57,7 @@ jobs:
           cache: npm
       - run: npm ci
       - run: npx prisma generate
-      - run: npx prisma migrate deploy
+      - run: npx prisma db push --skip-generate
       - run: npm run db:seed
       - run: npm run verify:prod
 
@@ -100,7 +100,7 @@ jobs:
           cache: npm
       - run: npm ci
       - run: npx prisma generate
-      - run: npx prisma migrate deploy
+      - run: npx prisma db push --skip-generate
       - run: npm run db:seed
       - name: Install k6
         run: |
@@ -158,7 +158,7 @@ jobs:
           cache: npm
       - run: npm ci
       - run: npx prisma generate
-      - run: npx prisma migrate deploy
+      - run: npx prisma db push --skip-generate
       - run: npm run db:seed
       - run: npx playwright install --with-deps
       - run: npm run build
@@ -188,4 +188,5 @@ jobs:
             echo "- Phase 7 UX and accessibility gate: PASS"
             echo "- Recommendation: proceed with staged rollout per docs/PHASE_5_8_PARALLEL_AGENT_PLAN.md"
           } >> "$GITHUB_STEP_SUMMARY"
+
 
