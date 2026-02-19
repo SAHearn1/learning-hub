@@ -110,8 +110,8 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y k6
       - run: npm run build
-      - run: npm run start &
-      - run: npx wait-on http://localhost:3000
+      - run: npm run start > /tmp/next-start.log 2>&1 &
+      - run: npx wait-on http://127.0.0.1:3000 --timeout 120000 || (echo 'Server failed to start'; cat /tmp/next-start.log; exit 1)
       - run: npm run phase6:gate
       - uses: actions/upload-artifact@v4
         if: always()
@@ -162,8 +162,8 @@ jobs:
       - run: npm run db:seed
       - run: npx playwright install --with-deps
       - run: npm run build
-      - run: npm run start &
-      - run: npx wait-on http://localhost:3000
+      - run: npm run start > /tmp/next-start.log 2>&1 &
+      - run: npx wait-on http://127.0.0.1:3000 --timeout 120000 || (echo 'Server failed to start'; cat /tmp/next-start.log; exit 1)
       - run: npm run phase7:gate
       - uses: actions/upload-artifact@v4
         if: always()
@@ -188,5 +188,6 @@ jobs:
             echo "- Phase 7 UX and accessibility gate: PASS"
             echo "- Recommendation: proceed with staged rollout per docs/PHASE_5_8_PARALLEL_AGENT_PLAN.md"
           } >> "$GITHUB_STEP_SUMMARY"
+
 
 
