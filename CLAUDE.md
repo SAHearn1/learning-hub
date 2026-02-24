@@ -179,3 +179,343 @@ Latest validation run (2026-02-16):
 
 ### Known Issues
 - Intermittent tinypool worker crash during full `vitest run` (environment/memory issue, not a test failure). All tests pass individually.
+
+---
+
+## Swarm Execution Plan — GitHub Issue Creation
+
+Date planned: 2026-02-24
+Status: **PENDING USER APPROVAL — NO CODE WRITTEN YET**
+
+### Overview
+
+A 7-agent parallel swarm will create 22 GitHub issues covering all 12 gaps identified in the gap analysis (2026-02-24). Each agent has an exclusive domain and read-only access to source files. No agent modifies source code, CLAUDE.md, or any repository file. All agent output is limited to `gh issue create` and `gh label create` / `gh api` milestone commands.
+
+Source files and test files are frozen. The build, lint, and test suite must remain green throughout. Agents create tracking artifacts (GitHub issues) only.
+
+---
+
+### Global Agent Rules (Hard Boundaries)
+
+1. **READ ONLY on all source files** — No agent may edit, write, or delete any `.ts`, `.tsx`, `.prisma`, `.json`, `.yml`, or any other repository file.
+2. **Issue creation only** — All productive output is `gh issue create` commands. No `git` commands of any kind.
+3. **Exclusive domains** — Each agent is assigned a non-overlapping set of issue topics and file paths. No agent creates issues in another agent's domain.
+4. **No branch or commit operations** — Agents must not run `git checkout`, `git commit`, `git push`, `git branch`, or any destructive git operation.
+5. **No CLAUDE.md modification** — Only the orchestrator (main Claude Code session) updates CLAUDE.md.
+6. **Idempotency check required** — Before creating any issue, each agent must run `gh issue list --search "<exact title>"` and skip creation if a matching issue already exists.
+7. **No agent spawns sub-agents** — Each swarm agent is a leaf node. No recursive agent launching.
+8. **Labels and milestones are pre-created by orchestrator** — Agents must not create labels or milestones; they reference pre-existing ones only.
+
+---
+
+### Pre-Execution: Orchestrator Creates Labels and Milestones
+
+The main session (not a swarm agent) runs these before launching the swarm:
+
+**Labels:**
+```
+gap-p0           Priority 0 — Pre-launch blocker
+gap-p1           Priority 1 — Sprint 1 post-launch
+gap-p2           Priority 2 — Sprint 2
+test-coverage    Missing API test coverage
+api-consistency  Routes bypassing withApiHandler
+frontend         UI/page-level issues
+schema           Prisma model gaps
+ops              Operations, deployment, SLOs
+monitoring       Observability and alerting
+security         Auth, rate limiting, guardrails
+ci-cd            CI/CD pipeline issues
+```
+
+**Milestones:**
+```
+P0: Pre-Launch    Must be resolved before production traffic
+P1: Sprint 1      First sprint post-launch
+P2: Sprint 2      Second sprint
+```
+
+---
+
+### Agent Assignments
+
+#### Agent A — P0 Frontend Mock Data + Schema
+**Scope:** 2 issues
+**Read-only files (exclusive to this agent):**
+- `src/app/assessments/diagnostic/page.tsx`
+- `src/app/assessments/history/page.tsx`
+- `src/app/educator/students/page.tsx`
+- `src/app/educator/reports/page.tsx`
+- `src/app/educator/classes/page.tsx`
+- `prisma/schema.prisma`
+- `src/app/api/educator/reviews/route.ts`
+
+**Forbidden from touching:** all other files and all other issue domains.
+
+**Issue A-1:** `[P0] Fix hardcoded mock student IDs in assessment pages`
+- Labels: `gap-p0`, `frontend`
+- Milestone: `P0: Pre-Launch`
+- Body: `src/app/assessments/diagnostic/page.tsx` hard-codes `mockData = { studentId: 'student-123', sessionId: 'session-123', … }` and `src/app/assessments/history/page.tsx` hard-codes `const mockStudentId = 'student-123'`. Every authenticated user will see data for a hardcoded ID. Fix: replace with `getCurrentUser()` + DB lookup to derive the authenticated student's real record. Acceptance criteria: (1) diagnostic page derives studentId from authenticated session; (2) history page derives studentId from auth; (3) no hardcoded IDs remain in either file; (4) pages render correctly for any authenticated student role.
+
+**Issue A-2:** `[P0] Add AiSuggestionReview model to Prisma schema`
+- Labels: `gap-p0`, `schema`
+- Milestone: `P0: Pre-Launch`
+- Body: `src/app/api/educator/reviews/route.ts` line 144 contains `// TODO: Add AiSuggestionReview model to Prisma schema`. The `HumanInTheLoopDashboard` component exists but HITL review decisions cannot be persisted. Required fields: `id`, `educatorId`, `sessionId`, `suggestionText`, `decision` (enum: ACCEPTED / REJECTED / MODIFIED), `modifiedText` (nullable), `reviewedAt`, `tenantId`, `createdAt`. Must include tenant isolation and foreign keys to User and Session. Acceptance criteria: (1) model added to `prisma/schema.prisma`; (2) migration generated with `prisma migrate dev`; (3) `POST /api/educator/reviews` writes to table; (4) `GET /api/educator/reviews` returns persisted records; (5) `npx prisma generate` passes with zero errors.
+
+---
+
+#### Agent B — Operations and Production Readiness
+**Scope:** 4 issues
+**Read-only files (exclusive to this agent):**
+- `docs/` (all files)
+- `.github/workflows/`
+- `vercel.json`
+- `package.json`
+- `tests/load/`
+
+**Forbidden from touching:** all other files and all other issue domains.
+
+**Issue B-1:** `[P0] Run prisma migrate deploy for LMS models in production database`
+- Labels: `gap-p0`, `ops`
+- Milestone: `P0: Pre-Launch`
+- Body: LMS models (Course, Class, Assignment, Submission, Grade, FiveRTemplate, ClassEnrollment) were added in local schema and migrations but `prisma migrate deploy` has not been confirmed against the production database. All `/api/lms/*` routes will throw Prisma P1001/P2021 errors in production until this runs. Acceptance criteria: (1) migration applied to production DB confirmed; (2) `/api/lms/courses` returns 200 in production smoke test; (3) confirmation step added to the deployment runbook in `docs/`.
+
+**Issue B-2:** `[P1] Execute baseline load tests and document SLO targets`
+- Labels: `gap-p1`, `ops`
+- Milestone: `P1: Sprint 1`
+- Body: `tests/load/` contains k6 scripts for steady-state, ramp-up, spike, and soak scenarios. No results have been published. SLO targets (p95 latency, error rate, concurrent users) are undefined, meaning alert thresholds in `src/lib/monitoring/alerts.ts` are not calibrated to real baseline numbers. Acceptance criteria: (1) load tests executed against staging environment; (2) p50 / p95 / p99 latency per key route documented; (3) error rate baseline documented; (4) SLO targets (e.g. p95 < 500ms, error rate < 1%) formally defined and added to `docs/`; (5) alert thresholds in `alerts.ts` updated to reflect measured baselines.
+
+**Issue B-3:** `[P1] Confirm and register Stripe webhook endpoint in Stripe dashboard`
+- Labels: `gap-p1`, `ops`
+- Milestone: `P1: Sprint 1`
+- Body: `src/app/api/stripe/webhook/route.ts` is implemented and tested with signature verification, but the Stripe dashboard webhook pointing to the production URL is not confirmed registered. Subscription lifecycle events (`payment_intent.succeeded`, `invoice.payment_failed`, `customer.subscription.deleted`, `customer.subscription.updated`) will not be delivered. Acceptance criteria: (1) webhook endpoint registered in Stripe dashboard for production URL; (2) Stripe test event delivered and handled successfully; (3) subscription lifecycle confirmed end-to-end in staging.
+
+**Issue B-4:** `[P2] Source and deploy brand PNG assets to /public/brand/`
+- Labels: `gap-p2`, `frontend`
+- Milestone: `P2: Sprint 2`
+- Body: `BrandLogo`, `FiveRIcon`, and `FiveRStrip` components in `src/components/brand/` reference image paths under `/public/brand/` that contain no PNG files (RWFW seal + 5 phase icons missing). Components render broken images in production. Acceptance criteria: (1) RWFW seal PNG sourced and placed at correct path; (2) 5 phase icon PNGs sourced (one per R: Regulate, Restore, Reflect, Reason, Reconnect); (3) `BrandLogo` renders in production without broken image; (4) `FiveRIcon` renders all 5 phase icons; (5) `FiveRStrip` renders correctly.
+
+---
+
+#### Agent C — Test Coverage: SRS + IRT Routes
+**Scope:** 2 issues
+**Read-only files (exclusive to this agent):**
+- `src/app/api/srs/due-items/route.ts`
+- `src/app/api/srs/review/route.ts`
+- `src/app/api/srs/stats/route.ts`
+- `src/app/api/srs/warmup/route.ts`
+- `src/app/api/irt/ability/route.ts`
+- `src/app/api/irt/next-item/route.ts`
+- `src/app/api/irt/calibrate/route.ts`
+- `tests/integration/api/` (read for pattern reference)
+- `tests/helpers/`
+
+**Forbidden from touching:** all other files and all other issue domains.
+
+**Issue C-1:** `[P1] Add integration tests for SRS (spaced repetition) API routes`
+- Labels: `gap-p1`, `test-coverage`
+- Milestone: `P1: Sprint 1`
+- Body: All 4 SRS routes have zero test coverage: `GET /api/srs/due-items`, `POST /api/srs/review`, `GET /api/srs/stats`, `GET /api/srs/warmup`. These form the core spaced-repetition learning loop used by students. Required test cases per route: (a) 401 on unauthenticated request; (b) 403 for minor without parental consent; (c) STUDENT role required; (d) happy-path response shape validation; (e) edge cases (empty due-items list, invalid review payload, warmup when no cards exist). Target file: `tests/integration/api/srs.test.ts`. Acceptance criteria: ≥15 tests written, all passing, no existing tests regress.
+
+**Issue C-2:** `[P1] Add integration tests for IRT (adaptive testing) API routes`
+- Labels: `gap-p1`, `test-coverage`
+- Milestone: `P1: Sprint 1`
+- Body: All 3 IRT routes have zero test coverage: `GET /api/irt/ability`, `GET /api/irt/next-item`, `POST /api/irt/calibrate`. These drive adaptive assessment item selection. Required test cases: (a) 401 on unauthenticated; (b) 403 for minor without consent; (c) STUDENT / EDUCATOR RBAC enforcement; (d) ability estimation response shape; (e) next-item selection with and without prior response history; (f) calibration with valid item parameters; (g) calibration with invalid/missing parameters (400). Target file: `tests/integration/api/irt.test.ts`. Acceptance criteria: ≥12 tests written, all passing, no existing tests regress.
+
+---
+
+#### Agent D — Test Coverage: Explore + Assessments + Progress + Curriculum
+**Scope:** 4 issues
+**Read-only files (exclusive to this agent):**
+- `src/app/api/explore/topics/route.ts`
+- `src/app/api/explore/pretest/route.ts`
+- `src/app/api/explore/pretest/next/route.ts`
+- `src/app/api/assessments/route.ts`
+- `src/app/api/assessments/diagnostic/route.ts`
+- `src/app/api/assessments/formative/route.ts`
+- `src/app/api/assessments/summative/route.ts`
+- `src/app/api/progress/route.ts`
+- `src/app/api/progress/standards/[standardId]/route.ts`
+- `src/app/api/curriculum/standards/route.ts`
+- `src/app/api/curriculum/topics/route.ts`
+- `tests/integration/api/` (read for pattern reference)
+- `tests/helpers/`
+
+**Forbidden from touching:** all other files and all other issue domains.
+
+**Issue D-1:** `[P1] Add integration tests for Explore and Pretest API routes`
+- Labels: `gap-p1`, `test-coverage`
+- Milestone: `P1: Sprint 1`
+- Body: `GET /api/explore/topics`, `POST /api/explore/pretest`, and `GET /api/explore/pretest/next` have no direct route contract tests (consent gating is covered by `consent-enforcement.test.ts` but full route behavior is untested). These form the student onboarding path. Required tests: (a) auth enforcement; (b) topic listing filtered by subject; (c) pretest generation for valid subject; (d) pretest generation for invalid/missing subject (400); (e) next-question progression with sessionId; (f) next-question when pretest complete (terminal state). Target file: `tests/integration/api/explore.test.ts`. Acceptance criteria: ≥12 tests passing.
+
+**Issue D-2:** `[P1] Add integration tests for assessment variant routes (diagnostic, formative, summative)`
+- Labels: `gap-p1`, `test-coverage`
+- Milestone: `P1: Sprint 1`
+- Body: `POST /api/assessments/diagnostic`, `POST /api/assessments/formative`, and `POST /api/assessments/summative` have no route-level tests beyond consent enforcement. Required tests: (a) 401 unauthenticated; (b) 403 minor without consent; (c) STUDENT role enforcement; (d) grade-level param validation; (e) AI generation error handling (502 upstream error); (f) response shape validation for each variant. Target file: `tests/integration/api/assessments-variants.test.ts`. Acceptance criteria: ≥15 tests passing.
+
+**Issue D-3:** `[P1] Add integration tests for Progress API routes`
+- Labels: `gap-p1`, `test-coverage`
+- Milestone: `P1: Sprint 1`
+- Body: `GET /api/progress` and `GET /api/progress/standards/[standardId]` have no tests. Both are role-aware: students see their own data, educators see class data, parents see child data. Required tests: (a) 401 unauthenticated; (b) RBAC per role — student/educator/parent each get correct scoped data; (c) student cannot see another student's progress (tenant/ownership scoping); (d) `standardId` not found returns 404; (e) empty progress state returns valid shape. Target file: `tests/integration/api/progress.test.ts`. Acceptance criteria: ≥10 tests passing.
+
+**Issue D-4:** `[P2] Add integration tests for Curriculum API routes`
+- Labels: `gap-p2`, `test-coverage`
+- Milestone: `P2: Sprint 2`
+- Body: `GET /api/curriculum/standards` and `GET /api/curriculum/topics` have no tests. Required tests: (a) 401 unauthenticated; (b) subject filter param; (c) grade-level filter param; (d) combined filters; (e) empty result set returns valid shape; (f) response schema validation. Target file: `tests/integration/api/curriculum.test.ts`. Acceptance criteria: ≥8 tests passing.
+
+---
+
+#### Agent E — Test Coverage: IEP + Compliance + Sessions + Admin + Student
+**Scope:** 4 issues
+**Read-only files (exclusive to this agent):**
+- `src/app/api/iep/context/route.ts`
+- `src/app/api/iep/ingest/route.ts`
+- `src/app/api/compliance/data-rights/route.ts`
+- `src/app/api/sessions/[sessionId]/route.ts`
+- `src/app/api/student/classes/join/route.ts`
+- `src/app/api/admin/nvc-evaluations/route.ts`
+- `src/app/api/admin/nvc-evaluations/[id]/route.ts`
+- `src/app/api/admin/nvc-evaluations/stats/route.ts`
+- `src/app/api/admin/super/overview/route.ts`
+- `src/app/api/admin/super/tenants/[tenantId]/interventions/route.ts`
+- `src/app/api/admin/ingest-logs/route.ts`
+- `src/app/api/admin/trigger-ingest/route.ts`
+- `src/app/api/ingest/route.ts`
+- `tests/integration/api/` (read for pattern reference)
+- `tests/helpers/`
+
+**Forbidden from touching:** all other files and all other issue domains.
+
+**Issue E-1:** `[P1] Add integration tests for IEP routes and compliance/data-rights`
+- Labels: `gap-p1`, `test-coverage`, `security`
+- Milestone: `P1: Sprint 1`
+- Body: `GET /api/iep/context`, `POST /api/iep/ingest`, and `GET|POST /api/compliance/data-rights` have no tests. IEP routes handle sensitive disability accommodation data (IDEA/FERPA); data-rights handles GDPR/FERPA data subject requests — both are high-priority for regulatory compliance. Required tests for IEP: (a) 401 unauthenticated; (b) tenant scoping (educator cannot see another tenant's IEP); (c) ingest with valid/invalid payload; (d) context returns correct accommodations for session. Required tests for data-rights: (a) PLATFORM_ADMIN role enforcement; (b) create data-rights request; (c) retrieve pending requests; (d) invalid request body (400). Target files: `tests/integration/api/iep.test.ts` (≥8 tests) and `tests/integration/api/compliance-data-rights.test.ts` (≥6 tests).
+
+**Issue E-2:** `[P1] Add integration tests for sessions/[sessionId] GET and student/classes/join`
+- Labels: `gap-p1`, `test-coverage`
+- Milestone: `P1: Sprint 1`
+- Body: `GET /api/sessions/[sessionId]` and `POST /api/student/classes/join` have no tests. Required tests for sessions: (a) 401 unauthenticated; (b) student can only access own sessions (403 on other student's session); (c) valid sessionId returns session record; (d) invalid/nonexistent sessionId returns 404. Required tests for join: (a) 401 unauthenticated; (b) STUDENT role required; (c) valid class code joins successfully; (d) invalid code returns 404; (e) already enrolled returns 409 conflict. Extend `tests/integration/api/sessions.test.ts` or create `tests/integration/api/student-classes.test.ts`. Acceptance criteria: ≥8 tests passing.
+
+**Issue E-3:** `[P2] Add integration tests for Admin NVC evaluation routes`
+- Labels: `gap-p2`, `test-coverage`
+- Milestone: `P2: Sprint 2`
+- Body: `GET|POST /api/admin/nvc-evaluations`, `GET|PATCH /api/admin/nvc-evaluations/[id]`, and `GET /api/admin/nvc-evaluations/stats` have no tests. These support educator NVC compliance reviews. Required tests: (a) PLATFORM_ADMIN role enforcement (403 for other roles); (b) list evaluations with pagination; (c) create evaluation with valid payload; (d) update evaluation status; (e) stats endpoint returns aggregated counts; (f) invalid ID returns 404. Target file: `tests/integration/api/admin-nvc.test.ts`. Acceptance criteria: ≥10 tests passing.
+
+**Issue E-4:** `[P2] Add integration tests for remaining admin ops and ingest routes`
+- Labels: `gap-p2`, `test-coverage`
+- Milestone: `P2: Sprint 2`
+- Body: `GET /api/admin/super/overview`, `GET /api/admin/super/tenants/[tenantId]/interventions`, `GET /api/admin/ingest-logs`, `POST /api/admin/trigger-ingest`, and `POST /api/ingest` (N8N bearer token) have no tests. Required tests: (a) PLATFORM_ADMIN role enforcement for all super-admin routes; (b) bearer token validation for `POST /api/ingest` (401 on missing/invalid token); (c) `trigger-ingest` returns expected response; (d) `ingest-logs` returns paginated list; (e) `super/overview` returns tenant summary. Target file: `tests/integration/api/admin-ops.test.ts`. Acceptance criteria: ≥10 tests passing.
+
+---
+
+#### Agent F — API Handler Consistency
+**Scope:** 1 issue
+**Read-only files (exclusive to this agent):**
+- `src/app/api/compliance/consent/route.ts`
+- `src/app/api/compliance/data-rights/route.ts`
+- `src/app/api/assessments/diagnostic/route.ts`
+- `src/app/api/assessments/formative/route.ts`
+- `src/app/api/assessments/summative/route.ts`
+- `src/app/api/irt/ability/route.ts`
+- `src/app/api/irt/next-item/route.ts`
+- `src/app/api/irt/calibrate/route.ts`
+- `src/app/api/iep/ingest/route.ts`
+- `src/lib/api-handler.ts`
+- `src/lib/api-errors.ts`
+
+**Forbidden from touching:** all other files and all other issue domains.
+
+**Issue F-1:** `[P1] Migrate 8 API routes to withApiHandler pattern`
+- Labels: `gap-p1`, `api-consistency`
+- Milestone: `P1: Sprint 1`
+- Body: The following 8 routes use manual `NextResponse` error construction instead of `withApiHandler`, losing automatic request-ID propagation, structured AppError codes, latency observability, and rate-limit header injection: (1) `compliance/consent`, (2) `compliance/data-rights`, (3) `assessments/diagnostic`, (4) `assessments/formative`, (5) `assessments/summative`, (6) `irt/ability`, (7) `irt/next-item`, (8) `irt/calibrate`. **Do not change:** `webhooks/clerk`, `stripe/webhook`, or `health` — these are intentional exceptions with custom validation requirements. Migration pattern: wrap each handler function with `withApiHandler(async (req) => { … })`, replace raw `NextResponse.json({ error: … }, { status: … })` with `throw new AppError(…)` subclasses, ensure `X-Request-Id` header appears on all responses. Acceptance criteria: (1) all 8 routes wrapped; (2) existing behavior preserved; (3) error responses use `AppError` subclasses with machine-readable codes; (4) `X-Request-Id` present on all responses; (5) latency metric recorded; (6) all existing tests still pass.
+
+---
+
+#### Agent G — Monitoring, Rate Limiting, Guardrails, CI/CD, Billing
+**Scope:** 5 issues
+**Read-only files (exclusive to this agent):**
+- `src/lib/monitoring/metrics.ts`
+- `src/lib/monitoring/alerts.ts`
+- `src/lib/monitoring.ts`
+- `src/app/api/metrics/route.ts`
+- `src/app/api/billing/checkout/route.ts`
+- `src/app/api/billing/portal/route.ts`
+- `src/app/api/stripe/checkout/route.ts`
+- `src/app/api/stripe/portal/route.ts`
+- `src/lib/ai/guardrails/` (all files)
+- `src/app/api/chat/route.ts`
+- `src/lib/compliance/data-retention.ts`
+- `src/app/api/admin/data-retention/route.ts`
+- `.github/workflows/e2e-tests.yml`
+- `playwright.config.ts`
+
+**Forbidden from touching:** all other files and all other issue domains.
+
+**Issue G-1:** `[P0] Fix metrics backend for multi-instance production deployments`
+- Labels: `gap-p0`, `monitoring`
+- Milestone: `P0: Pre-Launch`
+- Body: `src/lib/monitoring/metrics.ts` is a single-process in-memory store (LRU max 1,000 samples per metric). In Vercel serverless or multi-container deployments, each instance holds separate counters — cross-instance aggregation is impossible and metrics reset on cold start. Alert rules in `alerts.ts` (error rate > 5%, P95 response > 1s, concurrent users > 90) will not fire correctly in production because they evaluate against one instance's partial view. The `recordMetric()` and `trackHttpRequest()` call sites already exist throughout the codebase — only the storage backend needs replacing. Required: replace in-memory store with an external time-series aggregator (Datadog StatsD client already imported, or OpenTelemetry Collector push). `GET /api/metrics` must return aggregated cross-instance data. Acceptance criteria: (1) metrics backend writes to external aggregator; (2) `/api/metrics` returns cross-instance aggregated data; (3) alert rules evaluated against real aggregated values; (4) cold start does not reset historical metrics.
+
+**Issue G-2:** `[P1] Implement tenant-level rate limiting and burst quotas`
+- Labels: `gap-p1`, `security`
+- Milestone: `P1: Sprint 1`
+- Body: Current rate limiting is per-IP-per-path (middleware) and optionally per-route (withApiHandler). A single tenant with many users can exhaust AI token budgets or DB connection pools beyond any single-IP limit. `AIUsageLedger` and `src/lib/usage-limits.ts` already track per-tenant token consumption but are not plumbed into a hard tenant-level API throttle that returns 429. Required: add tenant-scoped sliding window check (reading tenant usage from Redis or AIUsageLedger) inside `withApiHandler` or middleware. Returns 429 with `Retry-After` header when tenant quota is exceeded. Quota must be configurable per tenant tier. Acceptance criteria: (1) tenant-level burst protection enforced; (2) 429 returned with `Retry-After` header on quota breach; (3) per-tenant quota configurable; (4) at least 5 integration test cases cover quota enforcement.
+
+**Issue G-3:** `[P1] Wire guardrail post-checks into chat streaming pipeline`
+- Labels: `gap-p1`, `security`
+- Milestone: `P1: Sprint 1`
+- Body: `src/app/api/chat/route.ts` line 512 contains `// TODO: Add guardrail post-checks and HITL review when implemented`. Pre-generation guardrails run correctly (content-safety, IEP safety, 5R compliance). Post-generation checks — verifying LLM output before streaming to the client — are not wired. `hallucination-detector.ts` and post-generation content-safety modules exist in `src/lib/ai/guardrails/` but are not applied to outbound responses. Required: apply guardrail post-checks to the generated response (either buffer chunks for analysis or apply streaming post-filter); trigger HITL flagging in `AiSuggestionReview` when a post-check threshold is exceeded. Acceptance criteria: (1) post-checks applied before response reaches client; (2) HITL flagging triggered on threshold breach; (3) all 9 existing chat integration tests still pass; (4) new test cases cover the post-check rejection path.
+
+**Issue G-4:** `[P1] Fix E2E CI pipeline to run with Clerk test credentials`
+- Labels: `gap-p1`, `ci-cd`
+- Milestone: `P1: Sprint 1`
+- Body: 20 Playwright spec files in `tests/e2e/` cover student learning flows, educator dashboard, parent views, accessibility, and navigation. `.github/workflows/e2e-tests.yml` exists but Clerk test-mode credentials are not confirmed working in CI. Phase 0 remaining work in `CLAUDE.md` confirms: "Full E2E auth fixture run in CI with Clerk test credentials." Without a green CI E2E run, regressions in auth-gated pages go undetected on every push. Required: (1) Clerk test API key and frontend key configured as CI secrets; (2) E2E workflow executes all 20 spec files on CI runner with a test database; (3) auth fixture creates and cleans up test users successfully; (4) workflow passes on `main` branch. Acceptance criteria: green E2E CI run on `main` with all 20 spec files executed and reported.
+
+**Issue G-5:** `[P2] Consolidate duplicate billing/stripe routes and schedule data retention`
+- Labels: `gap-p2`, `ops`
+- Milestone: `P2: Sprint 2`
+- Body: Two issues bundled for Sprint 2 ops cleanup: **(1) Duplicate billing routes:** `/api/billing/checkout` and `/api/billing/portal` have `__tests__/route.test.ts` files; `/api/stripe/checkout` and `/api/stripe/portal` appear to duplicate these with no tests and no clear documentation of the distinction. Audit both sets: if they are aliases, remove the duplicate and add redirects or consolidate; if they serve different purposes, document the distinction and add tests to the untested set. **(2) Data retention scheduling:** `src/lib/compliance/data-retention.ts` and `/api/admin/data-retention` exist but no cron job is configured — the retention policy is a no-op until scheduled. Add a Vercel Cron or external scheduler trigger. Acceptance criteria: (1) billing/stripe route duplication resolved with decision documented in `docs/`; (2) data retention cron configured, verified in staging, and documented.
+
+---
+
+### Execution Sequence
+
+```
+Phase 1 (Orchestrator only, sequential):
+  ├── Create all 11 labels via gh label create
+  ├── Create 3 milestones via gh api
+  └── Verify labels and milestones exist
+
+Phase 2 (7 agents, fully parallel):
+  ├── Agent A  →  Issues A-1, A-2       (P0 Frontend + Schema)
+  ├── Agent B  →  Issues B-1..B-4       (Ops + Production)
+  ├── Agent C  →  Issues C-1, C-2       (SRS + IRT tests)
+  ├── Agent D  →  Issues D-1..D-4       (Explore + Assess + Progress + Curriculum tests)
+  ├── Agent E  →  Issues E-1..E-4       (IEP + Compliance + Sessions + Admin tests)
+  ├── Agent F  →  Issue  F-1            (API handler consistency)
+  └── Agent G  →  Issues G-1..G-5       (Monitoring + Rate limit + Guardrails + CI + Billing)
+
+Phase 3 (Orchestrator only, sequential):
+  ├── gh issue list --limit 100 --json number,title
+  ├── Verify all 22 issues created
+  └── Update this CLAUDE.md section with issue numbers and status
+```
+
+### Issue Count Summary
+
+| Agent | Domain                                       | Issues | Priority |
+|-------|----------------------------------------------|--------|----------|
+| A     | Frontend mock data + Prisma schema           | 2      | P0       |
+| B     | Operations + production deployment           | 4      | P0/P1/P2 |
+| C     | SRS + IRT test coverage                      | 2      | P1       |
+| D     | Explore + Assessments + Progress + Curriculum | 4      | P1/P2    |
+| E     | IEP + Compliance + Sessions + Admin tests    | 4      | P1/P2    |
+| F     | API handler consistency (8 routes)           | 1      | P1       |
+| G     | Monitoring + Rate limiting + Guardrails + CI/CD + Billing | 5 | P0/P1/P2 |
+| **Total** |                                          | **22** |          |
+
+### Stability Guarantee
+
+- No agent touches source files. Build, lint, and test suite remain at current passing state throughout.
+- All 22 issues are tracking artifacts only — no code is written until issues are reviewed and assigned.
+- The swarm does not run until this plan receives explicit user approval.
