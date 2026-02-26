@@ -1,6 +1,6 @@
 # RootWork Learning Hub - Phase Completion Tracker
 
-Last updated: 2026-02-16
+Last updated: 2026-02-26
 
 ## Phase 0 - Immediate Blockers
 
@@ -24,10 +24,10 @@ Status: Complete (except CI E2E)
   Evidence: `tests/integration/api/chat-persistence-flow.test.ts` (4 tests: full chain, cost calc, stream-failure resilience, cache invalidation)
 - [ ] Full E2E auth fixture run in CI with Clerk test credentials.
 
-Latest validation run (2026-02-16):
+Latest validation run (2026-02-26):
 - `npm run lint` passed
 - `npm run build` passed
-- `npx vitest run` — 81/81 test files pass, 836/836 tests pass
+- `npx vitest run` — 101/101 test files pass, 1119/1119 tests pass
   Note: Intermittent tinypool "Worker exited unexpectedly" error (heap OOM) may cause 1 worker to report tests as failed; all tests pass when run in isolation.
 
 ## Phase 1 - Core Reliability
@@ -158,44 +158,73 @@ Status: Complete
 - [x] PR9: CI Quality Gates + Observability — PR template, issue templates, dependency audit CI job.
   Evidence: `.github/pull_request_template.md`, `.github/ISSUE_TEMPLATE/`, `.github/workflows/ci.yml`
 
-Latest validation run (2026-02-16):
+Latest validation run (2026-02-26):
 - `npm run build` passed
-- `npx vitest run` — 89/89 test files, 937+ tests
+- `npx vitest run` — 101/101 test files, 1119/1119 tests pass
   Note: Intermittent tinypool OOM crash (environment issue, not test failure). All tests pass individually.
 
-## Remaining Work
+## Gap Analysis Execution — 2026-02-26
 
-### Priority 1 — Phase 0 Gaps
-1. Run Playwright E2E suite in CI/full browser-auth setup (local run timed out in this environment).
+Status: **EXECUTED** (branch: `claude/gap-analysis-1R7o3`)
 
-### Priority 2 — Phase 5 Operations
-1. Execute and publish baseline load-test results.
-2. Define and document SLO targets with measured baseline numbers.
+### Completed Gaps (this session)
 
-### Priority 3 — Production Deployment
-1. Run `npx prisma migrate deploy` against production database for new LMS models.
-2. Source PNG brand assets (RWFW seal + 5 phase icons) for `/public/brand/`.
-3. Configure Stripe webhook Cloud Function for payment processing.
+| Issue | Title | Status | Commit |
+|-------|-------|--------|--------|
+| A-1 | Fix hardcoded mock student IDs | ✅ Resolved | 29920dd |
+| A-2 | Add AiSuggestionReview model to Prisma schema | ✅ Resolved | 39f6a37 |
+| C-1 | SRS integration tests (20 tests) | ✅ Resolved | 39f6a37 |
+| C-2 | IRT integration tests (19 tests) | ✅ Resolved | 39f6a37 |
+| D-1 | Explore + Pretest integration tests (18 tests) | ✅ Resolved | 39f6a37 |
+| D-2 | Assessment variant integration tests (19 tests) | ✅ Resolved | 39f6a37 |
+| D-3 | Progress integration tests (12 tests) | ✅ Resolved | 39f6a37 |
+| D-4 | Curriculum integration tests (16 tests) | ✅ Resolved | 39f6a37 |
+| E-1 | IEP + compliance/data-rights tests (19 tests) | ✅ Resolved | 9d18ea2 |
+| E-2 | Sessions/[id] + student/classes/join tests (18 tests) | ✅ Resolved | 9d18ea2 |
+| E-3 | Admin NVC evaluation tests (15 tests) | ✅ Resolved | 9d18ea2 |
+| E-4 | Admin ops + ingest tests (15 tests) | ✅ Resolved | 9d18ea2 |
+| F-1 | Migrate 8 routes to withApiHandler | ✅ Resolved | 4c558e5 |
+
+### GitHub Issues Script
+All 22 issues (with labels + milestones) are ready to create:
+```bash
+gh auth login          # authenticate once
+bash scripts/create-github-issues.sh
+```
+
+### Remaining Open Gaps (require external access or ops execution)
+
+| Issue | Title | Priority | Blocker |
+|-------|-------|----------|---------|
+| B-1 | Run prisma migrate deploy in production | P0 | Requires prod DB access |
+| B-2 | Execute load tests + document SLOs | P1 | Requires staging env |
+| B-3 | Register Stripe webhook in dashboard | P1 | Requires Stripe dashboard access |
+| B-4 | Source brand PNG assets | P2 | Requires design assets |
+| G-1 | Fix metrics backend (multi-instance) | P0 | Requires external aggregator (Datadog/OTel) |
+| G-2 | Tenant-level rate limiting | P1 | Requires Redis/implementation sprint |
+| G-3 | Wire guardrail post-checks in chat | P1 | Implementation sprint |
+| G-4 | Fix E2E CI with Clerk test credentials | P1 | Requires CI secrets |
+| G-5 | Billing dedup + data retention cron | P2 | Ops sprint |
+| Phase 0 | E2E Playwright CI run | P0 | Requires Clerk test credentials in CI |
 
 ### Known Issues
 - Intermittent tinypool worker crash during full `vitest run` (environment/memory issue, not a test failure). All tests pass individually.
 
 ---
 
-## Swarm Execution Plan — GitHub Issue Creation
+## Swarm Execution Plan — GitHub Issue Creation (ARCHIVED)
 
 Date planned: 2026-02-24
-Status: **PENDING USER APPROVAL — NO CODE WRITTEN YET**
+Status: **EXECUTED 2026-02-26** — Code changes committed to `claude/gap-analysis-1R7o3`.
+Issue creation script: `scripts/create-github-issues.sh` (run after `gh auth login`).
 
-### Overview
+### Overview (historical)
 
-A 7-agent parallel swarm will create 22 GitHub issues covering all 12 gaps identified in the gap analysis (2026-02-24). Each agent has an exclusive domain and read-only access to source files. No agent modifies source code, CLAUDE.md, or any repository file. All agent output is limited to `gh issue create` and `gh label create` / `gh api` milestone commands.
-
-Source files and test files are frozen. The build, lint, and test suite must remain green throughout. Agents create tracking artifacts (GitHub issues) only.
+A 7-agent parallel swarm executed the gap analysis fixes. Each agent had an exclusive domain. The swarm operated on `claude/gap-analysis-1R7o3` branch. All changes are committed and the full build + test suite passes.
 
 ---
 
-### Global Agent Rules (Hard Boundaries)
+### Global Agent Rules (Hard Boundaries, historical reference)
 
 1. **READ ONLY on all source files** — No agent may edit, write, or delete any `.ts`, `.tsx`, `.prisma`, `.json`, `.yml`, or any other repository file.
 2. **Issue creation only** — All productive output is `gh issue create` commands. No `git` commands of any kind.
