@@ -18,12 +18,11 @@ export const POST = withApiHandler(async (req: NextRequest) => {
     throw new ValidationError('Missing required parameter: subject');
   }
 
-    if (!['MATH', 'SCIENCE', 'LANGUAGE_ARTS', 'FINANCIAL_LITERACY'].includes(subject)) {
-      return NextResponse.json(
-        { error: 'Invalid subject. Must be MATH, SCIENCE, or LANGUAGE_ARTS' },
-        { status: 400 }
-      );
-    }
+  if (!['MATH', 'SCIENCE', 'LANGUAGE_ARTS', 'FINANCIAL_LITERACY'].includes(subject)) {
+    throw new ValidationError(
+      'Invalid subject. Must be MATH, SCIENCE, LANGUAGE_ARTS, or FINANCIAL_LITERACY'
+    );
+  }
 
   // Calibrate items
   const calibrationResults = await calibrateAllItems(subject, minResponses);

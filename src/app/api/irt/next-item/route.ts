@@ -12,21 +12,22 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server';
-import { NotFoundError } from '@/lib/api-errors';
+import { NotFoundError, ForbiddenError, BadRequestError } from '@/lib/api-errors';
 import { selectNextItem, getStudentAbility } from '@/lib/irt';
 import type { Subject, BloomsLevel } from '@prisma/client';
 import { requireUser } from '@/lib/auth';
 import { db } from '@/lib/db';
 import { hasRequiredMinorConsent } from '@/lib/compliance';
+import { withApiHandler } from '@/lib/api-handler';
 
-export async function POST(request: NextRequest) {
+export const POST = withApiHandler(async (req: NextRequest) => {
   const user = await requireUser();
 
   if (!hasRequiredMinorConsent(user.isMinor, user.consentStatus)) {
-    return NextResponse.json({ error: 'Parental consent required before adaptive item selection' }, { status: 403 });
+    throw new ForbiddenError('Parental consent required before adaptive item selection');
   }
 
-  const body = await request.json();
+  const body = await req.json();
   const {
     studentId,
     subject,
@@ -36,16 +37,12 @@ export async function POST(request: NextRequest) {
   } = body;
 
   if (!studentId || !subject) {
-    return NextResponse.json(
-      { error: 'Missing required parameters: studentId and subject' },
-      { status: 400 }
-    );
+    throw new BadRequestError('Missing required parameters: studentId and subject');
   }
 
   if (!['MATH', 'SCIENCE', 'LANGUAGE_ARTS', 'FINANCIAL_LITERACY'].includes(subject)) {
-    return NextResponse.json(
-      { error: 'Invalid subject. Must be MATH, SCIENCE, LANGUAGE_ARTS, or FINANCIAL_LITERACY' },
-      { status: 400 }
+    throw new BadRequestError(
+      'Invalid subject. Must be MATH, SCIENCE, LANGUAGE_ARTS, or FINANCIAL_LITERACY'
     );
   }
 
@@ -62,15 +59,15 @@ export async function POST(request: NextRequest) {
   });
 
   if (!student) {
-    return NextResponse.json({ error: 'Student not found' }, { status: 404 });
+    throw new NotFoundError('Student not found');
   }
 
   if (user.role === 'STUDENT' && student.user.id !== user.id) {
-    return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+    throw new ForbiddenError('Forbidden');
   }
 
   if (user.role !== 'STUDENT' && student.user.tenantId !== user.tenantId) {
-    return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+    throw new ForbiddenError('Forbidden');
   }
 
   let theta = currentTheta;
@@ -88,8 +85,10 @@ export async function POST(request: NextRequest) {
   });
 
   if (!selectedItem) {
-    throw new NotFoundError('No suitable items found. Please calibrate more items or expand item pool');
+    throw new NotFoundError(
+      'No suitable items found. Please calibrate more items or expand item pool'
+    );
   }
 
   return NextResponse.json(selectedItem);
-}
+});

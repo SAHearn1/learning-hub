@@ -81,15 +81,13 @@ describe('POST /api/compliance/data-rights', () => {
     mockRequiresGuardianForDataRequest.mockReturnValue(false);
   });
 
-  it('returns 500 when not authenticated (route has generic catch — not wrapped with withApiHandler)', async () => {
-    // Note: this route uses a manual try/catch that swallows AuthenticationError as 500.
-    // Issue F-1 tracks migrating it to withApiHandler so auth errors propagate as 401.
+  it('returns 401 when not authenticated', async () => {
     const { AuthenticationError } = await import('@/lib/api-errors');
     mockRequireUser.mockRejectedValue(new AuthenticationError());
     const { POST } = await import('@/app/api/compliance/data-rights/route');
 
     const res = await POST(makeRequest({ requestType: 'EXPORT' }));
-    expect(res.status).toBe(500);
+    expect(res.status).toBe(401);
   });
 
   it('returns 400 for invalid requestType', async () => {

@@ -1,11 +1,13 @@
 import { ConsentStatus } from '@prisma/client';
-import { NextResponse } from 'next/server';
+import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
 import { requireUser } from '@/lib/auth';
 import { db } from '@/lib/db';
 import { canManageMinorConsent, isConsentStatusTransitionAllowed } from '@/lib/compliance';
 import { appendImmutableAuditLog } from '@/lib/audit';
 import { assertTenantAccess } from '@/lib/rbac';
+import { withApiHandler } from '@/lib/api-handler';
+import { ForbiddenError, NotFoundError, BadRequestError } from '@/lib/api-errors';
 
 const updateConsentSchema = z.object({
   studentUserId: z.string().min(1),
@@ -14,13 +16,13 @@ const updateConsentSchema = z.object({
   notes: z.string().max(1000).optional(),
 });
 
-export async function GET(request: Request) {
+export const GET = withApiHandler(async (req: NextRequest) => {
   const actor = await requireUser();
-  const url = new URL(request.url);
+  const url = new URL(req.url);
   const studentUserId = url.searchParams.get('studentUserId') || actor.id;
 
   if (studentUserId !== actor.id && !canManageMinorConsent(actor.role)) {
-    return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+    throw new ForbiddenError('Forbidden');
   }
 
   const student = await db.user.findUnique({
@@ -37,91 +39,82 @@ export async function GET(request: Request) {
   });
 
   if (!student) {
-    return NextResponse.json({ error: 'Student not found' }, { status: 404 });
+    throw new NotFoundError('Student not found');
   }
 
   if (student.tenantId !== actor.tenantId) {
-    return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+    throw new ForbiddenError('Forbidden');
   }
 
   return NextResponse.json({ consent: student });
-}
+});
 
-export async function POST(request: Request) {
-  try {
-    const actor = await requireUser();
-    if (!canManageMinorConsent(actor.role)) {
-      return NextResponse.json({ error: 'Only parent/admin roles can update consent status' }, { status: 403 });
-    }
-
-    const payload = updateConsentSchema.parse(await request.json());
-
-    const student = await db.user.findUnique({
-      where: { id: payload.studentUserId },
-      select: {
-        id: true,
-        tenantId: true,
-        isMinor: true,
-        consentStatus: true,
-      },
-    });
-
-    if (!student) {
-      return NextResponse.json({ error: 'Student not found' }, { status: 404 });
-    }
-
-    try {
-      assertTenantAccess(actor.role, actor.tenantId, student.tenantId);
-    } catch {
-      return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
-    }
-
-    if (!student.isMinor) {
-      return NextResponse.json({ error: 'Consent workflow applies only to minor accounts' }, { status: 400 });
-    }
-
-    const currentStatus = student.consentStatus as ConsentStatus | null;
-    if (!isConsentStatusTransitionAllowed(currentStatus, payload.consentStatus)) {
-      return NextResponse.json(
-        { error: `Invalid consent status transition from ${currentStatus ?? 'UNSET'} to ${payload.consentStatus}` },
-        { status: 400 }
-      );
-    }
-
-    const updated = await db.user.update({
-      where: { id: student.id },
-      data: {
-        consentStatus: payload.consentStatus,
-      },
-      select: {
-        id: true,
-        firstName: true,
-        lastName: true,
-        consentStatus: true,
-        updatedAt: true,
-      },
-    });
-
-    await appendImmutableAuditLog({
-      tenantId: student.tenantId,
-      userId: actor.id,
-      action: 'CONSENT_STATUS_UPDATED',
-      resource: 'User',
-      resourceId: student.id,
-      metadata: {
-        previousStatus: currentStatus,
-        nextStatus: payload.consentStatus,
-        method: payload.method,
-        notes: payload.notes,
-      },
-    });
-
-    return NextResponse.json({ success: true, consent: updated });
-  } catch (error) {
-    if (error instanceof z.ZodError) {
-      return NextResponse.json({ error: 'Invalid request payload' }, { status: 400 });
-    }
-
-    return NextResponse.json({ error: 'Unable to update consent status' }, { status: 500 });
+export const POST = withApiHandler(async (req: NextRequest) => {
+  const actor = await requireUser();
+  if (!canManageMinorConsent(actor.role)) {
+    throw new ForbiddenError('Only parent/admin roles can update consent status');
   }
-}
+
+  const payload = updateConsentSchema.parse(await req.json());
+
+  const student = await db.user.findUnique({
+    where: { id: payload.studentUserId },
+    select: {
+      id: true,
+      tenantId: true,
+      isMinor: true,
+      consentStatus: true,
+    },
+  });
+
+  if (!student) {
+    throw new NotFoundError('Student not found');
+  }
+
+  try {
+    assertTenantAccess(actor.role, actor.tenantId, student.tenantId);
+  } catch {
+    throw new ForbiddenError('Forbidden');
+  }
+
+  if (!student.isMinor) {
+    throw new BadRequestError('Consent workflow applies only to minor accounts');
+  }
+
+  const currentStatus = student.consentStatus as ConsentStatus | null;
+  if (!isConsentStatusTransitionAllowed(currentStatus, payload.consentStatus)) {
+    throw new BadRequestError(
+      `Invalid consent status transition from ${currentStatus ?? 'UNSET'} to ${payload.consentStatus}`
+    );
+  }
+
+  const updated = await db.user.update({
+    where: { id: student.id },
+    data: {
+      consentStatus: payload.consentStatus,
+    },
+    select: {
+      id: true,
+      firstName: true,
+      lastName: true,
+      consentStatus: true,
+      updatedAt: true,
+    },
+  });
+
+  await appendImmutableAuditLog({
+    tenantId: student.tenantId,
+    userId: actor.id,
+    action: 'CONSENT_STATUS_UPDATED',
+    resource: 'User',
+    resourceId: student.id,
+    metadata: {
+      previousStatus: currentStatus,
+      nextStatus: payload.consentStatus,
+      method: payload.method,
+      notes: payload.notes,
+    },
+  });
+
+  return NextResponse.json({ success: true, consent: updated });
+});
