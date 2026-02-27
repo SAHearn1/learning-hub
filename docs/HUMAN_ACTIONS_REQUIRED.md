@@ -71,14 +71,29 @@ Create a 1200x630px Open Graph image for social sharing using brand assets. Plac
 ## Priority 4 — CI/CD
 
 ### 9. Clerk E2E Test Credentials
-Add Clerk test instance credentials to GitHub Actions secrets:
-- `CLERK_PUBLISHABLE_KEY_TEST`
-- `CLERK_SECRET_KEY_TEST`
-- `E2E_CLERK_PUBLISHABLE_KEY_TEST` (optional E2E-specific override)
-- `E2E_CLERK_SECRET_KEY_TEST` (optional E2E-specific override)
-- `CLERK_TESTING_TOKEN`
-- `E2E_CLERK_USER_*` variables
-- Full checklist: `docs/ops/ISSUES_174_176_178_179_192.md`
+Add Clerk test instance credentials to GitHub Actions secrets.
+
+Required secrets (blocking issue #192 / Phase 0):
+
+| Secret | Required |
+| --- | --- |
+| `CLERK_TESTING_TOKEN` | Yes |
+| `E2E_CLERK_USER_STUDENT_EMAIL` | Yes |
+| `E2E_CLERK_USER_STUDENT_PASSWORD` | Yes |
+| `E2E_CLERK_USER_EDUCATOR_EMAIL` | Yes |
+| `E2E_CLERK_USER_EDUCATOR_PASSWORD` | Yes |
+| `E2E_CLERK_USER_PARENT_EMAIL` | Yes |
+| `E2E_CLERK_USER_PARENT_PASSWORD` | Yes |
+| `E2E_CLERK_USER_ADMIN_EMAIL` | Yes |
+| `E2E_CLERK_USER_ADMIN_PASSWORD` | Yes |
+| `CLERK_PUBLISHABLE_KEY_TEST` | Yes |
+| `CLERK_SECRET_KEY_TEST` | Yes |
+
+Optional overrides:
+- `E2E_CLERK_PUBLISHABLE_KEY_TEST`
+- `E2E_CLERK_SECRET_KEY_TEST`
+
+After provisioning, trigger `.github/workflows/e2e-tests.yml`; Phase 0 should go green automatically once these values are present.
 
 ### 10. Custom Domain
 Configure custom domain in Vercel:
