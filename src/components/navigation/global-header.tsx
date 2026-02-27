@@ -26,7 +26,15 @@ function splitNav(items: readonly NavItem[]) {
 
 export async function GlobalHeader() {
   const authEnabled = Boolean(process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY);
-  const user = authEnabled ? await getCurrentUser() : null;
+  let user = null;
+
+  if (authEnabled) {
+    try {
+      user = await getCurrentUser();
+    } catch (error) {
+      console.error('GlobalHeader: failed to load current user, rendering signed-out navigation.', error);
+    }
+  }
 
   const signedIn = Boolean(user);
 
@@ -172,4 +180,3 @@ export async function GlobalHeader() {
     </header>
   );
 }
-

@@ -10,8 +10,22 @@ These actions require a human with GitHub/Vercel/Datadog/Clerk access. They are 
 4. Confirm workflow succeeds and includes `npx prisma migrate deploy` completion.
 
 Completion criteria:
+
 - [ ] `PRODUCTION_DATABASE_URL` exists in production environment secrets.
 - [ ] Latest **Production DB Migrate** workflow run is green.
+
+## P0 — Configure Clerk live keys in Vercel production
+
+1. Vercel → Project → **Settings** → **Environment Variables** → **Production**.
+2. Set `NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY=pk_live_...`.
+3. Set `CLERK_SECRET_KEY=sk_live_...`.
+4. Redeploy production to ensure runtime picks up updated auth keys.
+
+Completion criteria:
+
+- [ ] `NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY` is set to a `pk_live_...` value in Vercel production environment.
+- [ ] `CLERK_SECRET_KEY` is set to a `sk_live_...` value in Vercel production environment.
+- [ ] Production redeploy completed after key updates.
 
 ## P0 — Provision Datadog and wire Vercel runtime metrics
 
@@ -25,6 +39,7 @@ Completion criteria:
 5. Redeploy production so runtime picks up new env vars.
 
 Completion criteria:
+
 - [ ] `DATADOG_STATSD_HOST` is present in Vercel production environment.
 - [ ] Metrics are visible in Datadog for the deployed app.
 
@@ -34,23 +49,24 @@ GitHub → Repo **Settings** → **Secrets and variables** → **Actions** → *
 
 Required secrets:
 
-| Secret |
-| --- |
-| `CLERK_TESTING_TOKEN` |
-| `E2E_CLERK_USER_STUDENT_EMAIL` |
-| `E2E_CLERK_USER_STUDENT_PASSWORD` |
-| `E2E_CLERK_USER_EDUCATOR_EMAIL` |
+| Secret                             |
+| ---------------------------------- |
+| `CLERK_TESTING_TOKEN`              |
+| `E2E_CLERK_USER_STUDENT_EMAIL`     |
+| `E2E_CLERK_USER_STUDENT_PASSWORD`  |
+| `E2E_CLERK_USER_EDUCATOR_EMAIL`    |
 | `E2E_CLERK_USER_EDUCATOR_PASSWORD` |
-| `E2E_CLERK_USER_PARENT_EMAIL` |
-| `E2E_CLERK_USER_PARENT_PASSWORD` |
-| `E2E_CLERK_USER_ADMIN_EMAIL` |
-| `E2E_CLERK_USER_ADMIN_PASSWORD` |
-| `CLERK_PUBLISHABLE_KEY_TEST` |
-| `CLERK_SECRET_KEY_TEST` |
+| `E2E_CLERK_USER_PARENT_EMAIL`      |
+| `E2E_CLERK_USER_PARENT_PASSWORD`   |
+| `E2E_CLERK_USER_ADMIN_EMAIL`       |
+| `E2E_CLERK_USER_ADMIN_PASSWORD`    |
+| `CLERK_PUBLISHABLE_KEY_TEST`       |
+| `CLERK_SECRET_KEY_TEST`            |
 
 Then trigger `.github/workflows/e2e-tests.yml` and verify Phase 0 is green.
 
 Completion criteria:
+
 - [ ] All 11 required Clerk secrets are configured in GitHub Actions.
 - [ ] Latest E2E CI run passes without missing-secret failures.
 
@@ -62,6 +78,7 @@ Completion criteria:
 4. Confirm `docs/status/load-testing/slo-baseline-latest.md` is generated and attached to workflow summary/artifact output.
 
 Completion criteria:
+
 - [ ] Staging load-test baseline workflow run is green.
 - [ ] SLO baseline markdown artifact is published.
 
@@ -72,12 +89,14 @@ Completion criteria:
 3. Verify filenames, dimensions, and transparent backgrounds match the manifest.
 
 Completion criteria:
+
 - [ ] All required brand PNGs have approved source files.
 - [ ] `public/brand/` matches `public/brand/ASSET_MANIFEST.md` requirements.
 
 ## Roll-up Checklist
 
 - [ ] P0: Production database secret + migration workflow completed
+- [ ] P0: Clerk live keys configured in Vercel production + redeploy completed
 - [ ] P0: Datadog provisioned + Vercel StatsD env configured
 - [ ] P0: 11 Clerk GitHub Action secrets configured + E2E green
 - [ ] P1: Staging load-test baseline run completed + SLO markdown published
