@@ -70,9 +70,23 @@ Create a 1200x630px Open Graph image for social sharing using brand assets. Plac
 ## Priority 4 — CI/CD
 
 ### 9. Clerk E2E Test Credentials
-Add Clerk test instance credentials to GitHub Actions secrets:
-- `CLERK_TESTING_TOKEN`
-- `E2E_CLERK_USER_*` variables
+Add Clerk test instance credentials to GitHub Actions secrets (Settings → Secrets and variables → Actions):
+
+| Secret | Description |
+|--------|-------------|
+| `E2E_CLERK_PUBLISHABLE_KEY_TEST` | Clerk test-mode publishable key (dedicated E2E instance) |
+| `E2E_CLERK_SECRET_KEY_TEST` | Clerk test-mode secret key (dedicated E2E instance) |
+| `CLERK_TESTING_TOKEN` | Bypasses Clerk CAPTCHA/bot-detection during E2E sign-in |
+| `E2E_CLERK_USER_STUDENT_EMAIL` | Test student email address |
+| `E2E_CLERK_USER_STUDENT_PASSWORD` | Test student password |
+| `E2E_CLERK_USER_EDUCATOR_EMAIL` | Test educator email address |
+| `E2E_CLERK_USER_EDUCATOR_PASSWORD` | Test educator password |
+| `E2E_CLERK_USER_PARENT_EMAIL` | Test parent email address |
+| `E2E_CLERK_USER_PARENT_PASSWORD` | Test parent password |
+| `E2E_CLERK_USER_ADMIN_EMAIL` | Test admin email address |
+| `E2E_CLERK_USER_ADMIN_PASSWORD` | Test admin password |
+
+See `docs/ops/ISSUES_174_176_178_179_192.md` (issue #192 section) for full provisioning instructions.
 
 ### 10. Custom Domain
 Configure custom domain in Vercel:

@@ -19,8 +19,8 @@ interface TestUser {
 export const TEST_USERS: Record<UserRole, TestUser> = {
   STUDENT: {
     clerkUserId: '',
-    email: process.env.E2E_CLERK_STUDENT_EMAIL ?? 'student.test@rootwork.edu',
-    password: process.env.E2E_CLERK_STUDENT_PASSWORD ?? 'RwFw$E2e_Ts9!xQp',
+    email: process.env.E2E_CLERK_USER_STUDENT_EMAIL ?? 'student.test@rootwork.edu',
+    password: process.env.E2E_CLERK_USER_STUDENT_PASSWORD ?? 'RwFw$E2e_Ts9!xQp',
     role: 'STUDENT',
     firstName: 'Alex',
     lastName: 'TestStudent',
@@ -28,8 +28,8 @@ export const TEST_USERS: Record<UserRole, TestUser> = {
   },
   EDUCATOR: {
     clerkUserId: '',
-    email: process.env.E2E_CLERK_EDUCATOR_EMAIL ?? 'educator.test@rootwork.edu',
-    password: process.env.E2E_CLERK_EDUCATOR_PASSWORD ?? 'RwFw$E2e_Ts9!xQp',
+    email: process.env.E2E_CLERK_USER_EDUCATOR_EMAIL ?? 'educator.test@rootwork.edu',
+    password: process.env.E2E_CLERK_USER_EDUCATOR_PASSWORD ?? 'RwFw$E2e_Ts9!xQp',
     role: 'EDUCATOR',
     firstName: 'Sarah',
     lastName: 'TestEducator',
@@ -37,8 +37,8 @@ export const TEST_USERS: Record<UserRole, TestUser> = {
   },
   PARENT: {
     clerkUserId: '',
-    email: process.env.E2E_CLERK_PARENT_EMAIL ?? 'parent.test@rootwork.edu',
-    password: process.env.E2E_CLERK_PARENT_PASSWORD ?? 'RwFw$E2e_Ts9!xQp',
+    email: process.env.E2E_CLERK_USER_PARENT_EMAIL ?? 'parent.test@rootwork.edu',
+    password: process.env.E2E_CLERK_USER_PARENT_PASSWORD ?? 'RwFw$E2e_Ts9!xQp',
     role: 'PARENT',
     firstName: 'Maria',
     lastName: 'TestParent',
@@ -46,8 +46,8 @@ export const TEST_USERS: Record<UserRole, TestUser> = {
   },
   SCHOOL_ADMIN: {
     clerkUserId: '',
-    email: process.env.E2E_CLERK_ADMIN_EMAIL ?? 'admin.test@rootwork.edu',
-    password: process.env.E2E_CLERK_ADMIN_PASSWORD ?? 'RwFw$E2e_Ts9!xQp',
+    email: process.env.E2E_CLERK_USER_ADMIN_EMAIL ?? 'admin.test@rootwork.edu',
+    password: process.env.E2E_CLERK_USER_ADMIN_PASSWORD ?? 'RwFw$E2e_Ts9!xQp',
     role: 'SCHOOL_ADMIN',
     firstName: 'Robert',
     lastName: 'TestAdmin',
