@@ -42,6 +42,19 @@ setup('validate required E2E environment variables', async () => {
 
 const STORAGE_DIR = path.join(__dirname, '../../playwright/.clerk');
 
+const requiredClerkEnvForCi = [
+  'CLERK_TESTING_TOKEN',
+  'E2E_CLERK_USER_STUDENT_EMAIL',
+  'E2E_CLERK_USER_STUDENT_PASSWORD',
+  'E2E_CLERK_USER_EDUCATOR_EMAIL',
+  'E2E_CLERK_USER_EDUCATOR_PASSWORD',
+  'E2E_CLERK_USER_PARENT_EMAIL',
+  'E2E_CLERK_USER_PARENT_PASSWORD',
+  'E2E_CLERK_USER_ADMIN_EMAIL',
+  'E2E_CLERK_USER_ADMIN_PASSWORD',
+];
+
+
 export const storageStatePaths: Record<string, string> = {
   STUDENT: path.join(STORAGE_DIR, 'student.json'),
   EDUCATOR: path.join(STORAGE_DIR, 'educator.json'),
@@ -51,6 +64,13 @@ export const storageStatePaths: Record<string, string> = {
 
 // Step 1: Initialize Clerk testing token
 setup('initialize clerk testing', async ({}) => {
+  if (process.env.CI === 'true') {
+    const missing = requiredClerkEnvForCi.filter((name) => !process.env[name]);
+    if (missing.length > 0) {
+      throw new Error(`Missing required Clerk E2E env vars in CI: ${missing.join(', ')}`);
+    }
+  }
+
   await clerkSetup();
 });
 

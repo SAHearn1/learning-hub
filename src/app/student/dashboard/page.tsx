@@ -32,10 +32,33 @@ async function getStudentId(user: Awaited<ReturnType<typeof getCurrentUser>>) {
 }
 
 export default async function StudentDashboardPage() {
+  if (!process.env.DATABASE_URL) {
+    return (
+      <main className="mx-auto max-w-2xl space-y-3 px-6 py-10">
+        <h1 className="text-2xl font-bold text-[#0C3B2E]">Setup Required</h1>
+        <p className="text-sm text-neutral-700">
+          This environment is missing <code className="rounded bg-neutral-100 px-1">DATABASE_URL</code>, so the student
+          dashboard cannot load.
+        </p>
+        <p className="text-sm text-neutral-700">
+          Set <code className="rounded bg-neutral-100 px-1">DATABASE_URL</code> (and typically{' '}
+          <code className="rounded bg-neutral-100 px-1">DIRECT_URL</code> for migrations) in your deployment or local
+          environment.
+        </p>
+      </main>
+    );
+  }
+
   const { userId } = await auth();
   if (!userId) redirect('/sign-in');
 
-  const user = await getCurrentUser();
+  let user;
+  try {
+    user = await getCurrentUser();
+  } catch (err) {
+    console.error('StudentDashboard: failed to get user, falling back to /learn', err);
+    redirect('/learn');
+  }
   if (!user) redirect('/sign-in');
   if (user.role !== 'STUDENT') redirect('/dashboard');
 

@@ -32,12 +32,8 @@ jobs:
     
     env:
       DATABASE_URL: postgresql://rootwork:rootwork_e2e@localhost:5432/rootwork_test?schema=public
-      # Dedicated E2E Clerk keys; fall back to shared test secrets if unset
-      NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY: ${{ secrets.E2E_CLERK_PUBLISHABLE_KEY_TEST || secrets.CLERK_PUBLISHABLE_KEY_TEST }}
-      CLERK_SECRET_KEY: ${{ secrets.E2E_CLERK_SECRET_KEY_TEST || secrets.CLERK_SECRET_KEY_TEST }}
-      CLERK_SECRET_KEY_TEST: ${{ secrets.E2E_CLERK_SECRET_KEY_TEST || secrets.CLERK_SECRET_KEY_TEST }}
-      NEXT_PUBLIC_CLERK_FRONTEND_API: ${{ secrets.CLERK_FRONTEND_API_TEST }}
-      # CLERK_TESTING_TOKEN bypasses CAPTCHA / bot-detection during E2E sign-in
+      NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY: ${{ secrets.CLERK_PUBLISHABLE_KEY_TEST }}
+      CLERK_SECRET_KEY: ${{ secrets.CLERK_SECRET_KEY_TEST }}
       CLERK_TESTING_TOKEN: ${{ secrets.CLERK_TESTING_TOKEN }}
       ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY || 'sk-ant-placeholder' }}
       STRIPE_SECRET_KEY: ${{ secrets.STRIPE_SECRET_KEY_TEST || 'sk_test_placeholder' }}
@@ -46,16 +42,14 @@ jobs:
       N8N_WEBHOOK_SECRET: test_webhook_secret
       NEXT_PUBLIC_APP_URL: http://localhost:3000
       BASE_URL: http://localhost:3000
-      E2E_TEST_TENANT_ID: test-tenant-id
-      # Per-role user credentials consumed by tests/helpers/auth.ts
-      E2E_CLERK_USER_STUDENT_EMAIL: ${{ secrets.E2E_CLERK_USER_STUDENT_EMAIL || 'student.test@rootwork.edu' }}
-      E2E_CLERK_USER_STUDENT_PASSWORD: ${{ secrets.E2E_CLERK_USER_STUDENT_PASSWORD || '' }}
-      E2E_CLERK_USER_EDUCATOR_EMAIL: ${{ secrets.E2E_CLERK_USER_EDUCATOR_EMAIL || 'educator.test@rootwork.edu' }}
-      E2E_CLERK_USER_EDUCATOR_PASSWORD: ${{ secrets.E2E_CLERK_USER_EDUCATOR_PASSWORD || '' }}
-      E2E_CLERK_USER_PARENT_EMAIL: ${{ secrets.E2E_CLERK_USER_PARENT_EMAIL || 'parent.test@rootwork.edu' }}
-      E2E_CLERK_USER_PARENT_PASSWORD: ${{ secrets.E2E_CLERK_USER_PARENT_PASSWORD || '' }}
-      E2E_CLERK_USER_ADMIN_EMAIL: ${{ secrets.E2E_CLERK_USER_ADMIN_EMAIL || 'admin.test@rootwork.edu' }}
-      E2E_CLERK_USER_ADMIN_PASSWORD: ${{ secrets.E2E_CLERK_USER_ADMIN_PASSWORD || '' }}
+      E2E_CLERK_USER_STUDENT_EMAIL: ${{ secrets.E2E_CLERK_USER_STUDENT_EMAIL }}
+      E2E_CLERK_USER_STUDENT_PASSWORD: ${{ secrets.E2E_CLERK_USER_STUDENT_PASSWORD }}
+      E2E_CLERK_USER_EDUCATOR_EMAIL: ${{ secrets.E2E_CLERK_USER_EDUCATOR_EMAIL }}
+      E2E_CLERK_USER_EDUCATOR_PASSWORD: ${{ secrets.E2E_CLERK_USER_EDUCATOR_PASSWORD }}
+      E2E_CLERK_USER_PARENT_EMAIL: ${{ secrets.E2E_CLERK_USER_PARENT_EMAIL }}
+      E2E_CLERK_USER_PARENT_PASSWORD: ${{ secrets.E2E_CLERK_USER_PARENT_PASSWORD }}
+      E2E_CLERK_USER_ADMIN_EMAIL: ${{ secrets.E2E_CLERK_USER_ADMIN_EMAIL }}
+      E2E_CLERK_USER_ADMIN_PASSWORD: ${{ secrets.E2E_CLERK_USER_ADMIN_PASSWORD }}
     
     steps:
       - name: Checkout code

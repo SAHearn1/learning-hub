@@ -14,13 +14,13 @@ interface TestUser {
   dbRole: string;
 }
 
-// Credentials can be overridden via CI secrets to use real Clerk test accounts.
-// Fall back to well-known local defaults for dev/smoke runs.
+const fromEnv = (key: string, fallback: string) => process.env[key] || fallback;
+
 export const TEST_USERS: Record<UserRole, TestUser> = {
   STUDENT: {
     clerkUserId: '',
-    email: process.env.E2E_CLERK_USER_STUDENT_EMAIL ?? 'student.test@rootwork.edu',
-    password: process.env.E2E_CLERK_USER_STUDENT_PASSWORD ?? 'RwFw$E2e_Ts9!xQp',
+    email: fromEnv('E2E_CLERK_USER_STUDENT_EMAIL', 'student.test@rootwork.edu'),
+    password: fromEnv('E2E_CLERK_USER_STUDENT_PASSWORD', 'changeme-student-password'),
     role: 'STUDENT',
     firstName: 'Alex',
     lastName: 'TestStudent',
@@ -28,8 +28,8 @@ export const TEST_USERS: Record<UserRole, TestUser> = {
   },
   EDUCATOR: {
     clerkUserId: '',
-    email: process.env.E2E_CLERK_USER_EDUCATOR_EMAIL ?? 'educator.test@rootwork.edu',
-    password: process.env.E2E_CLERK_USER_EDUCATOR_PASSWORD ?? 'RwFw$E2e_Ts9!xQp',
+    email: fromEnv('E2E_CLERK_USER_EDUCATOR_EMAIL', 'educator.test@rootwork.edu'),
+    password: fromEnv('E2E_CLERK_USER_EDUCATOR_PASSWORD', 'changeme-educator-password'),
     role: 'EDUCATOR',
     firstName: 'Sarah',
     lastName: 'TestEducator',
@@ -37,8 +37,8 @@ export const TEST_USERS: Record<UserRole, TestUser> = {
   },
   PARENT: {
     clerkUserId: '',
-    email: process.env.E2E_CLERK_USER_PARENT_EMAIL ?? 'parent.test@rootwork.edu',
-    password: process.env.E2E_CLERK_USER_PARENT_PASSWORD ?? 'RwFw$E2e_Ts9!xQp',
+    email: fromEnv('E2E_CLERK_USER_PARENT_EMAIL', 'parent.test@rootwork.edu'),
+    password: fromEnv('E2E_CLERK_USER_PARENT_PASSWORD', 'changeme-parent-password'),
     role: 'PARENT',
     firstName: 'Maria',
     lastName: 'TestParent',
@@ -46,8 +46,8 @@ export const TEST_USERS: Record<UserRole, TestUser> = {
   },
   SCHOOL_ADMIN: {
     clerkUserId: '',
-    email: process.env.E2E_CLERK_USER_ADMIN_EMAIL ?? 'admin.test@rootwork.edu',
-    password: process.env.E2E_CLERK_USER_ADMIN_PASSWORD ?? 'RwFw$E2e_Ts9!xQp',
+    email: fromEnv('E2E_CLERK_USER_ADMIN_EMAIL', 'admin.test@rootwork.edu'),
+    password: fromEnv('E2E_CLERK_USER_ADMIN_PASSWORD', 'changeme-admin-password'),
     role: 'SCHOOL_ADMIN',
     firstName: 'Robert',
     lastName: 'TestAdmin',
