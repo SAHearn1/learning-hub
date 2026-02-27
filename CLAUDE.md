@@ -192,20 +192,32 @@ gh auth login          # authenticate once
 bash scripts/create-github-issues.sh
 ```
 
-### Remaining Open Gaps (require external access or ops execution)
+### Additional Code-Complete Gaps (committed 7db10d2 / 78d4935)
 
-| Issue | Title | Priority | Blocker |
-|-------|-------|----------|---------|
-| B-1 | Run prisma migrate deploy in production | P0 | Requires prod DB access |
-| B-2 | Execute load tests + document SLOs | P1 | Requires staging env |
-| B-3 | Register Stripe webhook in dashboard | P1 | Requires Stripe dashboard access |
-| B-4 | Source brand PNG assets | P2 | Requires design assets |
-| G-1 | Fix metrics backend (multi-instance) | P0 | Requires external aggregator (Datadog/OTel) |
-| G-2 | Tenant-level rate limiting | P1 | Requires Redis/implementation sprint |
-| G-3 | Wire guardrail post-checks in chat | P1 | Implementation sprint |
-| G-4 | Fix E2E CI with Clerk test credentials | P1 | Requires CI secrets |
-| G-5 | Billing dedup + data retention cron | P2 | Ops sprint |
-| Phase 0 | E2E Playwright CI run | P0 | Requires Clerk test credentials in CI |
+| Issue | Title | Status | Notes |
+|-------|-------|--------|-------|
+| G-2 (#190) | Tenant-level rate limiting | ✅ Code done | In-memory sliding window in middleware; Redis upgrade deferred |
+| G-3 (#191) | Wire guardrail post-checks in chat | ✅ Code done | Post-checks + HITL flagging wired into streaming pipeline |
+| G-5 (#193) | Billing dedup + data retention cron | ✅ Code done | `/api/cron/data-retention` + `vercel.json` cron + billing docs |
+| G-1 (#189) | Metrics Datadog push wired | ✅ Code done | Needs `DATADOG_STATSD_HOST` env var provisioned |
+| G-4 (#192) | E2E CI workflow + auth helpers | ✅ Code done | Needs 11 Clerk secrets in GitHub Actions |
+| B-1 (#174) | Production DB migration workflow | ✅ Code done | Needs `PRODUCTION_DATABASE_URL` secret + workflow trigger |
+| B-2 (#176) | Load-test baseline CI workflow | ✅ Code done | Needs staging env + manual trigger |
+| B-3 (#178) | Stripe webhook runbook | ✅ Closed | Documented in `docs/ops/`; `gh issue close 178` pending CLI auth |
+| B-4 (#179) | Brand asset manifest | ✅ Code done | Needs PNG files from design — see `public/brand/ASSET_MANIFEST.md` |
+
+### Remaining Open Gaps (human/external action only)
+
+All remaining items require provisioning outside the codebase. See `docs/HUMAN_ACTIONS_REQUIRED.md` for exact steps.
+
+| Issue | Title | Priority | Action required |
+|-------|-------|----------|----------------|
+| B-1 (#174) | Run prisma migrate deploy in production | P0 | Set `PRODUCTION_DATABASE_URL` secret → trigger `Production DB Migration` workflow |
+| G-1 (#189) | Fix metrics backend (multi-instance) | P0 | Provision Datadog → set `DATADOG_STATSD_HOST` in Vercel env vars |
+| Phase 0 / G-4 (#192) | E2E Playwright CI run | P0 | Add 11 `E2E_CLERK_USER_*` + `CLERK_TESTING_TOKEN` secrets to GitHub Actions |
+| B-2 (#176) | Execute load tests + document SLOs | P1 | Trigger `Load Test Baseline` workflow against staging env |
+| B-4 (#179) | Source brand PNG assets | P2 | Source PNGs from design team per `public/brand/ASSET_MANIFEST.md` |
+| B-3 (#178) | Close Stripe webhook GitHub issue | — | `gh issue close 178` once CLI authenticated |
 
 ### Known Issues
 - Intermittent tinypool worker crash during full `vitest run` (environment/memory issue, not a test failure). All tests pass individually.
