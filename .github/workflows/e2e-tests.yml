@@ -125,9 +125,8 @@ jobs:
     env:
       DATABASE_URL: postgresql://rootwork:rootwork_ci@localhost:5432/rootwork_test?schema=public
       DIRECT_URL: postgresql://rootwork:rootwork_ci@localhost:5432/rootwork_test?schema=public
-      # Leave NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY unset so AuthProvider skips ClerkProvider
-      # (pk_test_placeholder causes Next.js 15 headers() sync errors at runtime)
-      CLERK_SECRET_KEY: sk_test_placeholder
+      NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY: ${{ secrets.CLERK_PUBLISHABLE_KEY_TEST }}
+      CLERK_SECRET_KEY: ${{ secrets.CLERK_SECRET_KEY_TEST }}
       ANTHROPIC_API_KEY: sk-ant-placeholder
       OPENAI_API_KEY: sk-openai-placeholder
       STRIPE_SECRET_KEY: sk_test_placeholder

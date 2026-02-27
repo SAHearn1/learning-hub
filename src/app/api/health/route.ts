@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server';
 import { db } from '@/lib/db';
 import { getRedisClient } from '@/lib/redis/client';
 
-export async function GET(_req?: Request) {
+export async function GET() {
   const checks: Record<string, string> = {};
 
   // Database health
