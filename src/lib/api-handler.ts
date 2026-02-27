@@ -100,7 +100,7 @@ export function withApiHandler(
 ) {
   return async (
     req: NextRequest,
-    routeContext?: { params?: Promise<Record<string, string>> },
+    routeContext: { params: Promise<Record<string, string>> },
   ): Promise<NextResponse | Response> => {
     const requestId =
       req.headers.get('x-request-id') || crypto.randomUUID();
@@ -148,9 +148,7 @@ export function withApiHandler(
     // --- Resolve params ---------------------------------------------------
     let params: Record<string, string> = {};
     try {
-      if (routeContext?.params) {
-        params = await routeContext.params;
-      }
+      params = await routeContext.params;
     } catch {
       // params resolution failed – leave empty
     }
