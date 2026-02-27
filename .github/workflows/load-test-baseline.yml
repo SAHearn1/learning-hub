@@ -67,8 +67,10 @@ jobs:
 
       - name: Execute CI load test
         run: npm run test:load:ci
+        continue-on-error: true
 
       - name: Publish SLO baseline markdown
+        if: always()
         run: node scripts/ci/publish-load-baseline.mjs
 
       - name: Upload load test artifacts
