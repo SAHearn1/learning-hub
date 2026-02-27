@@ -32,8 +32,10 @@ jobs:
     
     env:
       DATABASE_URL: postgresql://rootwork:rootwork_e2e@localhost:5432/rootwork_test?schema=public
-      NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY: ${{ secrets.CLERK_PUBLISHABLE_KEY_TEST || 'pk_test_placeholder' }}
-      CLERK_SECRET_KEY: ${{ secrets.CLERK_SECRET_KEY_TEST || 'sk_test_placeholder' }}
+      NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY: ${{ secrets.CLERK_PUBLISHABLE_KEY_TEST }}
+      CLERK_SECRET_KEY: ${{ secrets.CLERK_SECRET_KEY_TEST }}
+      CLERK_SECRET_KEY_TEST: ${{ secrets.CLERK_SECRET_KEY_TEST }}
+      NEXT_PUBLIC_CLERK_FRONTEND_API: ${{ secrets.CLERK_FRONTEND_API_TEST }}
       ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY || 'sk-ant-placeholder' }}
       STRIPE_SECRET_KEY: ${{ secrets.STRIPE_SECRET_KEY_TEST || 'sk_test_placeholder' }}
       NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY: ${{ secrets.STRIPE_PUBLISHABLE_KEY_TEST || 'pk_test_placeholder' }}
@@ -41,6 +43,15 @@ jobs:
       N8N_WEBHOOK_SECRET: test_webhook_secret
       NEXT_PUBLIC_APP_URL: http://localhost:3000
       BASE_URL: http://localhost:3000
+      E2E_TEST_TENANT_ID: test-tenant-id
+      E2E_CLERK_STUDENT_EMAIL: ${{ secrets.E2E_CLERK_STUDENT_EMAIL || 'student.test@rootwork.edu' }}
+      E2E_CLERK_STUDENT_PASSWORD: ${{ secrets.E2E_CLERK_STUDENT_PASSWORD || '' }}
+      E2E_CLERK_EDUCATOR_EMAIL: ${{ secrets.E2E_CLERK_EDUCATOR_EMAIL || 'educator.test@rootwork.edu' }}
+      E2E_CLERK_EDUCATOR_PASSWORD: ${{ secrets.E2E_CLERK_EDUCATOR_PASSWORD || '' }}
+      E2E_CLERK_PARENT_EMAIL: ${{ secrets.E2E_CLERK_PARENT_EMAIL || 'parent.test@rootwork.edu' }}
+      E2E_CLERK_PARENT_PASSWORD: ${{ secrets.E2E_CLERK_PARENT_PASSWORD || '' }}
+      E2E_CLERK_ADMIN_EMAIL: ${{ secrets.E2E_CLERK_ADMIN_EMAIL || 'admin.test@rootwork.edu' }}
+      E2E_CLERK_ADMIN_PASSWORD: ${{ secrets.E2E_CLERK_ADMIN_PASSWORD || '' }}
     
     steps:
       - name: Checkout code

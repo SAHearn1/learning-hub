@@ -14,11 +14,13 @@ interface TestUser {
   dbRole: string;
 }
 
+// Credentials can be overridden via CI secrets to use real Clerk test accounts.
+// Fall back to well-known local defaults for dev/smoke runs.
 export const TEST_USERS: Record<UserRole, TestUser> = {
   STUDENT: {
     clerkUserId: '',
-    email: 'student.test@rootwork.edu',
-    password: 'RwFw$E2e_Ts9!xQp',
+    email: process.env.E2E_CLERK_STUDENT_EMAIL ?? 'student.test@rootwork.edu',
+    password: process.env.E2E_CLERK_STUDENT_PASSWORD ?? 'RwFw$E2e_Ts9!xQp',
     role: 'STUDENT',
     firstName: 'Alex',
     lastName: 'TestStudent',
@@ -26,8 +28,8 @@ export const TEST_USERS: Record<UserRole, TestUser> = {
   },
   EDUCATOR: {
     clerkUserId: '',
-    email: 'educator.test@rootwork.edu',
-    password: 'RwFw$E2e_Ts9!xQp',
+    email: process.env.E2E_CLERK_EDUCATOR_EMAIL ?? 'educator.test@rootwork.edu',
+    password: process.env.E2E_CLERK_EDUCATOR_PASSWORD ?? 'RwFw$E2e_Ts9!xQp',
     role: 'EDUCATOR',
     firstName: 'Sarah',
     lastName: 'TestEducator',
@@ -35,8 +37,8 @@ export const TEST_USERS: Record<UserRole, TestUser> = {
   },
   PARENT: {
     clerkUserId: '',
-    email: 'parent.test@rootwork.edu',
-    password: 'RwFw$E2e_Ts9!xQp',
+    email: process.env.E2E_CLERK_PARENT_EMAIL ?? 'parent.test@rootwork.edu',
+    password: process.env.E2E_CLERK_PARENT_PASSWORD ?? 'RwFw$E2e_Ts9!xQp',
     role: 'PARENT',
     firstName: 'Maria',
     lastName: 'TestParent',
@@ -44,8 +46,8 @@ export const TEST_USERS: Record<UserRole, TestUser> = {
   },
   SCHOOL_ADMIN: {
     clerkUserId: '',
-    email: 'admin.test@rootwork.edu',
-    password: 'RwFw$E2e_Ts9!xQp',
+    email: process.env.E2E_CLERK_ADMIN_EMAIL ?? 'admin.test@rootwork.edu',
+    password: process.env.E2E_CLERK_ADMIN_PASSWORD ?? 'RwFw$E2e_Ts9!xQp',
     role: 'SCHOOL_ADMIN',
     firstName: 'Robert',
     lastName: 'TestAdmin',
