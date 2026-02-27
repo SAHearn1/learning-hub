@@ -1,3 +1,16 @@
+/**
+ * POST /api/billing/checkout
+ *
+ * Higher-level checkout endpoint used by the application UI.
+ * Accepts a subscription TIER name (STARTER | PROFESSIONAL | ENTERPRISE)
+ * and supports both JSON and HTML form submissions (browser redirects).
+ * Delegates to the @/lib/billing abstraction layer which encapsulates
+ * Stripe API details and tier-to-priceId mapping.
+ *
+ * Distinct from /api/stripe/checkout which is a lower-level endpoint
+ * that accepts a raw Stripe priceId and is intended for direct API
+ * integrations where the caller manages its own priceId mapping.
+ */
 import { SubscriptionTier } from '@prisma/client';
 import { NextResponse } from 'next/server';
 import { z } from 'zod';

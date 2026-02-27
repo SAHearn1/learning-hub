@@ -16,8 +16,11 @@ const isPublicRoute = createRouteMatcher([
 
 const RATE_LIMIT_WINDOW_MS = 60_000;
 const RATE_LIMIT_MAX_REQUESTS = Number(process.env.API_RATE_LIMIT_PER_MINUTE ?? 120);
+// Per-user (tenant-proxy) rate limit: authenticated API calls per minute
+const TENANT_RATE_LIMIT_MAX = Number(process.env.TENANT_RATE_LIMIT_PER_MINUTE ?? 200);
 const RATE_LIMIT_MAX_ENTRIES = 10_000;
 const rateLimitStore = new Map<string, { count: number; resetAt: number }>();
+const tenantRateLimitStore = new Map<string, { count: number; resetAt: number }>();
 
 const isApiRoute = (pathname: string) => pathname.startsWith('/api/');
 const isWebhookRoute = (pathname: string) => pathname.startsWith('/api/webhooks/');
@@ -98,11 +101,48 @@ const applySecurityHeaders = (response: NextResponse) => {
   return response;
 };
 
+const enforceTenantRateLimit = (request: NextRequest, userId: string | null) => {
+  const pathname = request.nextUrl.pathname;
+  if (!isApiRoute(pathname) || isWebhookRoute(pathname) || !userId) return null;
+
+  const now = Date.now();
+  const key = `tenant:${userId}`;
+  const current = tenantRateLimitStore.get(key);
+
+  if (!current || now >= current.resetAt) {
+    tenantRateLimitStore.set(key, { count: 1, resetAt: now + RATE_LIMIT_WINDOW_MS });
+    return null;
+  }
+
+  if (current.count >= TENANT_RATE_LIMIT_MAX) {
+    return NextResponse.json(
+      { error: 'Tenant rate limit exceeded', code: 'TENANT_RATE_LIMIT_EXCEEDED', retryAfterMs: current.resetAt - now },
+      {
+        status: 429,
+        headers: {
+          'Retry-After': Math.ceil((current.resetAt - now) / 1000).toString(),
+          'X-RateLimit-Scope': 'tenant',
+        },
+      },
+    );
+  }
+
+  current.count += 1;
+  return null;
+};
+
 export default clerkMiddleware((auth, req) => {
   // Rate limiting for API routes
   const rateLimitResponse = enforceRateLimit(req);
   if (rateLimitResponse) {
     return applySecurityHeaders(rateLimitResponse);
+  }
+
+  // Per-user (tenant-proxy) rate limiting for authenticated API routes
+  const { userId } = auth();
+  const tenantRateLimitResponse = enforceTenantRateLimit(req, userId);
+  if (tenantRateLimitResponse) {
+    return applySecurityHeaders(tenantRateLimitResponse);
   }
 
   // CSRF protection for mutating API requests

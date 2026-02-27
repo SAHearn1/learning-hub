@@ -178,54 +178,44 @@ describe('POST /api/iep/ingest', () => {
   });
 
   it('returns 401 when not authenticated', async () => {
-    mockAuth.mockResolvedValue({ userId: null });
+    const { AuthenticationError } = await import('@/lib/api-errors');
+    mockRequireUser.mockRejectedValue(new AuthenticationError());
     const { POST } = await import('@/app/api/iep/ingest/route');
 
     const req = new NextRequest('http://localhost/api/iep/ingest', {
       method: 'POST',
       body: JSON.stringify(validPayload),
     });
-    const res = await POST(req);
+    const res = await POST(req, routeCtx);
     expect(res.status).toBe(401);
   });
 
   it('returns 403 for STUDENT role', async () => {
-    mockAuth.mockResolvedValue({ userId: 'clerk_stu' });
-    mockUserFindUnique.mockResolvedValue({ id: 'user_stu', role: 'STUDENT', tenantId: 'tenant_1' });
+    mockRequireUser.mockResolvedValue(studentUser);
     const { POST } = await import('@/app/api/iep/ingest/route');
 
     const req = new NextRequest('http://localhost/api/iep/ingest', {
       method: 'POST',
       body: JSON.stringify(validPayload),
     });
-    const res = await POST(req);
+    const res = await POST(req, routeCtx);
     expect(res.status).toBe(403);
   });
 
   it('returns 400 for invalid request payload', async () => {
-    mockAuth.mockResolvedValue({ userId: 'clerk_edu' });
-    mockUserFindUnique.mockResolvedValue({
-      id: 'user_edu',
-      role: 'EDUCATOR',
-      tenantId: 'tenant_1',
-    });
+    mockRequireUser.mockResolvedValue(educatorUser);
     const { POST } = await import('@/app/api/iep/ingest/route');
 
     const req = new NextRequest('http://localhost/api/iep/ingest', {
       method: 'POST',
       body: JSON.stringify({ studentId: 'stu_1' }), // missing required fields
     });
-    const res = await POST(req);
+    const res = await POST(req, routeCtx);
     expect(res.status).toBe(400);
   });
 
   it('returns 404 when student does not exist', async () => {
-    mockAuth.mockResolvedValue({ userId: 'clerk_edu' });
-    mockUserFindUnique.mockResolvedValue({
-      id: 'user_edu',
-      role: 'EDUCATOR',
-      tenantId: 'tenant_1',
-    });
+    mockRequireUser.mockResolvedValue(educatorUser);
     mockStudentFindUnique.mockResolvedValue(null);
     const { POST } = await import('@/app/api/iep/ingest/route');
 
@@ -233,17 +223,12 @@ describe('POST /api/iep/ingest', () => {
       method: 'POST',
       body: JSON.stringify(validPayload),
     });
-    const res = await POST(req);
+    const res = await POST(req, routeCtx);
     expect(res.status).toBe(404);
   });
 
   it('returns 403 when student belongs to different tenant', async () => {
-    mockAuth.mockResolvedValue({ userId: 'clerk_edu' });
-    mockUserFindUnique.mockResolvedValue({
-      id: 'user_edu',
-      role: 'EDUCATOR',
-      tenantId: 'tenant_1',
-    });
+    mockRequireUser.mockResolvedValue(educatorUser);
     mockStudentFindUnique.mockResolvedValue({
       id: 'stu_1',
       user: { tenantId: 'tenant_OTHER' },
@@ -254,17 +239,12 @@ describe('POST /api/iep/ingest', () => {
       method: 'POST',
       body: JSON.stringify(validPayload),
     });
-    const res = await POST(req);
+    const res = await POST(req, routeCtx);
     expect(res.status).toBe(403);
   });
 
   it('ingests IEP document successfully for EDUCATOR role', async () => {
-    mockAuth.mockResolvedValue({ userId: 'clerk_edu' });
-    mockUserFindUnique.mockResolvedValue({
-      id: 'user_edu',
-      role: 'EDUCATOR',
-      tenantId: 'tenant_1',
-    });
+    mockRequireUser.mockResolvedValue(educatorUser);
     mockStudentFindUnique.mockResolvedValue({
       id: 'stu_1',
       user: { tenantId: 'tenant_1' },
@@ -281,7 +261,7 @@ describe('POST /api/iep/ingest', () => {
       method: 'POST',
       body: JSON.stringify(validPayload),
     });
-    const res = await POST(req);
+    const res = await POST(req, routeCtx);
     expect(res.status).toBe(200);
     const body = await res.json();
     expect(body.documentId).toBe('doc_1');

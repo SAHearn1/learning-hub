@@ -20,6 +20,7 @@ import { requireUser } from '@/lib/auth';
 import { NotFoundError, ForbiddenError, BadRequestError, PaymentRequiredError } from '@/lib/api-errors';
 import { hasRequiredMinorConsent } from '@/lib/compliance';
 import { featureFlags } from '@/lib/feature-flags';
+import { GuardrailsEngine } from '@/lib/ai/guardrails';
 import type { SourceCitation } from '@/types/chat';
 
 const chatRequestSchema = z.object({
@@ -509,10 +510,43 @@ export const POST = withApiHandler(async (req) => {
         });
         await invalidateSessionCache(session.id);
 
-        // TODO: Add guardrail post-checks and HITL review when implemented
-        // if (!postCheck.passed || postCheck.confidenceScore < 0.7) {
-        //   await createSuggestionReview({ ... });
-        // }
+        // Post-generation guardrail checks + HITL flagging (async, non-blocking)
+        Promise.resolve().then(async () => {
+          try {
+            const guardrailsEngine = new GuardrailsEngine();
+            const postCheck = guardrailsEngine.runPostGeneration(restoredAssistantText, {
+              sessionPhase: nextPhase,
+              subject: session.subject ?? 'GENERAL',
+              gradeLevel: user.student!.gradeLevel ?? 5,
+              accommodations: accommodationTypes,
+              ragContext: curriculumContext,
+              sessionHistory,
+              studentId: user.student!.id,
+            });
+
+            if (!postCheck.passed || postCheck.confidenceScore < 0.7) {
+              await db.aiSuggestionReview.create({
+                data: {
+                  tenantId: user.tenantId,
+                  studentId: user.student!.id,
+                  sessionId: session.id,
+                  suggestionType: 'TUTORING_RESPONSE',
+                  originalContent: restoredAssistantText,
+                  confidenceScore: postCheck.confidenceScore,
+                  guardrailFlags: {
+                    violations: postCheck.violations,
+                    hallucinationScore: postCheck.hallucinationScore,
+                    fiveRsAlignmentScore: postCheck.fiveRsAlignmentScore,
+                  },
+                  contextSnapshot: { messageId: assistantMessage.id },
+                  reviewStatus: 'PENDING_REVIEW',
+                },
+              });
+            }
+          } catch {
+            // Non-blocking: do not surface guardrail errors to the student
+          }
+        });
 
         // Track thinking quality with TRACE protocol (async, don't block response)
         if (body.message.length > MIN_MESSAGE_LENGTH_FOR_TRACE) {
