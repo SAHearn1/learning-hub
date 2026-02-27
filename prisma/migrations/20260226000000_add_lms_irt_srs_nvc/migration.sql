@@ -45,6 +45,11 @@ EXCEPTION WHEN duplicate_object THEN null; END $$;
 DO $$ BEGIN
     CREATE TYPE "ReviewStatus" AS ENUM ('PENDING', 'REVIEWED', 'APPROVED', 'FLAGGED', 'DISMISSED');
 EXCEPTION WHEN duplicate_object THEN null; END $$;
+-- Ensure required values exist when ReviewStatus was pre-created with different members
+ALTER TYPE "ReviewStatus" ADD VALUE IF NOT EXISTS 'PENDING';
+ALTER TYPE "ReviewStatus" ADD VALUE IF NOT EXISTS 'REVIEWED';
+ALTER TYPE "ReviewStatus" ADD VALUE IF NOT EXISTS 'FLAGGED';
+ALTER TYPE "ReviewStatus" ADD VALUE IF NOT EXISTS 'DISMISSED';
 
 DO $$ BEGIN
     CREATE TYPE "AdminAction" AS ENUM ('NONE', 'REVISED_RESPONSE', 'EDUCATOR_NOTIFIED', 'SYSTEM_IMPROVEMENT', 'FALSE_POSITIVE');
