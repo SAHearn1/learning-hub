@@ -30,7 +30,6 @@ export async function GET(req: NextRequest) {
     logger.info('Data retention cron job completed', { ...result, durationMs });
 
     return NextResponse.json({
-      success: true,
       durationMs,
       ...result,
     });

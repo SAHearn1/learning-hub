@@ -70,9 +70,9 @@ export const ReviewQueueFiltersSchema = z.object({
 // Types
 // ---------------------------------------------------------------------------
 
-export type CreateSuggestionReviewInput = z.infer<typeof CreateSuggestionReviewSchema>;
+export type CreateSuggestionReviewInput = z.input<typeof CreateSuggestionReviewSchema>;
 export type SubmitReviewInput = z.infer<typeof SubmitReviewSchema>;
-export type ReviewQueueFilters = z.infer<typeof ReviewQueueFiltersSchema>;
+export type ReviewQueueFilters = z.input<typeof ReviewQueueFiltersSchema>;
 
 // ---------------------------------------------------------------------------
 // Service Functions

@@ -26,7 +26,7 @@ function splitNav(items: readonly NavItem[]) {
 
 export async function GlobalHeader() {
   const authEnabled = Boolean(process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY);
-  const user = authEnabled ? await getCurrentUser() : null;
+  const user = authEnabled ? await getCurrentUser().catch(() => null) : null;
 
   const signedIn = Boolean(user);
 

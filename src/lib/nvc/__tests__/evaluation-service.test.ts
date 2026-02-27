@@ -102,7 +102,7 @@ describe('NVC Evaluation Service', () => {
         llmLatencyMs: 600,
       };
 
-      vi.mocked(evaluateNVCCompliance).mockResolvedValueOnce(mockEvaluation);
+      vi.mocked(evaluateNVCCompliance).mockResolvedValueOnce(mockEvaluation as never);
       vi.mocked(db.nVCQualityEvaluation.create).mockResolvedValueOnce({
         id: 'eval-456',
         ...mockEvaluation,

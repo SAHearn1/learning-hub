@@ -537,7 +537,7 @@ export const POST = withApiHandler(async (req) => {
                     violations: postCheck.violations,
                     hallucinationScore: postCheck.hallucinationScore,
                     fiveRsAlignmentScore: postCheck.fiveRsAlignmentScore,
-                  },
+                  } as unknown as import('@prisma/client').Prisma.InputJsonValue,
                   contextSnapshot: { messageId: assistantMessage.id },
                   reviewStatus: 'PENDING_REVIEW',
                 },

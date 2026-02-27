@@ -138,7 +138,7 @@ Status: Complete
 - [x] PR0: Security & Secret Remediation — SECURITY.md, SECURITY_INCIDENTS.md, gitleaks CI job, env guard.
   Evidence: `SECURITY.md`, `docs/SECURITY_INCIDENTS.md`, `.github/workflows/ci.yml`
 - [x] PR4: LMS Data Model — Term, Course, Assignment, Submission, Grade, FiveRTemplate models.
-  Evidence: `prisma/schema.prisma` (35 models), `npx prisma generate` green
+  Evidence: `prisma/schema.prisma` (36 models incl. AiSuggestionReview), `npx prisma generate` green
 - [x] PR5: LMS Core APIs — 8 route files with full RBAC, tenant isolation, audit logging.
   Evidence: `src/app/api/lms/courses|assignments|submissions|grades|classes/[classId]/roster|classes/[classId]/assignments|templates|templates/[templateId]/assign`
   Tests: 7 integration test files (59 tests) in `tests/integration/api/lms-*.test.ts`
@@ -158,9 +158,11 @@ Status: Complete
 - [x] PR9: CI Quality Gates + Observability — PR template, issue templates, dependency audit CI job.
   Evidence: `.github/pull_request_template.md`, `.github/ISSUE_TEMPLATE/`, `.github/workflows/ci.yml`
 
-Latest validation run (2026-02-26):
+Latest validation run (2026-02-27):
+- `npm run lint` passed
 - `npm run build` passed
 - `npx vitest run` — 101/101 test files, 1119/1119 tests pass
+- `npx prisma generate` regenerated correctly (36 models, AiSuggestionReview now fully typed)
   Note: Intermittent tinypool OOM crash (environment issue, not test failure). All tests pass individually.
 
 ## Gap Analysis Execution — 2026-02-26
@@ -219,8 +221,24 @@ All remaining items require provisioning outside the codebase. See `docs/HUMAN_A
 | B-4 (#179) | Source brand PNG assets | P2 | Source PNGs from design team per `public/brand/ASSET_MANIFEST.md` |
 | B-3 (#178) | Close Stripe webhook GitHub issue | — | `gh issue close 178` once CLI authenticated |
 
+### Fixes Applied This Session (2026-02-27)
+
+| Fix | File | Description |
+|-----|------|-------------|
+| Prisma regen | `prisma/schema.prisma` + `node_modules/@prisma/client` | Ran `npx prisma generate` — client was stale vs schema; AiSuggestionReview now fully typed (sessionId, originalContent, reviewerNotes, confidenceScore, guardrailFlags, contextSnapshot, reviewedAt, expiresAt all present) |
+| HITL input type | `src/lib/ai/hitl/suggestion-service.ts` | Changed `CreateSuggestionReviewInput` from `z.infer<>` to `z.input<>` so callers don't need to supply `priority` when it has a `.default(0)` |
+| HITL queue type | `src/lib/ai/hitl/suggestion-service.ts` | Changed `ReviewQueueFilters` from `z.infer<>` to `z.input<>` for same default-field reason |
+| Chat guardrailFlags | `src/app/api/chat/route.ts` | Cast violation object to `Prisma.InputJsonValue` to satisfy Prisma's Json field type constraint |
+| Data-retention route | `src/app/api/cron/data-retention/route.ts` | Removed duplicate `success: true` key (result already spreads `success`); fixed TS2783 |
+| NVC test cast | `src/lib/nvc/__tests__/evaluation-service.test.ts` | Cast `mockEvaluation` with `as never` to fix string[] vs NVCConcern[] type mismatch |
+| Reasoning moves test | `tests/integration/api/assessments-reasoning-moves.test.ts` | Cast simplified mock profile to `never` to fix structural mismatch |
+| Admin-ops test | `tests/integration/api/admin-ops.test.ts` | Added `afterEach` to vitest import list |
+| GlobalHeader resilience | `src/components/navigation/global-header.tsx` | Added `.catch(() => null)` to `getCurrentUser()` — prevents DB errors from crashing the entire layout render (fixes Server Components render error reported in production) |
+
 ### Known Issues
 - Intermittent tinypool worker crash during full `vitest run` (environment/memory issue, not a test failure). All tests pass individually.
+- TypeScript errors in test files (`tests/integration/**/*.test.ts`) for `Expected 2 arguments, but got 1` when calling `withApiHandler`-wrapped routes. These are TS-only (not runtime) — tests pass. Root cause: Next.js requires `routeContext` to be non-optional in route signatures; making it optional breaks Next.js type checks. Resolution: update test call sites to pass `{ params: Promise.resolve({}) }` as second argument (tracked in gap backlog).
+- Clerk dev keys in production: switch `NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY` and `CLERK_SECRET_KEY` to `pk_live_` / `sk_live_` keys in Vercel → Production env vars.
 
 ---
 
