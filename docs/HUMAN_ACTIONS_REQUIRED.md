@@ -99,7 +99,7 @@ Configure custom domain in Vercel:
 - [ ] Credentials rotated (if needed)
 - [ ] Vercel env vars configured
 - [ ] Clerk webhook configured
-- [ ] Stripe webhook configured
+- [x] Stripe webhook configured
 - [ ] Favicon optimized
 - [ ] Custom domain configured
 - [ ] E2E test credentials in CI
