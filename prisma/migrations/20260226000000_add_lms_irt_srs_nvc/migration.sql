@@ -1,44 +1,58 @@
 -- ============================================================
 -- Migration: 20260226000000_add_lms_irt_srs_nvc
--- Adds:   Term, Course, Assignment, Submission, Grade,
---         FiveRTemplate, ItemCalibration, StudentAbility,
---         ResponseData, ReviewSchedule, ReviewHistory,
---         NVCQualityEvaluation
--- Alters: Class (add courseId, termId)
---         Topic (add fiveRsAlignment)
--- Drops:  AiSuggestionReview (removed from schema)
+-- Idempotent: all statements guard against already-existing objects
 -- ============================================================
 
--- ─── New Enums ───────────────────────────────────────────────
+-- ─── New Enums (DO block catches duplicate_object) ───────────
 
-CREATE TYPE "AssignmentType" AS ENUM ('HOMEWORK', 'QUIZ', 'TEST', 'PROJECT', 'DISCUSSION', 'FIVE_R_SESSION');
+DO $$ BEGIN
+    CREATE TYPE "AssignmentType" AS ENUM ('HOMEWORK', 'QUIZ', 'TEST', 'PROJECT', 'DISCUSSION', 'FIVE_R_SESSION');
+EXCEPTION WHEN duplicate_object THEN null; END $$;
 
-CREATE TYPE "SubmissionStatus" AS ENUM ('DRAFT', 'SUBMITTED', 'RETURNED', 'GRADED');
+DO $$ BEGIN
+    CREATE TYPE "SubmissionStatus" AS ENUM ('DRAFT', 'SUBMITTED', 'RETURNED', 'GRADED');
+EXCEPTION WHEN duplicate_object THEN null; END $$;
 
-CREATE TYPE "ItemType" AS ENUM ('ASSESSMENT', 'PROBLEM');
+DO $$ BEGIN
+    CREATE TYPE "ItemType" AS ENUM ('ASSESSMENT', 'PROBLEM');
+EXCEPTION WHEN duplicate_object THEN null; END $$;
 
-CREATE TYPE "IRTModel" AS ENUM ('ONE_PL', 'TWO_PL', 'THREE_PL');
+DO $$ BEGIN
+    CREATE TYPE "IRTModel" AS ENUM ('ONE_PL', 'TWO_PL', 'THREE_PL');
+EXCEPTION WHEN duplicate_object THEN null; END $$;
 
-CREATE TYPE "ConceptType" AS ENUM ('STANDARD', 'TOPIC', 'PROBLEM');
+DO $$ BEGIN
+    CREATE TYPE "ConceptType" AS ENUM ('STANDARD', 'TOPIC', 'PROBLEM');
+EXCEPTION WHEN duplicate_object THEN null; END $$;
 
-CREATE TYPE "ReviewState" AS ENUM ('NEW', 'LEARNING', 'REVIEW', 'RELEARNING');
+DO $$ BEGIN
+    CREATE TYPE "ReviewState" AS ENUM ('NEW', 'LEARNING', 'REVIEW', 'RELEARNING');
+EXCEPTION WHEN duplicate_object THEN null; END $$;
 
-CREATE TYPE "ReviewRating" AS ENUM ('AGAIN', 'HARD', 'GOOD', 'EASY');
+DO $$ BEGIN
+    CREATE TYPE "ReviewRating" AS ENUM ('AGAIN', 'HARD', 'GOOD', 'EASY');
+EXCEPTION WHEN duplicate_object THEN null; END $$;
 
-CREATE TYPE "NVCConcern" AS ENUM (
-    'JUDGMENTAL_LANGUAGE', 'DISMISSIVE_TONE', 'LACK_OF_EMPATHY',
-    'AUTHORITARIAN_LANGUAGE', 'SHAMING_LANGUAGE', 'COMPARISON',
-    'DEMAND_VS_REQUEST', 'DIAGNOSIS_VS_OBSERVATION',
-    'BLAME_LANGUAGE', 'COERCIVE_LANGUAGE'
-);
+DO $$ BEGIN
+    CREATE TYPE "NVCConcern" AS ENUM (
+        'JUDGMENTAL_LANGUAGE', 'DISMISSIVE_TONE', 'LACK_OF_EMPATHY',
+        'AUTHORITARIAN_LANGUAGE', 'SHAMING_LANGUAGE', 'COMPARISON',
+        'DEMAND_VS_REQUEST', 'DIAGNOSIS_VS_OBSERVATION',
+        'BLAME_LANGUAGE', 'COERCIVE_LANGUAGE'
+    );
+EXCEPTION WHEN duplicate_object THEN null; END $$;
 
-CREATE TYPE "ReviewStatus" AS ENUM ('PENDING', 'REVIEWED', 'APPROVED', 'FLAGGED', 'DISMISSED');
+DO $$ BEGIN
+    CREATE TYPE "ReviewStatus" AS ENUM ('PENDING', 'REVIEWED', 'APPROVED', 'FLAGGED', 'DISMISSED');
+EXCEPTION WHEN duplicate_object THEN null; END $$;
 
-CREATE TYPE "AdminAction" AS ENUM ('NONE', 'REVISED_RESPONSE', 'EDUCATOR_NOTIFIED', 'SYSTEM_IMPROVEMENT', 'FALSE_POSITIVE');
+DO $$ BEGIN
+    CREATE TYPE "AdminAction" AS ENUM ('NONE', 'REVISED_RESPONSE', 'EDUCATOR_NOTIFIED', 'SYSTEM_IMPROVEMENT', 'FALSE_POSITIVE');
+EXCEPTION WHEN duplicate_object THEN null; END $$;
 
 -- ─── Term ────────────────────────────────────────────────────
 
-CREATE TABLE "Term" (
+CREATE TABLE IF NOT EXISTS "Term" (
     "id" TEXT NOT NULL,
     "tenantId" TEXT NOT NULL,
     "name" TEXT NOT NULL,
@@ -51,11 +65,11 @@ CREATE TABLE "Term" (
     CONSTRAINT "Term_pkey" PRIMARY KEY ("id")
 );
 
-CREATE INDEX "Term_tenantId_idx" ON "Term"("tenantId");
+CREATE INDEX IF NOT EXISTS "Term_tenantId_idx" ON "Term"("tenantId");
 
 -- ─── Course ──────────────────────────────────────────────────
 
-CREATE TABLE "Course" (
+CREATE TABLE IF NOT EXISTS "Course" (
     "id" TEXT NOT NULL,
     "tenantId" TEXT NOT NULL,
     "name" TEXT NOT NULL,
@@ -68,12 +82,11 @@ CREATE TABLE "Course" (
     CONSTRAINT "Course_pkey" PRIMARY KEY ("id")
 );
 
-CREATE INDEX "Course_tenantId_idx" ON "Course"("tenantId");
+CREATE INDEX IF NOT EXISTS "Course_tenantId_idx" ON "Course"("tenantId");
 
 -- ─── FiveRTemplate ───────────────────────────────────────────
--- Must be created before Assignment (Assignment has templateId FK)
 
-CREATE TABLE "FiveRTemplate" (
+CREATE TABLE IF NOT EXISTS "FiveRTemplate" (
     "id" TEXT NOT NULL,
     "tenantId" TEXT NOT NULL,
     "createdById" TEXT NOT NULL,
@@ -89,15 +102,17 @@ CREATE TABLE "FiveRTemplate" (
     CONSTRAINT "FiveRTemplate_pkey" PRIMARY KEY ("id")
 );
 
-CREATE INDEX "FiveRTemplate_tenantId_idx" ON "FiveRTemplate"("tenantId");
-CREATE INDEX "FiveRTemplate_tenantId_subject_idx" ON "FiveRTemplate"("tenantId", "subject");
+CREATE INDEX IF NOT EXISTS "FiveRTemplate_tenantId_idx" ON "FiveRTemplate"("tenantId");
+CREATE INDEX IF NOT EXISTS "FiveRTemplate_tenantId_subject_idx" ON "FiveRTemplate"("tenantId", "subject");
 
-ALTER TABLE "FiveRTemplate" ADD CONSTRAINT "FiveRTemplate_createdById_fkey"
-    FOREIGN KEY ("createdById") REFERENCES "User"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
+DO $$ BEGIN
+    ALTER TABLE "FiveRTemplate" ADD CONSTRAINT "FiveRTemplate_createdById_fkey"
+        FOREIGN KEY ("createdById") REFERENCES "User"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
+EXCEPTION WHEN duplicate_object THEN null; END $$;
 
 -- ─── Assignment ──────────────────────────────────────────────
 
-CREATE TABLE "Assignment" (
+CREATE TABLE IF NOT EXISTS "Assignment" (
     "id" TEXT NOT NULL,
     "tenantId" TEXT NOT NULL,
     "classId" TEXT NOT NULL,
@@ -116,21 +131,29 @@ CREATE TABLE "Assignment" (
     CONSTRAINT "Assignment_pkey" PRIMARY KEY ("id")
 );
 
-CREATE INDEX "Assignment_tenantId_idx" ON "Assignment"("tenantId");
-CREATE INDEX "Assignment_classId_idx" ON "Assignment"("classId");
-CREATE INDEX "Assignment_classId_dueDate_idx" ON "Assignment"("classId", "dueDate");
-CREATE INDEX "Assignment_templateId_idx" ON "Assignment"("templateId");
+CREATE INDEX IF NOT EXISTS "Assignment_tenantId_idx" ON "Assignment"("tenantId");
+CREATE INDEX IF NOT EXISTS "Assignment_classId_idx" ON "Assignment"("classId");
+CREATE INDEX IF NOT EXISTS "Assignment_classId_dueDate_idx" ON "Assignment"("classId", "dueDate");
+CREATE INDEX IF NOT EXISTS "Assignment_templateId_idx" ON "Assignment"("templateId");
 
-ALTER TABLE "Assignment" ADD CONSTRAINT "Assignment_classId_fkey"
-    FOREIGN KEY ("classId") REFERENCES "Class"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
-ALTER TABLE "Assignment" ADD CONSTRAINT "Assignment_createdById_fkey"
-    FOREIGN KEY ("createdById") REFERENCES "User"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
-ALTER TABLE "Assignment" ADD CONSTRAINT "Assignment_templateId_fkey"
-    FOREIGN KEY ("templateId") REFERENCES "FiveRTemplate"("id") ON DELETE SET NULL ON UPDATE CASCADE;
+DO $$ BEGIN
+    ALTER TABLE "Assignment" ADD CONSTRAINT "Assignment_classId_fkey"
+        FOREIGN KEY ("classId") REFERENCES "Class"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
+EXCEPTION WHEN duplicate_object THEN null; END $$;
+
+DO $$ BEGIN
+    ALTER TABLE "Assignment" ADD CONSTRAINT "Assignment_createdById_fkey"
+        FOREIGN KEY ("createdById") REFERENCES "User"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
+EXCEPTION WHEN duplicate_object THEN null; END $$;
+
+DO $$ BEGIN
+    ALTER TABLE "Assignment" ADD CONSTRAINT "Assignment_templateId_fkey"
+        FOREIGN KEY ("templateId") REFERENCES "FiveRTemplate"("id") ON DELETE SET NULL ON UPDATE CASCADE;
+EXCEPTION WHEN duplicate_object THEN null; END $$;
 
 -- ─── Submission ──────────────────────────────────────────────
 
-CREATE TABLE "Submission" (
+CREATE TABLE IF NOT EXISTS "Submission" (
     "id" TEXT NOT NULL,
     "tenantId" TEXT NOT NULL,
     "assignmentId" TEXT NOT NULL,
@@ -144,19 +167,24 @@ CREATE TABLE "Submission" (
     CONSTRAINT "Submission_pkey" PRIMARY KEY ("id")
 );
 
-CREATE UNIQUE INDEX "Submission_assignmentId_studentId_key" ON "Submission"("assignmentId", "studentId");
-CREATE INDEX "Submission_tenantId_idx" ON "Submission"("tenantId");
-CREATE INDEX "Submission_assignmentId_idx" ON "Submission"("assignmentId");
-CREATE INDEX "Submission_studentId_idx" ON "Submission"("studentId");
+CREATE UNIQUE INDEX IF NOT EXISTS "Submission_assignmentId_studentId_key" ON "Submission"("assignmentId", "studentId");
+CREATE INDEX IF NOT EXISTS "Submission_tenantId_idx" ON "Submission"("tenantId");
+CREATE INDEX IF NOT EXISTS "Submission_assignmentId_idx" ON "Submission"("assignmentId");
+CREATE INDEX IF NOT EXISTS "Submission_studentId_idx" ON "Submission"("studentId");
 
-ALTER TABLE "Submission" ADD CONSTRAINT "Submission_assignmentId_fkey"
-    FOREIGN KEY ("assignmentId") REFERENCES "Assignment"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
-ALTER TABLE "Submission" ADD CONSTRAINT "Submission_studentId_fkey"
-    FOREIGN KEY ("studentId") REFERENCES "Student"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
+DO $$ BEGIN
+    ALTER TABLE "Submission" ADD CONSTRAINT "Submission_assignmentId_fkey"
+        FOREIGN KEY ("assignmentId") REFERENCES "Assignment"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
+EXCEPTION WHEN duplicate_object THEN null; END $$;
+
+DO $$ BEGIN
+    ALTER TABLE "Submission" ADD CONSTRAINT "Submission_studentId_fkey"
+        FOREIGN KEY ("studentId") REFERENCES "Student"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
+EXCEPTION WHEN duplicate_object THEN null; END $$;
 
 -- ─── Grade ───────────────────────────────────────────────────
 
-CREATE TABLE "Grade" (
+CREATE TABLE IF NOT EXISTS "Grade" (
     "id" TEXT NOT NULL,
     "tenantId" TEXT NOT NULL,
     "submissionId" TEXT NOT NULL,
@@ -173,18 +201,23 @@ CREATE TABLE "Grade" (
     CONSTRAINT "Grade_pkey" PRIMARY KEY ("id")
 );
 
-CREATE UNIQUE INDEX "Grade_submissionId_key" ON "Grade"("submissionId");
-CREATE INDEX "Grade_tenantId_idx" ON "Grade"("tenantId");
-CREATE INDEX "Grade_submissionId_idx" ON "Grade"("submissionId");
+CREATE UNIQUE INDEX IF NOT EXISTS "Grade_submissionId_key" ON "Grade"("submissionId");
+CREATE INDEX IF NOT EXISTS "Grade_tenantId_idx" ON "Grade"("tenantId");
+CREATE INDEX IF NOT EXISTS "Grade_submissionId_idx" ON "Grade"("submissionId");
 
-ALTER TABLE "Grade" ADD CONSTRAINT "Grade_submissionId_fkey"
-    FOREIGN KEY ("submissionId") REFERENCES "Submission"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
-ALTER TABLE "Grade" ADD CONSTRAINT "Grade_gradedById_fkey"
-    FOREIGN KEY ("gradedById") REFERENCES "User"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
+DO $$ BEGIN
+    ALTER TABLE "Grade" ADD CONSTRAINT "Grade_submissionId_fkey"
+        FOREIGN KEY ("submissionId") REFERENCES "Submission"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
+EXCEPTION WHEN duplicate_object THEN null; END $$;
+
+DO $$ BEGIN
+    ALTER TABLE "Grade" ADD CONSTRAINT "Grade_gradedById_fkey"
+        FOREIGN KEY ("gradedById") REFERENCES "User"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
+EXCEPTION WHEN duplicate_object THEN null; END $$;
 
 -- ─── ItemCalibration ─────────────────────────────────────────
 
-CREATE TABLE "ItemCalibration" (
+CREATE TABLE IF NOT EXISTS "ItemCalibration" (
     "id" TEXT NOT NULL,
     "assessmentId" TEXT,
     "problemId" TEXT,
@@ -204,19 +237,24 @@ CREATE TABLE "ItemCalibration" (
     CONSTRAINT "ItemCalibration_pkey" PRIMARY KEY ("id")
 );
 
-CREATE UNIQUE INDEX "ItemCalibration_assessmentId_key" ON "ItemCalibration"("assessmentId");
-CREATE UNIQUE INDEX "ItemCalibration_problemId_key" ON "ItemCalibration"("problemId");
-CREATE INDEX "ItemCalibration_irtDifficulty_idx" ON "ItemCalibration"("irtDifficulty");
-CREATE INDEX "ItemCalibration_itemType_idx" ON "ItemCalibration"("itemType");
+CREATE UNIQUE INDEX IF NOT EXISTS "ItemCalibration_assessmentId_key" ON "ItemCalibration"("assessmentId");
+CREATE UNIQUE INDEX IF NOT EXISTS "ItemCalibration_problemId_key" ON "ItemCalibration"("problemId");
+CREATE INDEX IF NOT EXISTS "ItemCalibration_irtDifficulty_idx" ON "ItemCalibration"("irtDifficulty");
+CREATE INDEX IF NOT EXISTS "ItemCalibration_itemType_idx" ON "ItemCalibration"("itemType");
 
-ALTER TABLE "ItemCalibration" ADD CONSTRAINT "ItemCalibration_assessmentId_fkey"
-    FOREIGN KEY ("assessmentId") REFERENCES "Assessment"("id") ON DELETE SET NULL ON UPDATE CASCADE;
-ALTER TABLE "ItemCalibration" ADD CONSTRAINT "ItemCalibration_problemId_fkey"
-    FOREIGN KEY ("problemId") REFERENCES "Problem"("id") ON DELETE SET NULL ON UPDATE CASCADE;
+DO $$ BEGIN
+    ALTER TABLE "ItemCalibration" ADD CONSTRAINT "ItemCalibration_assessmentId_fkey"
+        FOREIGN KEY ("assessmentId") REFERENCES "Assessment"("id") ON DELETE SET NULL ON UPDATE CASCADE;
+EXCEPTION WHEN duplicate_object THEN null; END $$;
+
+DO $$ BEGIN
+    ALTER TABLE "ItemCalibration" ADD CONSTRAINT "ItemCalibration_problemId_fkey"
+        FOREIGN KEY ("problemId") REFERENCES "Problem"("id") ON DELETE SET NULL ON UPDATE CASCADE;
+EXCEPTION WHEN duplicate_object THEN null; END $$;
 
 -- ─── StudentAbility ──────────────────────────────────────────
 
-CREATE TABLE "StudentAbility" (
+CREATE TABLE IF NOT EXISTS "StudentAbility" (
     "id" TEXT NOT NULL,
     "studentId" TEXT NOT NULL,
     "subject" "Subject" NOT NULL,
@@ -233,16 +271,18 @@ CREATE TABLE "StudentAbility" (
     CONSTRAINT "StudentAbility_pkey" PRIMARY KEY ("id")
 );
 
-CREATE UNIQUE INDEX "StudentAbility_studentId_subject_key" ON "StudentAbility"("studentId", "subject");
-CREATE INDEX "StudentAbility_studentId_idx" ON "StudentAbility"("studentId");
-CREATE INDEX "StudentAbility_subject_idx" ON "StudentAbility"("subject");
+CREATE UNIQUE INDEX IF NOT EXISTS "StudentAbility_studentId_subject_key" ON "StudentAbility"("studentId", "subject");
+CREATE INDEX IF NOT EXISTS "StudentAbility_studentId_idx" ON "StudentAbility"("studentId");
+CREATE INDEX IF NOT EXISTS "StudentAbility_subject_idx" ON "StudentAbility"("subject");
 
-ALTER TABLE "StudentAbility" ADD CONSTRAINT "StudentAbility_studentId_fkey"
-    FOREIGN KEY ("studentId") REFERENCES "Student"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
+DO $$ BEGIN
+    ALTER TABLE "StudentAbility" ADD CONSTRAINT "StudentAbility_studentId_fkey"
+        FOREIGN KEY ("studentId") REFERENCES "Student"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
+EXCEPTION WHEN duplicate_object THEN null; END $$;
 
 -- ─── ResponseData ────────────────────────────────────────────
 
-CREATE TABLE "ResponseData" (
+CREATE TABLE IF NOT EXISTS "ResponseData" (
     "id" TEXT NOT NULL,
     "assessmentId" TEXT NOT NULL,
     "studentId" TEXT NOT NULL,
@@ -257,16 +297,18 @@ CREATE TABLE "ResponseData" (
     CONSTRAINT "ResponseData_pkey" PRIMARY KEY ("id")
 );
 
-CREATE INDEX "ResponseData_assessmentId_idx" ON "ResponseData"("assessmentId");
-CREATE INDEX "ResponseData_studentId_idx" ON "ResponseData"("studentId");
-CREATE INDEX "ResponseData_itemCalibrationId_idx" ON "ResponseData"("itemCalibrationId");
+CREATE INDEX IF NOT EXISTS "ResponseData_assessmentId_idx" ON "ResponseData"("assessmentId");
+CREATE INDEX IF NOT EXISTS "ResponseData_studentId_idx" ON "ResponseData"("studentId");
+CREATE INDEX IF NOT EXISTS "ResponseData_itemCalibrationId_idx" ON "ResponseData"("itemCalibrationId");
 
-ALTER TABLE "ResponseData" ADD CONSTRAINT "ResponseData_assessmentId_fkey"
-    FOREIGN KEY ("assessmentId") REFERENCES "Assessment"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
+DO $$ BEGIN
+    ALTER TABLE "ResponseData" ADD CONSTRAINT "ResponseData_assessmentId_fkey"
+        FOREIGN KEY ("assessmentId") REFERENCES "Assessment"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
+EXCEPTION WHEN duplicate_object THEN null; END $$;
 
 -- ─── ReviewSchedule ──────────────────────────────────────────
 
-CREATE TABLE "ReviewSchedule" (
+CREATE TABLE IF NOT EXISTS "ReviewSchedule" (
     "id" TEXT NOT NULL,
     "studentId" TEXT NOT NULL,
     "conceptType" "ConceptType" NOT NULL,
@@ -288,25 +330,36 @@ CREATE TABLE "ReviewSchedule" (
     CONSTRAINT "ReviewSchedule_pkey" PRIMARY KEY ("id")
 );
 
-CREATE UNIQUE INDEX "ReviewSchedule_studentId_conceptType_standardId_topicId_problemId_key"
+CREATE UNIQUE INDEX IF NOT EXISTS "ReviewSchedule_studentId_conceptType_standardId_topicId_problemId_key"
     ON "ReviewSchedule"("studentId", "conceptType", "standardId", "topicId", "problemId");
-CREATE INDEX "ReviewSchedule_studentId_idx" ON "ReviewSchedule"("studentId");
-CREATE INDEX "ReviewSchedule_studentId_dueDate_idx" ON "ReviewSchedule"("studentId", "dueDate");
-CREATE INDEX "ReviewSchedule_dueDate_idx" ON "ReviewSchedule"("dueDate");
-CREATE INDEX "ReviewSchedule_state_idx" ON "ReviewSchedule"("state");
+CREATE INDEX IF NOT EXISTS "ReviewSchedule_studentId_idx" ON "ReviewSchedule"("studentId");
+CREATE INDEX IF NOT EXISTS "ReviewSchedule_studentId_dueDate_idx" ON "ReviewSchedule"("studentId", "dueDate");
+CREATE INDEX IF NOT EXISTS "ReviewSchedule_dueDate_idx" ON "ReviewSchedule"("dueDate");
+CREATE INDEX IF NOT EXISTS "ReviewSchedule_state_idx" ON "ReviewSchedule"("state");
 
-ALTER TABLE "ReviewSchedule" ADD CONSTRAINT "ReviewSchedule_studentId_fkey"
-    FOREIGN KEY ("studentId") REFERENCES "Student"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
-ALTER TABLE "ReviewSchedule" ADD CONSTRAINT "ReviewSchedule_standardId_fkey"
-    FOREIGN KEY ("standardId") REFERENCES "Standard"("id") ON DELETE SET NULL ON UPDATE CASCADE;
-ALTER TABLE "ReviewSchedule" ADD CONSTRAINT "ReviewSchedule_topicId_fkey"
-    FOREIGN KEY ("topicId") REFERENCES "Topic"("id") ON DELETE SET NULL ON UPDATE CASCADE;
-ALTER TABLE "ReviewSchedule" ADD CONSTRAINT "ReviewSchedule_problemId_fkey"
-    FOREIGN KEY ("problemId") REFERENCES "Problem"("id") ON DELETE SET NULL ON UPDATE CASCADE;
+DO $$ BEGIN
+    ALTER TABLE "ReviewSchedule" ADD CONSTRAINT "ReviewSchedule_studentId_fkey"
+        FOREIGN KEY ("studentId") REFERENCES "Student"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
+EXCEPTION WHEN duplicate_object THEN null; END $$;
+
+DO $$ BEGIN
+    ALTER TABLE "ReviewSchedule" ADD CONSTRAINT "ReviewSchedule_standardId_fkey"
+        FOREIGN KEY ("standardId") REFERENCES "Standard"("id") ON DELETE SET NULL ON UPDATE CASCADE;
+EXCEPTION WHEN duplicate_object THEN null; END $$;
+
+DO $$ BEGIN
+    ALTER TABLE "ReviewSchedule" ADD CONSTRAINT "ReviewSchedule_topicId_fkey"
+        FOREIGN KEY ("topicId") REFERENCES "Topic"("id") ON DELETE SET NULL ON UPDATE CASCADE;
+EXCEPTION WHEN duplicate_object THEN null; END $$;
+
+DO $$ BEGIN
+    ALTER TABLE "ReviewSchedule" ADD CONSTRAINT "ReviewSchedule_problemId_fkey"
+        FOREIGN KEY ("problemId") REFERENCES "Problem"("id") ON DELETE SET NULL ON UPDATE CASCADE;
+EXCEPTION WHEN duplicate_object THEN null; END $$;
 
 -- ─── ReviewHistory ───────────────────────────────────────────
 
-CREATE TABLE "ReviewHistory" (
+CREATE TABLE IF NOT EXISTS "ReviewHistory" (
     "id" TEXT NOT NULL,
     "scheduleId" TEXT NOT NULL,
     "rating" "ReviewRating" NOT NULL,
@@ -324,15 +377,17 @@ CREATE TABLE "ReviewHistory" (
     CONSTRAINT "ReviewHistory_pkey" PRIMARY KEY ("id")
 );
 
-CREATE INDEX "ReviewHistory_scheduleId_idx" ON "ReviewHistory"("scheduleId");
-CREATE INDEX "ReviewHistory_reviewedAt_idx" ON "ReviewHistory"("reviewedAt");
+CREATE INDEX IF NOT EXISTS "ReviewHistory_scheduleId_idx" ON "ReviewHistory"("scheduleId");
+CREATE INDEX IF NOT EXISTS "ReviewHistory_reviewedAt_idx" ON "ReviewHistory"("reviewedAt");
 
-ALTER TABLE "ReviewHistory" ADD CONSTRAINT "ReviewHistory_scheduleId_fkey"
-    FOREIGN KEY ("scheduleId") REFERENCES "ReviewSchedule"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+DO $$ BEGIN
+    ALTER TABLE "ReviewHistory" ADD CONSTRAINT "ReviewHistory_scheduleId_fkey"
+        FOREIGN KEY ("scheduleId") REFERENCES "ReviewSchedule"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+EXCEPTION WHEN duplicate_object THEN null; END $$;
 
 -- ─── NVCQualityEvaluation ────────────────────────────────────
 
-CREATE TABLE "NVCQualityEvaluation" (
+CREATE TABLE IF NOT EXISTS "NVCQualityEvaluation" (
     "id" TEXT NOT NULL,
     "messageId" TEXT NOT NULL,
     "sessionId" TEXT NOT NULL,
@@ -358,32 +413,39 @@ CREATE TABLE "NVCQualityEvaluation" (
     CONSTRAINT "NVCQualityEvaluation_pkey" PRIMARY KEY ("id")
 );
 
-CREATE INDEX "NVCQualityEvaluation_messageId_idx" ON "NVCQualityEvaluation"("messageId");
-CREATE INDEX "NVCQualityEvaluation_sessionId_idx" ON "NVCQualityEvaluation"("sessionId");
-CREATE INDEX "NVCQualityEvaluation_tenantId_idx" ON "NVCQualityEvaluation"("tenantId");
-CREATE INDEX "NVCQualityEvaluation_reviewStatus_idx" ON "NVCQualityEvaluation"("reviewStatus");
-CREATE INDEX "NVCQualityEvaluation_evaluatedAt_idx" ON "NVCQualityEvaluation"("evaluatedAt");
-CREATE INDEX "NVCQualityEvaluation_isCompliant_idx" ON "NVCQualityEvaluation"("isCompliant");
+CREATE INDEX IF NOT EXISTS "NVCQualityEvaluation_messageId_idx" ON "NVCQualityEvaluation"("messageId");
+CREATE INDEX IF NOT EXISTS "NVCQualityEvaluation_sessionId_idx" ON "NVCQualityEvaluation"("sessionId");
+CREATE INDEX IF NOT EXISTS "NVCQualityEvaluation_tenantId_idx" ON "NVCQualityEvaluation"("tenantId");
+CREATE INDEX IF NOT EXISTS "NVCQualityEvaluation_reviewStatus_idx" ON "NVCQualityEvaluation"("reviewStatus");
+CREATE INDEX IF NOT EXISTS "NVCQualityEvaluation_evaluatedAt_idx" ON "NVCQualityEvaluation"("evaluatedAt");
+CREATE INDEX IF NOT EXISTS "NVCQualityEvaluation_isCompliant_idx" ON "NVCQualityEvaluation"("isCompliant");
 
-ALTER TABLE "NVCQualityEvaluation" ADD CONSTRAINT "NVCQualityEvaluation_messageId_fkey"
-    FOREIGN KEY ("messageId") REFERENCES "Message"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
+DO $$ BEGIN
+    ALTER TABLE "NVCQualityEvaluation" ADD CONSTRAINT "NVCQualityEvaluation_messageId_fkey"
+        FOREIGN KEY ("messageId") REFERENCES "Message"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
+EXCEPTION WHEN duplicate_object THEN null; END $$;
 
 -- ─── Alter Class: add courseId and termId ────────────────────
 
-ALTER TABLE "Class" ADD COLUMN "courseId" TEXT;
-ALTER TABLE "Class" ADD COLUMN "termId" TEXT;
+ALTER TABLE "Class" ADD COLUMN IF NOT EXISTS "courseId" TEXT;
+ALTER TABLE "Class" ADD COLUMN IF NOT EXISTS "termId" TEXT;
 
-CREATE INDEX "Class_courseId_idx" ON "Class"("courseId");
-CREATE INDEX "Class_termId_idx" ON "Class"("termId");
+CREATE INDEX IF NOT EXISTS "Class_courseId_idx" ON "Class"("courseId");
+CREATE INDEX IF NOT EXISTS "Class_termId_idx" ON "Class"("termId");
 
-ALTER TABLE "Class" ADD CONSTRAINT "Class_courseId_fkey"
-    FOREIGN KEY ("courseId") REFERENCES "Course"("id") ON DELETE SET NULL ON UPDATE CASCADE;
-ALTER TABLE "Class" ADD CONSTRAINT "Class_termId_fkey"
-    FOREIGN KEY ("termId") REFERENCES "Term"("id") ON DELETE SET NULL ON UPDATE CASCADE;
+DO $$ BEGIN
+    ALTER TABLE "Class" ADD CONSTRAINT "Class_courseId_fkey"
+        FOREIGN KEY ("courseId") REFERENCES "Course"("id") ON DELETE SET NULL ON UPDATE CASCADE;
+EXCEPTION WHEN duplicate_object THEN null; END $$;
+
+DO $$ BEGIN
+    ALTER TABLE "Class" ADD CONSTRAINT "Class_termId_fkey"
+        FOREIGN KEY ("termId") REFERENCES "Term"("id") ON DELETE SET NULL ON UPDATE CASCADE;
+EXCEPTION WHEN duplicate_object THEN null; END $$;
 
 -- ─── Alter Topic: add fiveRsAlignment ───────────────────────
 
-ALTER TABLE "Topic" ADD COLUMN "fiveRsAlignment" JSONB;
+ALTER TABLE "Topic" ADD COLUMN IF NOT EXISTS "fiveRsAlignment" JSONB;
 
 -- ─── Drop AiSuggestionReview (removed from schema) ──────────
 
