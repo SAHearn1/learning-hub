@@ -1,0 +1,55 @@
+name: Production DB Migrate
+
+on:
+  workflow_dispatch:
+    inputs:
+      reason:
+        description: "Why this migration is being run"
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+env:
+  NODE_VERSION: "22"
+
+jobs:
+  migrate-production:
+    name: Run prisma migrate deploy on production database
+    runs-on: ubuntu-latest
+    environment: production
+    env:
+      DATABASE_URL: ${{ secrets.PRODUCTION_DATABASE_URL }}
+    steps:
+      - name: Validate production DB secret
+        run: |
+          if [ -z "${DATABASE_URL}" ]; then
+            echo "PRODUCTION_DATABASE_URL secret is not configured." >&2
+            exit 1
+          fi
+
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Generate Prisma client
+        run: npx prisma generate
+
+      - name: Apply production migrations
+        run: npx prisma migrate deploy
+
+      - name: Write summary
+        run: |
+          {
+            echo "## Production DB Migration"
+            echo "- Trigger reason: ${{ github.event.inputs.reason }}"
+            echo "- Command: npx prisma migrate deploy"
+            echo "- Status: success"
+          } >> "$GITHUB_STEP_SUMMARY"
