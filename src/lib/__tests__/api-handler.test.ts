@@ -31,6 +31,10 @@ function makeRequest(
   return new NextRequest(url, init);
 }
 
+function makeRouteContext(params: Record<string, string> = {}) {
+  return { params: Promise.resolve(params) };
+}
+
 beforeEach(() => {
   resetAllRateLimits();
 });
@@ -42,7 +46,7 @@ describe('withApiHandler', () => {
         return NextResponse.json({ data: 'ok' });
       });
 
-      const res = await handler(makeRequest());
+      const res = await handler(makeRequest(), makeRouteContext());
       const body = await res.json();
 
       expect(res.status).toBe(200);
@@ -57,7 +61,7 @@ describe('withApiHandler', () => {
         });
       });
 
-      const res = await handler(makeRequest());
+      const res = await handler(makeRequest(), makeRouteContext());
       expect(res.headers.get('Content-Type')).toBe('text/event-stream');
       expect(res.headers.get('X-Request-Id')).toBeTruthy();
     });
@@ -71,6 +75,7 @@ describe('withApiHandler', () => {
         makeRequest('/api/test', {
           headers: { 'x-request-id': 'custom-id-123' },
         }),
+        makeRouteContext(),
       );
       const body = await res.json();
 
@@ -85,7 +90,7 @@ describe('withApiHandler', () => {
         throw new AuthenticationError();
       });
 
-      const res = await handler(makeRequest());
+      const res = await handler(makeRequest(), makeRouteContext());
       const body = await res.json();
 
       expect(res.status).toBe(401);
@@ -99,7 +104,7 @@ describe('withApiHandler', () => {
         throw new ForbiddenError('Not your resource');
       });
 
-      const res = await handler(makeRequest());
+      const res = await handler(makeRequest(), makeRouteContext());
       const body = await res.json();
 
       expect(res.status).toBe(403);
@@ -112,7 +117,7 @@ describe('withApiHandler', () => {
         throw new NotFoundError('Session not found');
       });
 
-      const res = await handler(makeRequest());
+      const res = await handler(makeRequest(), makeRouteContext());
       const body = await res.json();
 
       expect(res.status).toBe(404);
@@ -127,7 +132,7 @@ describe('withApiHandler', () => {
         ]);
       });
 
-      const res = await handler(makeRequest());
+      const res = await handler(makeRequest(), makeRouteContext());
       const body = await res.json();
 
       expect(res.status).toBe(400);
@@ -144,7 +149,7 @@ describe('withApiHandler', () => {
         return NextResponse.json({ ok: true });
       });
 
-      const res = await handler(makeRequest());
+      const res = await handler(makeRequest(), makeRouteContext());
       const body = await res.json();
 
       expect(res.status).toBe(400);
@@ -161,7 +166,7 @@ describe('withApiHandler', () => {
         throw new TypeError('unexpected');
       });
 
-      const res = await handler(makeRequest());
+      const res = await handler(makeRequest(), makeRouteContext());
       const body = await res.json();
 
       expect(res.status).toBe(500);
@@ -182,10 +187,10 @@ describe('withApiHandler', () => {
         headers: { 'x-forwarded-for': '1.2.3.4' },
       });
 
-      const r1 = await handler(req);
+      const r1 = await handler(req, makeRouteContext());
       expect(r1.status).toBe(200);
 
-      const r2 = await handler(req);
+      const r2 = await handler(req, makeRouteContext());
       expect(r2.status).toBe(200);
     });
 
@@ -199,10 +204,10 @@ describe('withApiHandler', () => {
         headers: { 'x-forwarded-for': '5.6.7.8' },
       });
 
-      const r1 = await handler(req);
+      const r1 = await handler(req, makeRouteContext());
       expect(r1.status).toBe(200);
 
-      const r2 = await handler(req);
+      const r2 = await handler(req, makeRouteContext());
       expect(r2.status).toBe(429);
 
       const body = await r2.json();
@@ -221,7 +226,7 @@ describe('withApiHandler', () => {
       });
 
       for (let i = 0; i < 100; i++) {
-        const res = await handler(req);
+        const res = await handler(req, makeRouteContext());
         expect(res.status).toBe(200);
       }
     });
@@ -241,12 +246,12 @@ describe('withApiHandler', () => {
       expect(body.id).toBe('42');
     });
 
-    it('provides empty params when routeContext is missing', async () => {
+    it('provides empty params when no params are given', async () => {
       const handler = withApiHandler(async (_req, ctx) => {
         return NextResponse.json({ params: ctx.params });
       });
 
-      const res = await handler(makeRequest());
+      const res = await handler(makeRequest(), makeRouteContext());
       const body = await res.json();
 
       expect(body.params).toEqual({});
