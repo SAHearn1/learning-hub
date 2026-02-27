@@ -249,7 +249,7 @@ jobs:
         run: npx prisma migrate deploy
 
       - name: Verify schema is in sync
-        run: npx prisma migrate diff --from-migrations ./prisma/migrations --to-schema-datamodel ./prisma/schema.prisma --exit-code
+        run: npx prisma migrate diff --from-migrations ./prisma/migrations --to-schema-datamodel ./prisma/schema.prisma --shadow-database-url postgresql://rootwork:rootwork_ci@localhost:5432/rootwork_shadow?schema=public --exit-code
 
   dependency-audit:
     name: Dependency Audit
