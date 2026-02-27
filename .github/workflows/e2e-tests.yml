@@ -32,6 +32,7 @@ jobs:
     
     env:
       DATABASE_URL: postgresql://rootwork:rootwork_e2e@localhost:5432/rootwork_test?schema=public
+      DIRECT_URL: postgresql://rootwork:rootwork_e2e@localhost:5432/rootwork_test?schema=public
       NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY: ${{ secrets.CLERK_PUBLISHABLE_KEY_TEST }}
       CLERK_SECRET_KEY: ${{ secrets.CLERK_SECRET_KEY_TEST }}
       CLERK_TESTING_TOKEN: ${{ secrets.CLERK_TESTING_TOKEN }}
@@ -123,6 +124,7 @@ jobs:
     
     env:
       DATABASE_URL: postgresql://rootwork:rootwork_ci@localhost:5432/rootwork_test?schema=public
+      DIRECT_URL: postgresql://rootwork:rootwork_ci@localhost:5432/rootwork_test?schema=public
       NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY: pk_test_placeholder
       CLERK_SECRET_KEY: sk_test_placeholder
       ANTHROPIC_API_KEY: sk-ant-placeholder

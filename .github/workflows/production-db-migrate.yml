@@ -21,6 +21,7 @@ jobs:
     environment: production
     env:
       DATABASE_URL: ${{ secrets.PRODUCTION_DATABASE_URL }}
+      DIRECT_URL: ${{ secrets.PRODUCTION_DIRECT_URL || secrets.PRODUCTION_DATABASE_URL }}
     steps:
       - name: Validate production DB secret
         run: |
