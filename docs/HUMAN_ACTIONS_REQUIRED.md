@@ -1,112 +1,84 @@
 # Human Actions Required
 
-These items require manual action by Dr. Hearn or infrastructure admin. They cannot be automated.
+These actions require a human with GitHub/Vercel/Datadog/Clerk access. They are the remaining blockers for open operations issues.
 
-## Priority 1 — Before Production Deploy
+## P0 — Set `PRODUCTION_DATABASE_URL` and run production migration
 
-### 1. Database Migration
-Run Prisma migrations against the production database to create the new LMS tables (Term, Course, Assignment, Submission, Grade, FiveRTemplate).
+1. GitHub → **Settings** → **Environments** → `production` → **Secrets and variables**.
+2. Add secret: `PRODUCTION_DATABASE_URL=postgresql://...`.
+3. GitHub → **Actions** → **Production DB Migrate** (`.github/workflows/production-db-migrate.yml`) → **Run workflow** on `main`.
+4. Confirm workflow succeeds and includes `npx prisma migrate deploy` completion.
 
-```bash
-npx prisma migrate deploy
-```
+Completion criteria:
+- [ ] `PRODUCTION_DATABASE_URL` exists in production environment secrets.
+- [ ] Latest **Production DB Migrate** workflow run is green.
 
-### 2. Credential Rotation
-If any credentials were previously committed to git history, rotate them:
-- [ ] Clerk API keys (publishable + secret)
-- [ ] Anthropic API key
-- [ ] Stripe API keys
-- [ ] Database connection string
-- [ ] Any webhook signing secrets
+## P0 — Provision Datadog and wire Vercel runtime metrics
 
-### 3. Git History Rewrite (Optional)
-If secrets were found in git history, execute the filter-repo commands documented in `docs/SECURITY_INCIDENTS.md`:
+1. Provision/confirm Datadog Agent endpoint for StatsD ingress.
+2. Vercel → Project → **Settings** → **Environment Variables**.
+3. Add required variable:
+   - `DATADOG_STATSD_HOST=<agent-or-datadog-host>`
+4. Add optional tuning variables if needed:
+   - `DATADOG_STATSD_PORT=8125`
+   - `DATADOG_METRIC_PREFIX=learning_hub`
+5. Redeploy production so runtime picks up new env vars.
 
-```bash
-pip install git-filter-repo
-git filter-repo --path-glob '*.env*' --invert-paths
-git push --force-with-lease
-```
+Completion criteria:
+- [ ] `DATADOG_STATSD_HOST` is present in Vercel production environment.
+- [ ] Metrics are visible in Datadog for the deployed app.
 
-**Warning:** Force-push rewrites history for all collaborators. Coordinate before executing.
+## P0 — Add 11 Clerk secrets to GitHub Actions for E2E CI
 
-## Priority 2 — Environment Configuration
+GitHub → Repo **Settings** → **Secrets and variables** → **Actions** → **New repository secret**.
 
-### 4. Vercel Environment Variables
-Ensure these are set in Vercel project settings for production:
+Required secrets:
 
-```
-NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY=pk_live_...
-CLERK_SECRET_KEY=sk_live_...
-CLERK_WEBHOOK_SECRET=whsec_...
-DATABASE_URL=postgresql://...
-ANTHROPIC_API_KEY=sk-ant-...
-STRIPE_SECRET_KEY=sk_live_...
-STRIPE_WEBHOOK_SECRET=whsec_...
-NEXT_PUBLIC_APP_URL=https://your-domain.com
-```
+| Secret |
+| --- |
+| `CLERK_TESTING_TOKEN` |
+| `E2E_CLERK_USER_STUDENT_EMAIL` |
+| `E2E_CLERK_USER_STUDENT_PASSWORD` |
+| `E2E_CLERK_USER_EDUCATOR_EMAIL` |
+| `E2E_CLERK_USER_EDUCATOR_PASSWORD` |
+| `E2E_CLERK_USER_PARENT_EMAIL` |
+| `E2E_CLERK_USER_PARENT_PASSWORD` |
+| `E2E_CLERK_USER_ADMIN_EMAIL` |
+| `E2E_CLERK_USER_ADMIN_PASSWORD` |
+| `CLERK_PUBLISHABLE_KEY_TEST` |
+| `CLERK_SECRET_KEY_TEST` |
 
-### 5. Clerk Webhook Configuration
-In Clerk Dashboard, configure the webhook endpoint:
-- URL: `https://your-domain.com/api/webhooks/clerk`
-- Events: `user.created`, `user.updated`, `user.deleted`
+Then trigger `.github/workflows/e2e-tests.yml` and verify Phase 0 is green.
 
-### 6. Stripe Webhook Configuration
-In Stripe Dashboard, configure:
-- URL: `https://your-domain.com/api/stripe/webhook`
-- Events: `checkout.session.completed`, `customer.subscription.*`, `invoice.payment_failed`
-- Full step-by-step: `docs/ops/ISSUES_174_176_178_179_192.md`
+Completion criteria:
+- [ ] All 11 required Clerk secrets are configured in GitHub Actions.
+- [ ] Latest E2E CI run passes without missing-secret failures.
 
-## Priority 3 — Brand Assets
+## P1 — Trigger staging load-test baseline and publish SLO markdown
 
-### 7. Favicon Optimization
-The current `/public/brand/favicon.png` is a full-size copy of the RWFW seal. For optimal performance:
-- Resize to 32x32px for `favicon.ico`
-- Create 180x180px version for Apple touch icon
-- Consider generating from seal using an image editor
+1. GitHub → **Actions** → **Load Test + SLO Baseline** (`.github/workflows/load-test-baseline.yml`).
+2. Run workflow against `staging` with the default scenario.
+3. Confirm artifact `load-test-baseline` exists.
+4. Confirm `docs/status/load-testing/slo-baseline-latest.md` is generated and attached to workflow summary/artifact output.
 
-### 8. Open Graph Image
-Create a 1200x630px Open Graph image for social sharing using brand assets. Place at `/public/og-image.png`.
+Completion criteria:
+- [ ] Staging load-test baseline workflow run is green.
+- [ ] SLO baseline markdown artifact is published.
 
-## Priority 4 — CI/CD
+## P2 — Source official brand PNGs from design team
 
-### 9. Clerk E2E Test Credentials
-Add Clerk test instance credentials to GitHub Actions secrets.
+1. Request approved PNG exports from design team as specified in `public/brand/ASSET_MANIFEST.md`.
+2. Replace temporary/placeholder assets in `public/brand/` with approved files.
+3. Verify filenames, dimensions, and transparent backgrounds match the manifest.
 
-Required secrets (blocking issue #192 / Phase 0):
+Completion criteria:
+- [ ] All required brand PNGs have approved source files.
+- [ ] `public/brand/` matches `public/brand/ASSET_MANIFEST.md` requirements.
 
-| Secret | Required |
-| --- | --- |
-| `CLERK_TESTING_TOKEN` | Yes |
-| `E2E_CLERK_USER_STUDENT_EMAIL` | Yes |
-| `E2E_CLERK_USER_STUDENT_PASSWORD` | Yes |
-| `E2E_CLERK_USER_EDUCATOR_EMAIL` | Yes |
-| `E2E_CLERK_USER_EDUCATOR_PASSWORD` | Yes |
-| `E2E_CLERK_USER_PARENT_EMAIL` | Yes |
-| `E2E_CLERK_USER_PARENT_PASSWORD` | Yes |
-| `E2E_CLERK_USER_ADMIN_EMAIL` | Yes |
-| `E2E_CLERK_USER_ADMIN_PASSWORD` | Yes |
-| `CLERK_PUBLISHABLE_KEY_TEST` | Yes |
-| `CLERK_SECRET_KEY_TEST` | Yes |
+## Roll-up Checklist
 
-Optional overrides:
-- `E2E_CLERK_PUBLISHABLE_KEY_TEST`
-- `E2E_CLERK_SECRET_KEY_TEST`
-
-After provisioning, trigger `.github/workflows/e2e-tests.yml`; Phase 0 should go green automatically once these values are present.
-
-### 10. Custom Domain
-Configure custom domain in Vercel:
-- Primary: `learn.rootworkframework.com` (or preferred subdomain)
-- Update `NEXT_PUBLIC_APP_URL` env var
-
-## Checklist
-
-- [ ] Database migration deployed
-- [ ] Credentials rotated (if needed)
-- [ ] Vercel env vars configured
-- [ ] Clerk webhook configured
-- [x] Stripe webhook configured
-- [ ] Favicon optimized
-- [ ] Custom domain configured
-- [ ] E2E test credentials in CI
+- [ ] P0: Production database secret + migration workflow completed
+- [ ] P0: Datadog provisioned + Vercel StatsD env configured
+- [ ] P0: 11 Clerk GitHub Action secrets configured + E2E green
+- [ ] P1: Staging load-test baseline run completed + SLO markdown published
+- [ ] P2: Brand PNG assets sourced and aligned with manifest
