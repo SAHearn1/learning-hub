@@ -88,6 +88,15 @@ DATABASE_URL=postgresql://user:password@localhost:5432/rootwork_test?schema=publ
 # Clerk Authentication
 NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY=pk_test_your_key_here
 CLERK_SECRET_KEY=sk_test_your_key_here
+CLERK_TESTING_TOKEN=testing_token_from_clerk_dashboard
+E2E_CLERK_USER_STUDENT_EMAIL=student.test@rootwork.edu
+E2E_CLERK_USER_STUDENT_PASSWORD=change_me
+E2E_CLERK_USER_EDUCATOR_EMAIL=educator.test@rootwork.edu
+E2E_CLERK_USER_EDUCATOR_PASSWORD=change_me
+E2E_CLERK_USER_PARENT_EMAIL=parent.test@rootwork.edu
+E2E_CLERK_USER_PARENT_PASSWORD=change_me
+E2E_CLERK_USER_ADMIN_EMAIL=admin.test@rootwork.edu
+E2E_CLERK_USER_ADMIN_PASSWORD=change_me
 
 # Application
 NEXT_PUBLIC_APP_URL=http://localhost:3000
