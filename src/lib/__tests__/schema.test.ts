@@ -44,11 +44,12 @@ describe('Prisma schema — models', () => {
     'Submission',
     'Grade',
     'FiveRTemplate',
+    'AiSuggestionReview',
   ];
 
-  it('generates all 35 expected models', () => {
+  it('generates all 36 expected models', () => {
     const modelNames = Object.values(Prisma.ModelName);
-    expect(modelNames).toHaveLength(35);
+    expect(modelNames).toHaveLength(36);
   });
 
   it.each(expectedModels)('includes model %s', (model) => {

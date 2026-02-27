@@ -107,6 +107,19 @@ ANTHROPIC_API_KEY=sk-ant-placeholder
 STRIPE_SECRET_KEY=sk_test_placeholder
 NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY=pk_test_placeholder
 STRIPE_WEBHOOK_SECRET=whsec_placeholder
+
+# Clerk E2E: bypasses CAPTCHA/bot-detection during programmatic sign-in
+CLERK_TESTING_TOKEN=<from Clerk dashboard>
+
+# Per-role test user credentials (fall back to defaults if unset)
+E2E_CLERK_USER_STUDENT_EMAIL=student.test@rootwork.edu
+E2E_CLERK_USER_STUDENT_PASSWORD=<password>
+E2E_CLERK_USER_EDUCATOR_EMAIL=educator.test@rootwork.edu
+E2E_CLERK_USER_EDUCATOR_PASSWORD=<password>
+E2E_CLERK_USER_PARENT_EMAIL=parent.test@rootwork.edu
+E2E_CLERK_USER_PARENT_PASSWORD=<password>
+E2E_CLERK_USER_ADMIN_EMAIL=admin.test@rootwork.edu
+E2E_CLERK_USER_ADMIN_PASSWORD=<password>
 ```
 
 ### Database Setup

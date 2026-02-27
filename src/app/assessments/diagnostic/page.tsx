@@ -1,22 +1,28 @@
-'use client';
-
-import { DiagnosticAssessment } from '@/components/assessments/DiagnosticAssessment';
+import { redirect } from 'next/navigation';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import type { Subject } from '@prisma/client';
+import { getCurrentUser } from '@/lib/auth';
+import DiagnosticPageClient from './DiagnosticPageClient';
 
-export default function DiagnosticPage() {
-  // In a real app, these would come from the session/auth context
-  const mockData = {
-    studentId: 'student-123',
-    sessionId: 'session-123',
-    subject: 'MATH' as Subject,
-    gradeLevel: 5,
-  };
+interface DiagnosticPageProps {
+  searchParams: Promise<{ sessionId?: string; subject?: string; gradeLevel?: string }>;
+}
 
-  const handleComplete = (results: any) => {
-    console.log('Diagnostic assessment completed:', results);
-    // Navigate to results page or dashboard
-  };
+export default async function DiagnosticPage({ searchParams }: DiagnosticPageProps) {
+  const user = await getCurrentUser();
+  if (!user) {
+    redirect('/sign-in');
+  }
+
+  const studentId = user.student?.id ?? null;
+  if (!studentId) {
+    redirect('/dashboard');
+  }
+
+  const params = await searchParams;
+  const sessionId = params.sessionId ?? '';
+  const subject = (params.subject as Subject) ?? 'MATH';
+  const gradeLevel = params.gradeLevel ? parseInt(params.gradeLevel, 10) : (user.student?.gradeLevel ?? 5);
 
   return (
     <div className="container mx-auto py-8 px-4 max-w-4xl">
@@ -53,12 +59,11 @@ export default function DiagnosticPage() {
         </CardContent>
       </Card>
 
-      <DiagnosticAssessment
-        studentId={mockData.studentId}
-        sessionId={mockData.sessionId}
-        subject={mockData.subject}
-        gradeLevel={mockData.gradeLevel}
-        onComplete={handleComplete}
+      <DiagnosticPageClient
+        studentId={studentId}
+        sessionId={sessionId}
+        subject={subject}
+        gradeLevel={gradeLevel}
       />
     </div>
   );

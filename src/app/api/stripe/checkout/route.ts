@@ -1,3 +1,14 @@
+/**
+ * POST /api/stripe/checkout
+ *
+ * Lower-level checkout endpoint for direct API integrations.
+ * Accepts a raw Stripe priceId — the caller is responsible for obtaining
+ * the correct priceId (STRIPE_PRICE_STARTER, STRIPE_PRICE_PROFESSIONAL,
+ * STRIPE_PRICE_ENTERPRISE env vars).
+ *
+ * Distinct from /api/billing/checkout which accepts a tier name and
+ * supports HTML form submissions; use that endpoint from the application UI.
+ */
 import { NextRequest, NextResponse } from 'next/server';
 import { auth } from '@clerk/nextjs/server';
 import { db } from '@/lib/db';

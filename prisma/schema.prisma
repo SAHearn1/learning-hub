@@ -30,6 +30,7 @@ model Tenant {
   schools              School[]
   users                User[]
   aiUsageLedger        AIUsageLedger[]
+  aiSuggestionReviews  AiSuggestionReview[]
   createdAt            DateTime           @default(now())
   updatedAt            DateTime           @updatedAt
 }
@@ -250,6 +251,7 @@ model User {
   createdAssignments   Assignment[]   @relation("AssignmentCreator")
   createdTemplates     FiveRTemplate[] @relation("TemplateCreator")
   gradedSubmissions    Grade[]        @relation("GradeGrader")
+  educatorReviews      AiSuggestionReview[] @relation("EducatorReviews")
   createdAt            DateTime       @default(now())
   updatedAt            DateTime       @updatedAt
 
@@ -516,6 +518,7 @@ model Session {
   messages            Message[]
   assessments         Assessment[]
   thinkingAssessments ThinkingAssessment[]
+  aiSuggestionReviews AiSuggestionReview[]
   startedAt           DateTime             @default(now())
   endedAt             DateTime?
   metadata            Json
@@ -1002,4 +1005,62 @@ enum AdminAction {
   EDUCATOR_NOTIFIED
   SYSTEM_IMPROVEMENT
   FALSE_POSITIVE
+}
+
+// ═══════════════════════════════════════════════════════════════
+// HUMAN-IN-THE-LOOP (HITL) REVIEW MODELS
+// ═══════════════════════════════════════════════════════════════
+
+enum AiSuggestionDecision {
+  ACCEPTED
+  REJECTED
+  MODIFIED
+}
+
+enum AiSuggestionType {
+  TUTORING_RESPONSE
+  IEP_RECOMMENDATION
+  ASSESSMENT_FEEDBACK
+  ACCOMMODATION_SUGGESTION
+  PROGRESS_NOTE
+}
+
+enum AiReviewStatus {
+  PENDING_REVIEW
+  APPROVED
+  APPROVED_WITH_EDITS
+  REJECTED
+  EXPIRED
+}
+
+model AiSuggestionReview {
+  id               String           @id @default(cuid())
+  tenantId         String
+  studentId        String
+  sessionId        String?
+  suggestionType   AiSuggestionType
+  originalContent  String           @db.Text
+  editedContent    String?          @db.Text
+  confidenceScore  Float?
+  guardrailFlags   Json?
+  contextSnapshot  Json?
+  priority         Int              @default(0)
+  reviewStatus     AiReviewStatus   @default(PENDING_REVIEW)
+  reviewerId       String?
+  reviewerNotes    String?          @db.Text
+  reviewedAt       DateTime?
+  expiresAt        DateTime?
+  createdAt        DateTime         @default(now())
+  updatedAt        DateTime         @updatedAt
+
+  tenant   Tenant   @relation(fields: [tenantId], references: [id])
+  educator User?    @relation("EducatorReviews", fields: [reviewerId], references: [id])
+  session  Session? @relation(fields: [sessionId], references: [id])
+
+  @@index([tenantId])
+  @@index([tenantId, reviewStatus])
+  @@index([reviewerId])
+  @@index([sessionId])
+  @@index([reviewStatus])
+  @@index([priority])
 }

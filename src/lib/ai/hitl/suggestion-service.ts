@@ -7,10 +7,8 @@
  */
 
 import { z } from 'zod';
-import { db as prismaDb } from '@/lib/db';
-
-// TODO: Add AiSuggestionReview model to Prisma schema and remove this cast
-const db = prismaDb as any;
+import { Prisma } from '@prisma/client';
+import { db } from '@/lib/db';
 
 // ---------------------------------------------------------------------------
 // Zod Schemas
@@ -72,9 +70,9 @@ export const ReviewQueueFiltersSchema = z.object({
 // Types
 // ---------------------------------------------------------------------------
 
-export type CreateSuggestionReviewInput = z.infer<typeof CreateSuggestionReviewSchema>;
+export type CreateSuggestionReviewInput = z.input<typeof CreateSuggestionReviewSchema>;
 export type SubmitReviewInput = z.infer<typeof SubmitReviewSchema>;
-export type ReviewQueueFilters = z.infer<typeof ReviewQueueFiltersSchema>;
+export type ReviewQueueFilters = z.input<typeof ReviewQueueFiltersSchema>;
 
 // ---------------------------------------------------------------------------
 // Service Functions
@@ -95,8 +93,8 @@ export async function createSuggestionReview(params: CreateSuggestionReviewInput
       suggestionType: validated.suggestionType,
       originalContent: validated.originalContent,
       confidenceScore: validated.confidenceScore,
-      guardrailFlags: validated.guardrailFlags ?? undefined,
-      contextSnapshot: validated.contextSnapshot ?? undefined,
+      guardrailFlags: validated.guardrailFlags !== undefined ? (validated.guardrailFlags as Prisma.InputJsonValue) : undefined,
+      contextSnapshot: validated.contextSnapshot !== undefined ? (validated.contextSnapshot as Prisma.InputJsonValue) : undefined,
       priority: validated.priority,
       expiresAt: validated.expiresAt,
     },
@@ -162,7 +160,7 @@ export async function getCompletedReviews(
 
   const where = {
     tenantId,
-    reviewStatus: { in: ['APPROVED', 'APPROVED_WITH_EDITS', 'REJECTED', 'EXPIRED'] as const },
+    reviewStatus: { in: ['APPROVED', 'APPROVED_WITH_EDITS', 'REJECTED', 'EXPIRED'] as ('APPROVED' | 'APPROVED_WITH_EDITS' | 'REJECTED' | 'EXPIRED')[] },
   };
 
   const [reviews, total] = await Promise.all([

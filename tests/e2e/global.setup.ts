@@ -9,6 +9,37 @@ import { TEST_USERS, type UserRole } from '../helpers/auth';
 setup.describe.configure({ mode: 'serial' });
 setup.setTimeout(60000); // sign-in involves network calls to Clerk
 
+// Fail fast if Clerk credentials are not configured — prevents misleading
+// "all tests pass" results when the auth fixture silently skips sign-in.
+setup('validate required E2E environment variables', async () => {
+  const required = [
+    'NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY',
+    'CLERK_SECRET_KEY',
+  ];
+  const missing = required.filter((k) => !process.env[k]);
+  if (missing.length > 0) {
+    throw new Error(
+      `E2E setup failed: missing required env vars: ${missing.join(', ')}. ` +
+        'Set CLERK_PUBLISHABLE_KEY_TEST and CLERK_SECRET_KEY_TEST as CI secrets.',
+    );
+  }
+  // Warn (don't fail) when per-user password overrides are absent — the
+  // default passwords will be used and may work in dev environments.
+  const passwords = [
+    'E2E_CLERK_STUDENT_PASSWORD',
+    'E2E_CLERK_EDUCATOR_PASSWORD',
+    'E2E_CLERK_PARENT_PASSWORD',
+    'E2E_CLERK_ADMIN_PASSWORD',
+  ];
+  const missingPasswords = passwords.filter((k) => !process.env[k]);
+  if (missingPasswords.length > 0) {
+    console.warn(
+      `[E2E] Using default test passwords for: ${missingPasswords.join(', ')}. ` +
+        'Set E2E_CLERK_*_PASSWORD secrets for production CI.',
+    );
+  }
+});
+
 const STORAGE_DIR = path.join(__dirname, '../../playwright/.clerk');
 
 const requiredClerkEnvForCi = [

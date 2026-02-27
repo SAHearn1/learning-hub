@@ -3,7 +3,12 @@
   "buildCommand": "npx prisma generate && next build",
   "installCommand": "npm ci",
   "regions": ["iad1"],
-  "crons": [],
+  "crons": [
+    {
+      "path": "/api/cron/data-retention",
+      "schedule": "0 2 * * *"
+    }
+  ],
   "headers": [
     {
       "source": "/api/(.*)",

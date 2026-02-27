@@ -188,7 +188,7 @@ describe('GET /api/assessments/reasoning-moves', () => {
       },
       recentMoves: [],
     };
-    vi.mocked(getStudentReasoningProfile).mockResolvedValueOnce(mockProfile);
+    vi.mocked(getStudentReasoningProfile).mockResolvedValueOnce(mockProfile as never);
 
     const { GET } = await import('@/app/api/assessments/reasoning-moves/route');
     const request = new NextRequest('http://localhost/api/assessments/reasoning-moves?studentId=student-1', {

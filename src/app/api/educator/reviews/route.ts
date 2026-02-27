@@ -141,8 +141,7 @@ export const POST = withApiHandler(async (req) => {
   const body = PostBodySchema.parse(await req.json());
 
   // Verify the review exists and belongs to the same tenant
-  // TODO: Add AiSuggestionReview model to Prisma schema
-  const existing = await (db as any).aiSuggestionReview.findUnique({
+  const existing = await db.aiSuggestionReview.findUnique({
     where: { id: body.reviewId },
   });
 

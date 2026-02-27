@@ -1,17 +1,57 @@
 /**
  * Production Metrics Collection
- * Collects and reports metrics for monitoring and alerting
+ * Collects and reports metrics for monitoring and alerting.
+ *
+ * Storage backend:
+ *   - Primary: optional Datadog StatsD push (set DATADOG_STATSD_HOST env var).
+ *   - Fallback: in-memory sliding window (1 000 samples per metric).
+ *     The in-memory store is instance-local and resets on cold start.
+ *     Use it only in development or as a local read path; always prefer
+ *     the StatsD backend for production alerting.
  */
 
 import { logger } from '@/lib/logger';
 import { alertRules, checkAlertCondition, sendAlert } from './alerts';
 
-// In-memory metrics store (for MVP - replace with time-series DB in production)
+// ---------------------------------------------------------------------------
+// Optional Datadog StatsD push
+// ---------------------------------------------------------------------------
+
+/**
+ * Push a gauge or counter to Datadog via UDP StatsD.
+ * Only active when DATADOG_STATSD_HOST is set.
+ * Fire-and-forget: errors are swallowed so metric failures never affect
+ * request latency or availability.
+ */
+function pushToStatsd(metric: string, value: number, type: 'g' | 'c' = 'g'): void {
+  const host = process.env.DATADOG_STATSD_HOST;
+  if (!host) return;
+
+  const port = parseInt(process.env.DATADOG_STATSD_PORT ?? '8125', 10);
+  const prefix = process.env.DATADOG_METRIC_PREFIX ?? 'rootwork';
+  const env = process.env.NODE_ENV ?? 'development';
+
+  const payload = `${prefix}.${metric}:${value}|${type}|#env:${env}`;
+
+  import('node:dgram').then((dgram) => {
+    const client = dgram.createSocket('udp4');
+    const buf = Buffer.from(payload);
+    client.send(buf, 0, buf.length, port, host, () => client.close());
+  }).catch(() => {/* swallow — never affect request path */});
+}
+
+// ---------------------------------------------------------------------------
+// In-memory metrics store (instance-local fallback / dev mode)
+// ---------------------------------------------------------------------------
+
 class MetricsStore {
   private metrics: Map<string, number[]> = new Map();
   private readonly MAX_SAMPLES = 1000;
 
   record(metric: string, value: number, timestamp: number = Date.now()) {
+    // Push to external aggregator (no-op when DATADOG_STATSD_HOST not set)
+    pushToStatsd(metric, value);
+
     if (!this.metrics.has(metric)) {
       this.metrics.set(metric, []);
     }

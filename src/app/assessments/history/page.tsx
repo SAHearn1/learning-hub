@@ -1,8 +1,14 @@
+import { redirect } from 'next/navigation';
 import { AssessmentHistory } from '@/components/assessments/AssessmentHistory';
+import { getCurrentUser } from '@/lib/auth';
 
-export default function AssessmentHistoryPage() {
-  // In a real app, this would come from the session/auth context
-  const mockStudentId = 'student-123';
+export default async function AssessmentHistoryPage() {
+  const user = await getCurrentUser();
+  if (!user) {
+    redirect('/sign-in');
+  }
+
+  const studentId = user.student?.id ?? null;
 
   return (
     <div className="container mx-auto py-8 px-4 max-w-6xl">
@@ -13,7 +19,7 @@ export default function AssessmentHistoryPage() {
         </p>
       </div>
 
-      <AssessmentHistory studentId={mockStudentId} />
+      <AssessmentHistory studentId={studentId ?? undefined} />
     </div>
   );
 }
