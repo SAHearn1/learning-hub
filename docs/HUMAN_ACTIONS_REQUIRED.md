@@ -55,6 +55,7 @@ In Clerk Dashboard, configure the webhook endpoint:
 In Stripe Dashboard, configure:
 - URL: `https://your-domain.com/api/stripe/webhook`
 - Events: `checkout.session.completed`, `customer.subscription.*`, `invoice.payment_failed`
+- Full step-by-step: `docs/ops/ISSUES_174_176_178_179_192.md`
 
 ## Priority 3 — Brand Assets
 
@@ -71,8 +72,13 @@ Create a 1200x630px Open Graph image for social sharing using brand assets. Plac
 
 ### 9. Clerk E2E Test Credentials
 Add Clerk test instance credentials to GitHub Actions secrets:
+- `CLERK_PUBLISHABLE_KEY_TEST`
+- `CLERK_SECRET_KEY_TEST`
+- `E2E_CLERK_PUBLISHABLE_KEY_TEST` (optional E2E-specific override)
+- `E2E_CLERK_SECRET_KEY_TEST` (optional E2E-specific override)
 - `CLERK_TESTING_TOKEN`
 - `E2E_CLERK_USER_*` variables
+- Full checklist: `docs/ops/ISSUES_174_176_178_179_192.md`
 
 ### 10. Custom Domain
 Configure custom domain in Vercel:
