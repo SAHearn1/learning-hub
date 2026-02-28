@@ -255,10 +255,30 @@ export const notificationConfig = {
   },
 };
 
+// ---------------------------------------------------------------------------
+// Alert deduplication: prevent alert fatigue by suppressing repeated firings
+// of the same alert within a cooldown window (default: 5 minutes per alert).
+// ---------------------------------------------------------------------------
+const alertLastFiredAt = new Map<string, number>();
+const ALERT_COOLDOWN_MS = 5 * 60 * 1000; // 5 minutes
+
+function isAlertInCooldown(alertId: string): boolean {
+  const lastFired = alertLastFiredAt.get(alertId);
+  if (!lastFired) return false;
+  return Date.now() - lastFired < ALERT_COOLDOWN_MS;
+}
+
 /**
  * Send alert notification
  */
 export async function sendAlert(alert: AlertRule, value: number, context?: Record<string, any>) {
+  // Deduplicate: skip if this alert already fired within the cooldown window
+  if (isAlertInCooldown(alert.id)) {
+    logger.debug('Alert suppressed (cooldown)', { alertId: alert.id, cooldownMs: ALERT_COOLDOWN_MS });
+    return;
+  }
+  alertLastFiredAt.set(alert.id, Date.now());
+
   const message = formatAlertMessage(alert, value, context);
 
   logger.error('Alert triggered', {

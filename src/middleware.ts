@@ -119,13 +119,13 @@ const applySecurityHeaders = (response: NextResponse) => {
   return response;
 };
 
-const enforceTenantRateLimit = (request: NextRequest, userId: string | null) => {
+const enforceTenantRateLimit = (request: NextRequest, tenantKey: string | null) => {
   const pathname = request.nextUrl.pathname;
-  if (!isApiRoute(pathname) || isWebhookRoute(pathname) || !userId) return null;
+  if (!isApiRoute(pathname) || isWebhookRoute(pathname) || !tenantKey) return null;
 
   const now = Date.now();
   pruneTenantRateLimitStore(now);
-  const key = `tenant:${userId}`;
+  const key = `tenant:${tenantKey}`;
   const current = tenantRateLimitStore.get(key);
 
   if (!current || now >= current.resetAt) {
@@ -157,9 +157,13 @@ export default clerkMiddleware((auth, req) => {
     return applySecurityHeaders(rateLimitResponse);
   }
 
-  // Per-user (tenant-proxy) rate limiting for authenticated API routes
-  const { userId } = auth();
-  const tenantRateLimitResponse = enforceTenantRateLimit(req, userId);
+  // Per-tenant rate limiting for authenticated API routes.
+  // Uses tenantId from Clerk session claims (publicMetadata) when available,
+  // so all users in the same tenant share one rate-limit bucket.
+  // Falls back to userId for users whose metadata hasn't synced yet.
+  const { userId, sessionClaims } = auth();
+  const tenantId = (sessionClaims?.publicMetadata as Record<string, string> | undefined)?.tenantId ?? userId;
+  const tenantRateLimitResponse = enforceTenantRateLimit(req, tenantId);
   if (tenantRateLimitResponse) {
     return applySecurityHeaders(tenantRateLimitResponse);
   }
