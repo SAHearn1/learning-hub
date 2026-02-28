@@ -1,14 +1,20 @@
-import { auth } from '@clerk/nextjs/server';
+import { auth, currentUser } from '@clerk/nextjs/server';
 import { redirect } from 'next/navigation';
 import { getCurrentUser } from '@/lib/auth';
 
 /**
  * Dashboard router - redirects authenticated users to their role-specific portal.
- * This page is the default landing after Clerk sign-in.
+ * New users without onboarding metadata are sent to /onboarding first.
  */
 export default async function DashboardPage() {
   const { userId } = await auth();
   if (!userId) redirect('/sign-in');
+
+  // Check if user has completed onboarding via Clerk metadata
+  const clerkUser = await currentUser();
+  if (clerkUser && !clerkUser.publicMetadata?.onboardingComplete) {
+    redirect('/onboarding');
+  }
 
   let user;
   try {
