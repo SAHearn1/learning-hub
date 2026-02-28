@@ -147,7 +147,7 @@ export function ParentSettingsClient() {
 
   return (
     <div className="space-y-8">
-      <section>
+      <section id="children">
         <h2 className="text-xl font-semibold text-neutral-900">Linked Children</h2>
         {children.length === 0 ? (
           <p className="mt-2 text-sm text-neutral-600">
