@@ -9,6 +9,20 @@ interface LinkedChild {
   email: string | null;
 }
 
+interface CommunicationPrefs {
+  emailNotifications: boolean;
+  weeklyDigest: boolean;
+  sessionAlerts: boolean;
+  progressMilestones: boolean;
+}
+
+const DEFAULT_PREFS: CommunicationPrefs = {
+  emailNotifications: true,
+  weeklyDigest: true,
+  sessionAlerts: false,
+  progressMilestones: true,
+};
+
 export function ParentSettingsClient() {
   const [children, setChildren] = useState<LinkedChild[]>([]);
   const [email, setEmail] = useState('');
@@ -16,6 +30,9 @@ export function ParentSettingsClient() {
   const [linking, setLinking] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
+  const [prefs, setPrefs] = useState<CommunicationPrefs>(DEFAULT_PREFS);
+  const [prefsLoading, setPrefsLoading] = useState(true);
+  const [prefsSaving, setPrefsSaving] = useState(false);
 
   async function fetchChildren() {
     try {
@@ -30,9 +47,50 @@ export function ParentSettingsClient() {
     }
   }
 
+  async function fetchPrefs() {
+    try {
+      const res = await fetch('/api/parent/settings');
+      if (res.ok) {
+        const json = await res.json();
+        const loaded = json.data?.communicationPrefs ?? json.communicationPrefs;
+        if (loaded) {
+          setPrefs({ ...DEFAULT_PREFS, ...loaded });
+        }
+      }
+    } catch {
+      // silently keep defaults
+    } finally {
+      setPrefsLoading(false);
+    }
+  }
+
   useEffect(() => {
     fetchChildren();
+    fetchPrefs();
   }, []);
+
+  async function handleTogglePref(key: keyof CommunicationPrefs) {
+    const updated = { ...prefs, [key]: !prefs[key] };
+    setPrefs(updated);
+    setPrefsSaving(true);
+    try {
+      const res = await fetch('/api/parent/settings', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ communicationPrefs: updated }),
+      });
+      if (!res.ok) {
+        // revert on failure
+        setPrefs(prefs);
+        setError('Failed to save notification preferences.');
+      }
+    } catch {
+      setPrefs(prefs);
+      setError('Network error saving preferences.');
+    } finally {
+      setPrefsSaving(false);
+    }
+  }
 
   async function handleLink(e: React.FormEvent) {
     e.preventDefault();
@@ -138,6 +196,44 @@ export function ParentSettingsClient() {
             {linking ? 'Linking…' : 'Link Child'}
           </button>
         </form>
+      </section>
+
+      <section>
+        <h2 className="text-xl font-semibold text-neutral-900">Notification Preferences</h2>
+        <p className="mt-1 text-sm text-neutral-600">Choose which notifications you receive about your children's activity.</p>
+        {prefsLoading ? (
+          <p className="mt-3 text-sm text-neutral-500">Loading preferences…</p>
+        ) : (
+          <div className="mt-4 divide-y divide-neutral-200 rounded-lg border border-neutral-200">
+            {(
+              [
+                { key: 'emailNotifications', label: 'Email Notifications', description: 'Receive notifications by email' },
+                { key: 'weeklyDigest', label: 'Weekly Digest', description: "Summary of your children's weekly learning activity" },
+                { key: 'sessionAlerts', label: 'Session Alerts', description: 'Alert when a child starts or ends a learning session' },
+                { key: 'progressMilestones', label: 'Progress Milestones', description: 'Notify when a child achieves a mastery milestone' },
+              ] as { key: keyof CommunicationPrefs; label: string; description: string }[]
+            ).map(({ key, label, description }) => (
+              <div key={key} className="flex items-center justify-between px-4 py-4">
+                <div>
+                  <p className="font-medium text-neutral-900">{label}</p>
+                  <p className="text-sm text-neutral-500">{description}</p>
+                </div>
+                <button
+                  type="button"
+                  role="switch"
+                  aria-checked={prefs[key]}
+                  onClick={() => handleTogglePref(key)}
+                  disabled={prefsSaving}
+                  className={`relative inline-flex h-6 w-11 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 disabled:opacity-50 ${prefs[key] ? 'bg-blue-600' : 'bg-neutral-300'}`}
+                >
+                  <span
+                    className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out ${prefs[key] ? 'translate-x-5' : 'translate-x-0'}`}
+                  />
+                </button>
+              </div>
+            ))}
+          </div>
+        )}
       </section>
 
       {error && (

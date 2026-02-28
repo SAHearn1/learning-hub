@@ -17,6 +17,8 @@ export const studentNavItems: readonly NavItem[] = [
   },
   { label: 'Calm Corner', href: '/regulate', icon: 'heart' },
   { label: 'My Progress', href: '/progress', icon: 'bar-chart' },
+  { label: 'My Classes', href: '/student/classes', icon: 'school' },
+  { label: 'Review', href: '/student/review', icon: 'refresh-cw' },
   { label: 'Community', href: '/community', icon: 'users' },
   { label: 'Settings', href: '/settings', icon: 'settings' },
 ] as const;
@@ -38,10 +40,12 @@ export const educatorNavItems = [
   { label: 'Classes', href: '/educator/classes', icon: 'school' },
   { label: 'Reports', href: '/educator/reports', icon: 'file-text' },
   { label: 'Compliance', href: '/educator/compliance', icon: 'shield-check' },
+  { label: 'Grades', href: '/educator/grades', icon: 'check-square' },
 ] as const;
 
 export const parentNavItems = [
   { label: 'Children', href: '/parent/settings', icon: 'users' },
+  { label: 'Activity', href: '/parent/activity', icon: 'activity' },
   { label: 'Grades', href: '/parent/grades', icon: 'progress' },
   { label: 'Consent', href: '/parent/consent', icon: 'shield-check' },
   { label: 'Settings', href: '/parent/settings', icon: 'settings' },
