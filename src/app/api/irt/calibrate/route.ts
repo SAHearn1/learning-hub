@@ -8,9 +8,12 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { withApiHandler } from '@/lib/api-handler';
 import { ValidationError } from '@/lib/api-errors';
+import { requireRole } from '@/lib/auth';
 import { calibrateAllItems, batchUpdateStudentAbilities } from '@/lib/irt';
 
 export const POST = withApiHandler(async (req: NextRequest) => {
+  await requireRole(['EDUCATOR', 'SCHOOL_ADMIN', 'DISTRICT_ADMIN', 'PLATFORM_ADMIN']);
+
   const body = await req.json();
   const { subject, minResponses = 30 } = body;
 

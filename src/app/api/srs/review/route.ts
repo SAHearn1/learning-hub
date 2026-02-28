@@ -12,10 +12,13 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { withApiHandler } from '@/lib/api-handler';
 import { ValidationError, NotFoundError } from '@/lib/api-errors';
+import { requireUser } from '@/lib/auth';
 import { submitReview } from '@/lib/srs';
 import { ReviewRating } from '@/lib/srs';
 
 export const POST = withApiHandler(async (req: NextRequest) => {
+  await requireUser();
+
   const body = await req.json();
   const { scheduleId, rating, responseTime } = body;
 

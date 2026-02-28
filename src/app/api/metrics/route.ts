@@ -1,8 +1,10 @@
 import { NextResponse } from 'next/server';
 import { renderPrometheusMetrics, getMetricsSnapshot } from '@/lib/api/metrics';
 import { withApiHandler } from '@/lib/api-handler';
+import { requireRole } from '@/lib/auth';
 
 export const GET = withApiHandler(async (req) => {
+  await requireRole(['PLATFORM_ADMIN']);
   const format = req.nextUrl.searchParams.get('format');
 
   if (format === 'json') {
