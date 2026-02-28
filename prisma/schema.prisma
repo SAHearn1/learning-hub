@@ -909,6 +909,12 @@ model IngestLog {
   timestamp      DateTime     @default(now())
   status         IngestStatus
   source         IngestSource
+  // tenantId is null for platform-wide curriculum ingestion (shared across all tenants).
+  // Populated for tenant-scoped ingestion operations to support multi-tenant audit trails.
+  tenantId       String?
+  // SHA-256 hex digest of the canonical payload (file paths + content hashes).
+  // Used for idempotency: skip re-ingestion when payload hash matches the last SUCCESS log.
+  contentHash    String?
   payload        Json?
   errorMessage   String?      @db.Text
   processedFiles Int          @default(0)
@@ -920,6 +926,8 @@ model IngestLog {
   @@index([timestamp])
   @@index([status])
   @@index([source])
+  @@index([tenantId])
+  @@index([contentHash, status])
 }
 
 model PlatformConfig {

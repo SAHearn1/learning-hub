@@ -45,6 +45,17 @@ const pruneRateLimitStore = (now: number) => {
   }
 };
 
+// Prune expired entries from the tenant rate-limit store to prevent unbounded
+// memory growth in long-running serverless instances (mirror of pruneRateLimitStore).
+const pruneTenantRateLimitStore = (now: number) => {
+  if (tenantRateLimitStore.size <= RATE_LIMIT_MAX_ENTRIES) return;
+  for (const [key, entry] of tenantRateLimitStore) {
+    if (now >= entry.resetAt) {
+      tenantRateLimitStore.delete(key);
+    }
+  }
+};
+
 const enforceRateLimit = (request: NextRequest) => {
   const pathname = request.nextUrl.pathname;
   if (!isApiRoute(pathname) || isWebhookRoute(pathname)) {
@@ -97,7 +108,12 @@ const enforceCsrfForApi = (request: NextRequest) => {
 };
 
 const applySecurityHeaders = (response: NextResponse) => {
-  response.headers.set('Strict-Transport-Security', 'max-age=31536000; includeSubDomains; preload');
+  // HSTS is set to max-age=63072000 (2 years) in next.config.js for static routes.
+  // Do NOT set it here: middleware runs after next.config.js headers are applied and
+  // would overwrite with a shorter max-age, weakening the preload directive.
+  // X-Content-Type-Options and X-Frame-Options are also set in next.config.js;
+  // repeating them here is harmless but we keep them as a defence-in-depth fallback
+  // for any response paths that bypass the static header config (e.g. streaming).
   response.headers.set('X-Content-Type-Options', 'nosniff');
   response.headers.set('X-Frame-Options', 'DENY');
   return response;
@@ -108,6 +124,7 @@ const enforceTenantRateLimit = (request: NextRequest, userId: string | null) => 
   if (!isApiRoute(pathname) || isWebhookRoute(pathname) || !userId) return null;
 
   const now = Date.now();
+  pruneTenantRateLimitStore(now);
   const key = `tenant:${userId}`;
   const current = tenantRateLimitStore.get(key);
 

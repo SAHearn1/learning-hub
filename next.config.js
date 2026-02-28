@@ -46,8 +46,11 @@ const nextConfig = {
           },
           {
             key: "Content-Security-Policy",
+            // unsafe-eval removed (was P0 security risk — XSS attack surface).
+            // unsafe-inline retained in script-src for Clerk/Stripe third-party SDKs;
+            // migrate to nonce-based CSP when Stripe Elements v4 is adopted.
             value:
-              "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://clerk.rwfw-learninghub.com https://js.stripe.com https://challenges.cloudflare.com https://vercel.live; worker-src 'self' blob:; style-src 'self' 'unsafe-inline'; img-src 'self' data: https://img.clerk.com https://images.unsplash.com; font-src 'self' https://vercel.live; connect-src 'self' https://clerk.rwfw-learninghub.com https://accounts.rwfw-learninghub.com https://api.stripe.com https://*.pinecone.io https://api.anthropic.com https://api.openai.com https://challenges.cloudflare.com https://vercel.live; frame-src https://js.stripe.com https://accounts.rwfw-learninghub.com https://challenges.cloudflare.com https://vercel.live; object-src 'none'; base-uri 'self'; form-action 'self';",
+              "default-src 'self'; script-src 'self' 'unsafe-inline' https://clerk.rwfw-learninghub.com https://js.stripe.com https://challenges.cloudflare.com https://vercel.live; worker-src 'self' blob:; style-src 'self' 'unsafe-inline'; img-src 'self' data: https://img.clerk.com https://images.unsplash.com; font-src 'self' https://vercel.live; connect-src 'self' https://clerk.rwfw-learninghub.com https://accounts.rwfw-learninghub.com https://api.stripe.com https://*.pinecone.io https://api.anthropic.com https://api.openai.com https://challenges.cloudflare.com https://vercel.live; frame-src https://js.stripe.com https://accounts.rwfw-learninghub.com https://challenges.cloudflare.com https://vercel.live; object-src 'none'; base-uri 'self'; form-action 'self';",
           },
         ],
       },
