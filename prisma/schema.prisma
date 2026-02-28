@@ -242,8 +242,11 @@ model User {
   role            UserRole
   dateOfBirth     DateTime?
   isMinor         Boolean        @default(false)
-  consentStatus   ConsentStatus?
-  consentRecordId String?
+  consentStatus    ConsentStatus?
+  consentRecordId  String?
+  consentGrantedAt   DateTime?
+  consentArchived    Boolean        @default(false)
+  consentArchivedAt  DateTime?
   student         Student?
   educator        Educator?
   parent          Parent?
@@ -521,10 +524,13 @@ model Session {
   aiSuggestionReviews AiSuggestionReview[]
   startedAt           DateTime             @default(now())
   endedAt             DateTime?
+  deletedAt           DateTime?
+  updatedAt           DateTime             @updatedAt
   metadata            Json
 
   @@index([tenantId])
   @@index([studentId])
+  @@index([deletedAt])
 }
 
 model Message {
@@ -601,9 +607,13 @@ model Assessment {
   score           Float?
   feedback        String?          @db.Text
   metadata        Json?
+  isAnonymized    Boolean          @default(false)
+  anonymizedAt    DateTime?
   itemCalibration ItemCalibration?
   responseData    ResponseData[]
   createdAt       DateTime         @default(now())
+
+  @@index([isAnonymized])
 }
 
 enum AssessmentType {
@@ -880,11 +890,14 @@ model AuditLog {
   ipAddress    String?
   previousHash String?
   chainHash    String   @unique
+  archived     Boolean  @default(false)
+  archivedAt   DateTime?
   timestamp    DateTime @default(now())
 
   @@index([tenantId])
   @@index([tenantId, timestamp])
   @@index([userId])
+  @@index([archived])
 }
 
 // ═══════════════════════════════════════════════════════════════

@@ -3,12 +3,7 @@
  * Automated enforcement of data retention policies
  */
 
-import { prisma as prismaClient } from '@/lib/db';
-
-// TODO: Add missing fields to Prisma schema (deletedAt, updatedAt on Session,
-// isAnonymized/studentId on Assessment, consentGrantedAt/consentArchived on User,
-// archived on AuditLog) then remove this cast
-const prisma = prismaClient as any;
+import { prisma } from '@/lib/db';
 import { logger } from '@/lib/logger';
 import { createAuditLog } from '@/lib/audit';
 
@@ -239,7 +234,7 @@ async function anonymizeOldAssessments() {
       },
       select: {
         id: true,
-        studentId: true,
+        sessionId: true,
         createdAt: true,
       },
     });
@@ -253,11 +248,10 @@ async function anonymizeOldAssessments() {
         await prisma.assessment.update({
           where: { id: assessment.id },
           data: {
-            studentId: 'ANONYMIZED',
+            studentResponse: null,
+            feedback: null,
             isAnonymized: true,
             anonymizedAt: new Date(),
-            // Keep: scores, difficulty levels, topic IDs (for aggregate analysis)
-            // Remove: student identifier
           },
         });
 
@@ -495,42 +489,6 @@ async function purgeSoftDeletedData() {
   }
 
   return { processed, deleted, errors };
-}
-
-/**
- * Schedule automated data retention enforcement
- * Should run daily at off-peak hours (e.g., 2 AM)
- */
-export function scheduleDataRetention() {
-  // Calculate time until next 2 AM
-  const now = new Date();
-  const next2AM = new Date(now);
-  next2AM.setHours(2, 0, 0, 0);
-
-  if (next2AM <= now) {
-    // If it's past 2 AM today, schedule for tomorrow
-    next2AM.setDate(next2AM.getDate() + 1);
-  }
-
-  const msUntil2AM = next2AM.getTime() - now.getTime();
-
-  logger.info('Scheduling daily data retention enforcement', {
-    nextRun: next2AM.toISOString(),
-    msUntilNextRun: msUntil2AM,
-  });
-
-  // Schedule first run
-  setTimeout(async () => {
-    await enforceDataRetention();
-
-    // Then run daily
-    setInterval(
-      async () => {
-        await enforceDataRetention();
-      },
-      24 * 60 * 60 * 1000
-    ); // Every 24 hours
-  }, msUntil2AM);
 }
 
 /**
