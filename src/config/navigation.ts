@@ -38,6 +38,7 @@ export const educatorNavItems = [
   { label: 'Classes', href: '/educator/classes', icon: 'school' },
   { label: 'Reports', href: '/educator/reports', icon: 'file-text' },
   { label: 'Compliance', href: '/educator/compliance', icon: 'shield-check' },
+  { label: 'Grades', href: '/educator/grades', icon: 'check-square' },
 ] as const;
 
 export const parentNavItems = [
