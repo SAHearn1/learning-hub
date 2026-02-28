@@ -98,6 +98,12 @@ export function useChat(): UseChatReturn {
 
     setLoading(true);
 
+    // Auto-cancel stream after 45 seconds to prevent permanently hung requests.
+    const STREAM_TIMEOUT_MS = 45_000;
+    const timeoutId = setTimeout(() => {
+      abortRef.current?.abort(new Error('Stream timeout'));
+    }, STREAM_TIMEOUT_MS);
+
     try {
       const response = await fetch('/api/chat', {
         method: 'POST',
@@ -157,6 +163,17 @@ export function useChat(): UseChatReturn {
       finishStreamingMessage();
     } catch (err) {
       if (err instanceof Error && err.name === 'AbortError') {
+        const isTimeout = err.message === 'Stream timeout';
+        finishStreamingMessage();
+        setLoading(false);
+        if (isTimeout) {
+          addMessage({
+            id: `msg-${Date.now()}-error`,
+            role: 'SYSTEM',
+            content: 'The response took too long. Please try again.',
+            timestamp: new Date(),
+          });
+        }
         return;
       }
       finishStreamingMessage();
@@ -168,6 +185,8 @@ export function useChat(): UseChatReturn {
         content: 'Something went wrong. Please try again.',
         timestamp: new Date(),
       });
+    } finally {
+      clearTimeout(timeoutId);
     }
   }, [
     sessionId, messages, currentPhase, regulationLevel,

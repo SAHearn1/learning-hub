@@ -53,13 +53,28 @@ async function computePayloadHash(
   return crypto.createHash('sha256').update(parts.join('\0')).digest('hex');
 }
 
+/**
+ * Constant-time string comparison to prevent timing-based secret enumeration.
+ * Pads both inputs to the same length before comparing so length differences
+ * don't cause an early exit that leaks information about the expected value.
+ */
+function timingSafeStringEqual(a: string, b: string): boolean {
+  const maxLen = Math.max(a.length, b.length);
+  const aBuf = Buffer.alloc(maxLen);
+  const bBuf = Buffer.alloc(maxLen);
+  Buffer.from(a).copy(aBuf);
+  Buffer.from(b).copy(bBuf);
+  return crypto.timingSafeEqual(aBuf, bBuf) && a.length === b.length;
+}
+
 export async function POST(req: NextRequest) {
   const startTime = Date.now();
   const webhookSecret = process.env.N8N_WEBHOOK_SECRET;
   if (!webhookSecret) return NextResponse.json({ error: 'Webhook not configured' }, { status: 500 });
 
-  const authHeader = req.headers.get('authorization');
-  if (authHeader !== `Bearer ${webhookSecret}`) {
+  const authHeader = req.headers.get('authorization')?.trim() ?? '';
+  const expectedBearer = `Bearer ${webhookSecret}`;
+  if (!timingSafeStringEqual(authHeader, expectedBearer)) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
 

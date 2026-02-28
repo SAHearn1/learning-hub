@@ -44,8 +44,13 @@ function pushToStatsd(metric: string, value: number, type: 'g' | 'c' = 'g'): voi
 // In-memory metrics store (instance-local fallback / dev mode)
 // ---------------------------------------------------------------------------
 
+interface MetricSample {
+  value: number;
+  timestamp: number;
+}
+
 class MetricsStore {
-  private metrics: Map<string, number[]> = new Map();
+  private metrics: Map<string, MetricSample[]> = new Map();
   private readonly MAX_SAMPLES = 1000;
 
   record(metric: string, value: number, timestamp: number = Date.now()) {
@@ -56,33 +61,31 @@ class MetricsStore {
       this.metrics.set(metric, []);
     }
 
-    const values = this.metrics.get(metric)!;
-    values.push(value);
+    const samples = this.metrics.get(metric)!;
+    samples.push({ value, timestamp });
 
     // Keep only recent samples
-    if (values.length > this.MAX_SAMPLES) {
-      values.shift();
+    if (samples.length > this.MAX_SAMPLES) {
+      samples.shift();
     }
   }
 
   get(metric: string, timeWindow?: string): number[] {
-    const values = this.metrics.get(metric) || [];
+    const samples = this.metrics.get(metric) || [];
 
     if (!timeWindow) {
-      return values;
+      return samples.map((s) => s.value);
     }
 
-    // Parse time window (e.g., '5m', '1h')
+    // Filter to only samples within the specified time window
     const windowMs = parseTimeWindow(timeWindow);
     const cutoff = Date.now() - windowMs;
-
-    // For simplicity, return all values (in production, track timestamps)
-    return values;
+    return samples.filter((s) => s.timestamp >= cutoff).map((s) => s.value);
   }
 
   getLatest(metric: string): number | undefined {
-    const values = this.metrics.get(metric);
-    return values && values.length > 0 ? values[values.length - 1] : undefined;
+    const samples = this.metrics.get(metric);
+    return samples && samples.length > 0 ? samples[samples.length - 1]!.value : undefined;
   }
 
   getAverage(metric: string, timeWindow?: string): number {
@@ -96,13 +99,14 @@ class MetricsStore {
     if (values.length === 0) return 0;
 
     const index = Math.ceil((percentile / 100) * values.length) - 1;
-    return values[Math.max(0, index)];
+    return values[Math.max(0, index)]!;
   }
 
   getRate(metric: string, timeWindow: string): number {
     const values = this.get(metric, timeWindow);
     const windowMs = parseTimeWindow(timeWindow);
     const windowSeconds = windowMs / 1000;
+    if (windowSeconds === 0) return 0;
 
     return values.length / windowSeconds;
   }

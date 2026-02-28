@@ -57,17 +57,28 @@ export function preventSqlInjection(input: string): boolean {
 
 /**
  * XSS Prevention
- * Sanitize input to prevent cross-site scripting attacks
+ * Sanitize input to prevent cross-site scripting attacks.
+ * Removes script, style, and iframe tags; strips event handler attributes;
+ * and blocks javascript: and data:text/html URIs (including SVG vectors).
  */
 export function sanitizeHtml(input: string): string {
-  // Remove script tags and dangerous attributes
   return input
+    // Remove <script> blocks
     .replace(/<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi, '')
+    // Remove <iframe> blocks
     .replace(/<iframe\b[^<]*(?:(?!<\/iframe>)<[^<]*)*<\/iframe>/gi, '')
-    .replace(/on\w+\s*=\s*["'][^"']*["']/gi, '')
-    .replace(/on\w+\s*=\s*[^\s>]*/gi, '')
-    .replace(/javascript:/gi, '')
-    .replace(/data:text\/html/gi, '');
+    // Remove <style> blocks (can contain expression() or @import)
+    .replace(/<style\b[^<]*(?:(?!<\/style>)<[^<]*)*<\/style>/gi, '')
+    // Strip inline event handlers (onclick=, onload=, etc.) — quoted and unquoted
+    .replace(/\bon\w+\s*=\s*["'][^"']*["']/gi, '')
+    .replace(/\bon\w+\s*=\s*[^\s>]*/gi, '')
+    // Block javascript: URIs
+    .replace(/javascript\s*:/gi, '')
+    // Block data:text/html URIs (HTML injection via data URIs)
+    .replace(/data\s*:\s*text\/html/gi, '')
+    // Block SVG href/xlink:href that point to javascript: or data: URIs
+    .replace(/(href|xlink:href)\s*=\s*["']\s*javascript\s*:[^"']*/gi, '$1="#"')
+    .replace(/(href|xlink:href)\s*=\s*["']\s*data\s*:[^"']*/gi, '$1="#"');
 }
 
 /**
@@ -268,9 +279,28 @@ export function validateApiParams(params: Record<string, any>, schema: z.ZodSche
 
 /**
  * Rate limiting helper
- * Track and limit request rates per user/IP
+ * Track and limit request rates per user/IP.
+ *
+ * The store is bounded to MAX_RATE_LIMIT_ENTRIES to prevent unbounded memory
+ * growth under DDoS. When the cap is reached, expired entries are evicted first;
+ * if no expired entries exist, the oldest entry is removed (approximate LRU).
  */
 const rateLimitStore = new Map<string, { count: number; resetAt: number }>();
+const MAX_RATE_LIMIT_ENTRIES = 50_000;
+
+function pruneLibRateLimitStore(now: number) {
+  if (rateLimitStore.size < MAX_RATE_LIMIT_ENTRIES) return;
+  // First pass: remove expired entries
+  for (const [key, record] of rateLimitStore) {
+    if (now > record.resetAt) {
+      rateLimitStore.delete(key);
+      if (rateLimitStore.size < MAX_RATE_LIMIT_ENTRIES) return;
+    }
+  }
+  // Second pass: evict oldest entry if still at cap
+  const firstKey = rateLimitStore.keys().next().value;
+  if (firstKey !== undefined) rateLimitStore.delete(firstKey);
+}
 
 export function checkRateLimit(
   identifier: string,
@@ -282,6 +312,8 @@ export function checkRateLimit(
   resetAt: number;
 } {
   const now = Date.now();
+  pruneLibRateLimitStore(now);
+
   const record = rateLimitStore.get(identifier);
 
   if (!record || now > record.resetAt) {

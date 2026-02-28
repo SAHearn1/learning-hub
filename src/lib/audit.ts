@@ -20,6 +20,7 @@ function hashAuditRecord(payload: {
   metadata?: unknown;
   timestamp: Date;
   previousHash?: string | null;
+  nonce: string;
 }): string {
   return crypto
     .createHash('sha256')
@@ -36,7 +37,10 @@ export async function appendImmutableAuditLog(input: AuditWriteInput) {
 
   const timestamp = new Date();
   const previousHash = previous?.chainHash ?? null;
-  const chainHash = hashAuditRecord({ ...input, timestamp, previousHash });
+  // Include a cryptographically random nonce so two identical records created at
+  // the same millisecond produce different chain hashes, preventing collisions.
+  const nonce = crypto.randomBytes(16).toString('hex');
+  const chainHash = hashAuditRecord({ ...input, timestamp, previousHash, nonce });
 
   return db.auditLog.create({
     data: {

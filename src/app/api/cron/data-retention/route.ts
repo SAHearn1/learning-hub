@@ -1,6 +1,19 @@
+import crypto from 'node:crypto';
 import { NextRequest, NextResponse } from 'next/server';
 import { enforceDataRetention } from '@/lib/compliance/data-retention';
 import { logger } from '@/lib/logger';
+
+/**
+ * Constant-time string comparison to prevent timing-based secret enumeration.
+ */
+function timingSafeStringEqual(a: string, b: string): boolean {
+  const maxLen = Math.max(a.length, b.length);
+  const aBuf = Buffer.alloc(maxLen);
+  const bBuf = Buffer.alloc(maxLen);
+  Buffer.from(a).copy(aBuf);
+  Buffer.from(b).copy(bBuf);
+  return crypto.timingSafeEqual(aBuf, bBuf) && a.length === b.length;
+}
 
 /**
  * POST /api/cron/data-retention
@@ -13,10 +26,10 @@ import { logger } from '@/lib/logger';
  * without the secret receive 401.
  */
 export async function GET(req: NextRequest) {
-  const authHeader = req.headers.get('authorization');
+  const authHeader = req.headers.get('authorization')?.trim() ?? '';
   const cronSecret = process.env.CRON_SECRET;
 
-  if (cronSecret && authHeader !== `Bearer ${cronSecret}`) {
+  if (cronSecret && !timingSafeStringEqual(authHeader, `Bearer ${cronSecret}`)) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
 
