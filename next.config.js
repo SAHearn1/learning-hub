@@ -45,9 +45,13 @@ const nextConfig = {
             value: "max-age=63072000; includeSubDomains; preload",
           },
           {
+            // 'unsafe-eval' removed — no current dependency requires it.
+            // 'unsafe-inline' in script-src is retained for Next.js inline bootstrap scripts;
+            // migrate to nonce-based CSP once Next.js App Router nonce support stabilises.
+            // AUTHORITATIVE source — do NOT add security headers elsewhere (e.g. middleware).
             key: "Content-Security-Policy",
             value:
-              "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://clerk.rwfw-learninghub.com https://js.stripe.com https://challenges.cloudflare.com https://vercel.live; worker-src 'self' blob:; style-src 'self' 'unsafe-inline'; img-src 'self' data: https://img.clerk.com https://images.unsplash.com; font-src 'self' https://vercel.live; connect-src 'self' https://clerk.rwfw-learninghub.com https://accounts.rwfw-learninghub.com https://api.stripe.com https://*.pinecone.io https://api.anthropic.com https://api.openai.com https://challenges.cloudflare.com https://vercel.live; frame-src https://js.stripe.com https://accounts.rwfw-learninghub.com https://challenges.cloudflare.com https://vercel.live; object-src 'none'; base-uri 'self'; form-action 'self';",
+              "default-src 'self'; script-src 'self' 'unsafe-inline' https://clerk.rwfw-learninghub.com https://js.stripe.com https://challenges.cloudflare.com https://vercel.live; worker-src 'self' blob:; style-src 'self' 'unsafe-inline'; img-src 'self' data: https://img.clerk.com https://images.unsplash.com; font-src 'self' https://vercel.live; connect-src 'self' https://clerk.rwfw-learninghub.com https://accounts.rwfw-learninghub.com https://api.stripe.com https://*.pinecone.io https://api.anthropic.com https://api.openai.com https://challenges.cloudflare.com https://vercel.live; frame-src https://js.stripe.com https://accounts.rwfw-learninghub.com https://challenges.cloudflare.com https://vercel.live; object-src 'none'; base-uri 'self'; form-action 'self';",
           },
         ],
       },

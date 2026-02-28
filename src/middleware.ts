@@ -96,12 +96,9 @@ const enforceCsrfForApi = (request: NextRequest) => {
   return null;
 };
 
-const applySecurityHeaders = (response: NextResponse) => {
-  response.headers.set('Strict-Transport-Security', 'max-age=31536000; includeSubDomains; preload');
-  response.headers.set('X-Content-Type-Options', 'nosniff');
-  response.headers.set('X-Frame-Options', 'DENY');
-  return response;
-};
+// Security headers (HSTS, X-Frame-Options, CSP, etc.) are set authoritatively
+// in next.config.js headers(). Do NOT duplicate them here — duplicate definitions
+// can cause unexpected override behaviour depending on response order.
 
 const enforceTenantRateLimit = (request: NextRequest, userId: string | null) => {
   const pathname = request.nextUrl.pathname;
@@ -137,20 +134,20 @@ export default clerkMiddleware((auth, req) => {
   // Rate limiting for API routes
   const rateLimitResponse = enforceRateLimit(req);
   if (rateLimitResponse) {
-    return applySecurityHeaders(rateLimitResponse);
+    return rateLimitResponse;
   }
 
   // Per-user (tenant-proxy) rate limiting for authenticated API routes
   const { userId } = auth();
   const tenantRateLimitResponse = enforceTenantRateLimit(req, userId);
   if (tenantRateLimitResponse) {
-    return applySecurityHeaders(tenantRateLimitResponse);
+    return tenantRateLimitResponse;
   }
 
   // CSRF protection for mutating API requests
   const csrfResponse = enforceCsrfForApi(req);
   if (csrfResponse) {
-    return applySecurityHeaders(csrfResponse);
+    return csrfResponse;
   }
 
   // Protect non-public routes — redirects unauthenticated users to sign-in
@@ -158,7 +155,7 @@ export default clerkMiddleware((auth, req) => {
     auth().protect();
   }
 
-  return applySecurityHeaders(NextResponse.next());
+  return NextResponse.next();
 });
 
 export const config = {
