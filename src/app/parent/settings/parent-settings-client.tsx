@@ -208,7 +208,7 @@ export function ParentSettingsClient() {
             {(
               [
                 { key: 'emailNotifications', label: 'Email Notifications', description: 'Receive notifications by email' },
-                { key: 'weeklyDigest', label: 'Weekly Digest', description: 'Summary of your children's weekly learning activity' },
+                { key: 'weeklyDigest', label: 'Weekly Digest', description: "Summary of your children's weekly learning activity" },
                 { key: 'sessionAlerts', label: 'Session Alerts', description: 'Alert when a child starts or ends a learning session' },
                 { key: 'progressMilestones', label: 'Progress Milestones', description: 'Notify when a child achieves a mastery milestone' },
               ] as { key: keyof CommunicationPrefs; label: string; description: string }[]
