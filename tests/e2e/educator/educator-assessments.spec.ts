@@ -1,7 +1,7 @@
 import { test, expect } from '../fixtures/auth.fixture';
 
 test.describe('Educator assessments', () => {
-  test.use({ authenticatedEducator: undefined });
+  test.use({ authenticatedEducator: true });
 
   test('navigate to student assessments page', async ({ page }) => {
     // This would require a valid student ID

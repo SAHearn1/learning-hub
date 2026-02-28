@@ -1,7 +1,7 @@
 import { test, expect } from '../fixtures/auth.fixture';
 
 test.describe('Student explore-to-learn handoff', () => {
-  test.use({ authenticatedStudent: undefined });
+  test.use({ authenticatedStudent: true });
 
   test('navigates from explore topics to learn with topic query param', async ({ page }) => {
     await page.route('**/api/explore/pretest', async (route) => {

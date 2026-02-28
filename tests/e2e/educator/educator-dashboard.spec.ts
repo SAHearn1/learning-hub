@@ -1,7 +1,7 @@
 import { test, expect } from '../fixtures/auth.fixture';
 
 test.describe('Educator dashboard', () => {
-  test.use({ authenticatedEducator: undefined });
+  test.use({ authenticatedEducator: true });
 
   test('navigate to educator dashboard', async ({ page }) => {
     await page.goto('/educator/dashboard');
