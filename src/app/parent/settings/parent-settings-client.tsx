@@ -200,7 +200,7 @@ export function ParentSettingsClient() {
 
       <section>
         <h2 className="text-xl font-semibold text-neutral-900">Notification Preferences</h2>
-        <p className="mt-1 text-sm text-neutral-600">Choose which notifications you receive about your children's activity.</p>
+        <p className="mt-1 text-sm text-neutral-600">Choose which notifications you receive about your children&apos;s activity.</p>
         {prefsLoading ? (
           <p className="mt-3 text-sm text-neutral-500">Loading preferences…</p>
         ) : (

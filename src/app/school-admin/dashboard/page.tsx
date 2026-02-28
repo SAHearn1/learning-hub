@@ -29,31 +29,31 @@ export default async function SchoolAdminDashboardPage() {
       href: '/school-admin/classes',
       title: 'Classes',
       description: 'View and manage all classes, subjects, and grade levels in your school.',
-      icon: '📚',
+      icon: 'CL',
     },
     {
       href: '/school-admin/educators',
       title: 'Educators',
       description: 'Manage educator assignments, credentials, and teaching loads.',
-      icon: '👩‍🏫',
+      icon: 'ED',
     },
     {
       href: '/school-admin/students',
       title: 'Students',
       description: 'School-wide student roster, enrollment, and progress overview.',
-      icon: '🎒',
+      icon: 'ST',
     },
     {
       href: '/school-admin/compliance',
       title: 'Compliance',
       description: 'IEP accommodations, parental consent rates, and audit summaries.',
-      icon: '✅',
+      icon: 'CP',
     },
     {
       href: '/school-admin/billing',
       title: 'Billing',
       description: 'Subscription management, tier details, and invoicing.',
-      icon: '💳',
+      icon: 'BL',
     },
   ];
 
@@ -90,7 +90,7 @@ export default async function SchoolAdminDashboardPage() {
               className="rounded-xl border border-neutral-200 bg-white p-6 shadow-sm transition-shadow hover:shadow-md"
             >
               <div className="flex items-center gap-3">
-                <span className="text-2xl" aria-hidden="true">{card.icon}</span>
+                <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-neutral-100 text-xs font-bold text-neutral-600" aria-hidden="true">{card.icon}</span>
                 <h3 className="font-semibold text-neutral-900">{card.title}</h3>
               </div>
               <p className="mt-2 text-sm text-neutral-600">{card.description}</p>
