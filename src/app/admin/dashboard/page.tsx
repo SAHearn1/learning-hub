@@ -9,7 +9,7 @@ export default async function AdminDashboardPage() {
   const user = await getCurrentUser();
   const role = user?.role;
 
-  if (role === 'DISTRICT_ADMIN') {
+  if (role === 'DISTRICT_ADMIN' && user) {
     const tenantId = user.tenantId;
 
     const [schoolCount, educatorCount, studentCount] = await Promise.all([
