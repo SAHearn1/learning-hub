@@ -1,7 +1,7 @@
 import { test, expect } from '../fixtures/auth.fixture';
 
 test.describe('Admin compliance', () => {
-  test.use({ authenticatedAdmin: undefined });
+  test.use({ authenticatedAdmin: true });
 
   test('navigate to admin dashboard', async ({ page }) => {
     await page.goto('/admin/dashboard');

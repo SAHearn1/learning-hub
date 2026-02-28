@@ -1,7 +1,7 @@
 import { test, expect } from '../fixtures/auth.fixture';
 
 test.describe('Parent dashboard', () => {
-  test.use({ authenticatedParent: undefined });
+  test.use({ authenticatedParent: true });
 
   test('navigate to parent dashboard', async ({ page }) => {
     await page.goto('/parent/dashboard');

@@ -1,7 +1,7 @@
 import { test, expect } from '../fixtures/auth.fixture';
 
 test.describe('Student chat and assignment flow', () => {
-  test.use({ authenticatedStudent: undefined });
+  test.use({ authenticatedStudent: true });
 
   test('log in, open assignment, chat with bot, and complete assessment', async ({ page }) => {
     // Mock chat streaming so the flow is deterministic and does not require external AI providers.

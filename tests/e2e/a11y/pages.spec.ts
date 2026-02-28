@@ -25,7 +25,7 @@ baseTest.describe('Public Pages - Accessibility @a11y', () => {
 });
 
 authTest.describe('Student Dashboard - Accessibility @a11y', () => {
-  authTest.use({ authenticatedStudent: undefined });
+  authTest.use({ authenticatedStudent: true });
 
   authTest.beforeEach(async ({ page }) => {
     await setupAccessibilityChecks(page);
@@ -39,7 +39,7 @@ authTest.describe('Student Dashboard - Accessibility @a11y', () => {
 });
 
 authTest.describe('Educator Dashboard - Accessibility @a11y', () => {
-  authTest.use({ authenticatedEducator: undefined });
+  authTest.use({ authenticatedEducator: true });
 
   authTest.beforeEach(async ({ page }) => {
     await setupAccessibilityChecks(page);
@@ -53,7 +53,7 @@ authTest.describe('Educator Dashboard - Accessibility @a11y', () => {
 });
 
 authTest.describe('Parent Dashboard - Accessibility @a11y', () => {
-  authTest.use({ authenticatedParent: undefined });
+  authTest.use({ authenticatedParent: true });
 
   authTest.beforeEach(async ({ page }) => {
     await setupAccessibilityChecks(page);

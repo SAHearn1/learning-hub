@@ -2,7 +2,7 @@ import { test, expect } from '../fixtures/auth.fixture';
 
 test.describe('Student learning page', () => {
   // Use authenticated student fixture for all tests in this suite
-  test.use({ authenticatedStudent: undefined });
+  test.use({ authenticatedStudent: true });
 
   test('navigate to learn page', async ({ page }) => {
     await page.goto('/learn');

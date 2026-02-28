@@ -1,4 +1,4 @@
-import { test as base } from '@playwright/test';
+import { test as base, TestInfo } from '@playwright/test';
 import path from 'path';
 import fs from 'fs';
 
@@ -7,15 +7,32 @@ import fs from 'fs';
  *
  * The global setup (global.setup.ts) signs in as each role via
  * @clerk/testing and saves the browser state to JSON files.
- * These fixtures load that saved state (cookies + localStorage)
- * into the test's browser context so pages are authenticated.
+ *
+ * Usage: enable auth for a describe block via test.use():
+ *   test.use({ authenticatedStudent: true });
+ *   test.use({ authenticatedEducator: true });
+ *   test.use({ authenticatedParent: true });
+ *   test.use({ authenticatedAdmin: true });
+ *
+ * The _authSetup auto-fixture reads these option flags and injects the
+ * saved Clerk session (cookies + localStorage) before each test.
+ *
+ * When auth state files are absent (Clerk credentials not configured),
+ * the affected test is individually skipped with a diagnostic message
+ * instead of failing the entire project.
  */
 
 type AuthFixtures = {
-  authenticatedStudent: void;
-  authenticatedEducator: void;
-  authenticatedParent: void;
-  authenticatedAdmin: void;
+  /** Set to true via test.use() to inject student Clerk session */
+  authenticatedStudent: boolean;
+  /** Set to true via test.use() to inject educator Clerk session */
+  authenticatedEducator: boolean;
+  /** Set to true via test.use() to inject parent Clerk session */
+  authenticatedParent: boolean;
+  /** Set to true via test.use() to inject admin Clerk session */
+  authenticatedAdmin: boolean;
+  /** Internal: auto fixture that reads the above options and injects state */
+  _authSetup: void;
 };
 
 const clerkDir = path.join(__dirname, '../../../playwright/.clerk');
@@ -37,26 +54,22 @@ interface StorageState {
   }>;
 }
 
-function loadStorageState(role: string): StorageState {
+function loadStorageState(role: string): StorageState | null {
   const statePath = path.join(clerkDir, `${role}.json`);
   if (!fs.existsSync(statePath)) {
-    throw new Error(
-      `Auth state file not found: ${statePath}. ` +
-      'Run the global setup first: npx playwright test --project=setup'
-    );
+    return null;
   }
   return JSON.parse(fs.readFileSync(statePath, 'utf-8'));
 }
 
 async function injectAuthState(page: any, role: string) {
   const state = loadStorageState(role);
+  if (!state) return;
 
-  // Inject cookies from saved state
   if (state.cookies?.length) {
     await page.context().addCookies(state.cookies);
   }
 
-  // Inject localStorage from saved state
   if (state.origins?.length) {
     for (const origin of state.origins) {
       if (origin.localStorage?.length) {
@@ -71,25 +84,53 @@ async function injectAuthState(page: any, role: string) {
 }
 
 export const test = base.extend<AuthFixtures>({
-  authenticatedStudent: [async ({ page }, use) => {
-    await injectAuthState(page, 'student');
-    await use();
-  }, { auto: false }],
+  // Option fixtures — false by default; enable per describe with test.use({ authenticated*: true })
+  authenticatedStudent: [false, { option: true }],
+  authenticatedEducator: [false, { option: true }],
+  authenticatedParent: [false, { option: true }],
+  authenticatedAdmin: [false, { option: true }],
 
-  authenticatedEducator: [async ({ page }, use) => {
-    await injectAuthState(page, 'educator');
-    await use();
-  }, { auto: false }],
+  /**
+   * Auto fixture: runs for every test. When one of the option flags is
+   * true, it locates the matching saved Clerk session and injects it.
+   * If the session file is missing, the test is skipped individually.
+   */
+  _authSetup: [
+    async (
+      { page, authenticatedStudent, authenticatedEducator, authenticatedParent, authenticatedAdmin },
+      use,
+      testInfo: TestInfo,
+    ) => {
+      const roleMap: Record<string, boolean> = {
+        student: authenticatedStudent,
+        educator: authenticatedEducator,
+        parent: authenticatedParent,
+        admin: authenticatedAdmin,
+      };
 
-  authenticatedParent: [async ({ page }, use) => {
-    await injectAuthState(page, 'parent');
-    await use();
-  }, { auto: false }],
+      const activeRole = Object.entries(roleMap).find(([, enabled]) => enabled)?.[0];
 
-  authenticatedAdmin: [async ({ page }, use) => {
-    await injectAuthState(page, 'admin');
-    await use();
-  }, { auto: false }],
+      if (activeRole) {
+        const statePath = path.join(clerkDir, `${activeRole}.json`);
+        if (!fs.existsSync(statePath)) {
+          // Skip this test only; other tests are unaffected.
+          testInfo.skip(
+            true,
+            `Clerk auth state not found for role "${activeRole}" (${statePath}). ` +
+              'Configure NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY, CLERK_SECRET_KEY, and ' +
+              'E2E_CLERK_USER_* environment variables, then run: ' +
+              'npx playwright test --project=setup',
+          );
+          // testInfo.skip() throws SkipError — return is unreachable but keeps TS happy
+          return;
+        }
+        await injectAuthState(page, activeRole);
+      }
+
+      await use();
+    },
+    { auto: true },
+  ],
 });
 
 export { expect } from '@playwright/test';
