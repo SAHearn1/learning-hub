@@ -41,6 +41,7 @@ export const educatorNavItems = [
 ] as const;
 
 export const parentNavItems = [
+  { label: 'Children', href: '/parent/settings', icon: 'users' },
   { label: 'Grades', href: '/parent/grades', icon: 'progress' },
   { label: 'Consent', href: '/parent/consent', icon: 'shield-check' },
   { label: 'Settings', href: '/parent/settings', icon: 'settings' },
