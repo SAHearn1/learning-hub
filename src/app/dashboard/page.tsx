@@ -24,8 +24,9 @@ export default async function DashboardPage() {
 
   switch (user.role) {
     case 'EDUCATOR':
-    case 'SCHOOL_ADMIN':
       redirect('/educator/students');
+    case 'SCHOOL_ADMIN':
+      redirect('/school-admin/dashboard');
     case 'PARENT':
       redirect('/parent/dashboard');
     case 'DISTRICT_ADMIN':

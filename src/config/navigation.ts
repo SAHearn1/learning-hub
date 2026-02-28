@@ -46,6 +46,22 @@ export const parentNavItems = [
   { label: 'Settings', href: '/parent/settings', icon: 'settings' },
 ] as const;
 
+export const schoolAdminNavItems = [
+  { label: 'Dashboard', href: '/school-admin/dashboard', icon: 'layout-dashboard' },
+  { label: 'Classes', href: '/school-admin/classes', icon: 'school' },
+  { label: 'Educators', href: '/school-admin/educators', icon: 'users' },
+  { label: 'Students', href: '/school-admin/students', icon: 'graduation-cap' },
+  { label: 'Compliance', href: '/school-admin/compliance', icon: 'shield-check' },
+  { label: 'Billing', href: '/school-admin/billing', icon: 'credit-card' },
+] as const;
+
+export const districtAdminNavItems = [
+  { label: 'Dashboard', href: '/admin/dashboard', icon: 'layout-dashboard' },
+  { label: 'Schools', href: '/admin/schools', icon: 'building' },
+  { label: 'Educators', href: '/admin/educators', icon: 'users' },
+  { label: 'Compliance', href: '/admin/compliance', icon: 'shield-check' },
+] as const;
+
 export const adminNavItems = [
   { label: 'Super Admin Dashboard', href: '/admin/dashboard', icon: 'shield-check' },
   { label: 'Ingestion Control', href: '/admin/ingest', icon: 'shield-check' },
