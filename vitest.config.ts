@@ -10,10 +10,11 @@ export default defineConfig({
     environment: 'node',
     exclude: ['**/node_modules/**', '**/e2e/**'],
 
-    // Windows CI can be flaky with multi-worker runs ("Worker exited unexpectedly")
-    // and can also hit worker-thread memory issues. Keep local/dev fast, but force
-    // deterministic single-worker execution in CI.
-    ...(isCI && isWindows
+    // Windows environments (CI and local) can be flaky with multi-worker runs
+    // ("Worker exited unexpectedly") and hit worker-thread memory issues causing
+    // false timeout failures from Prisma mock contention. Force deterministic
+    // single-worker execution on Windows.
+    ...(isWindows
       ? {
           pool: 'forks',
           fileParallelism: false,
