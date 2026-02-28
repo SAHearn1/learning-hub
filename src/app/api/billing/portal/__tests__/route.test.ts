@@ -2,10 +2,10 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { NextRequest } from 'next/server';
 import { AuthenticationError } from '@/lib/api-errors';
 
-const mockRequireUser = vi.fn();
+const mockRequireRole = vi.fn();
 const mockCreateBillingPortalSession = vi.fn();
 
-vi.mock('@/lib/auth', () => ({ requireUser: mockRequireUser }));
+vi.mock('@/lib/auth', () => ({ requireRole: mockRequireRole, requireUser: mockRequireRole }));
 vi.mock('@/lib/billing', () => ({ createBillingPortalSession: mockCreateBillingPortalSession }));
 vi.mock('@/lib/logger', () => ({
   logger: { debug: vi.fn(), info: vi.fn(), warn: vi.fn(), error: vi.fn() },
@@ -28,7 +28,7 @@ describe('POST /api/billing/portal', () => {
 
   it('returns portal URL on success', async () => {
     const { POST } = await import('../route');
-    mockRequireUser.mockResolvedValue({ email: 'owner@example.com', tenantId: 'tenant_1' });
+    mockRequireRole.mockResolvedValue({ email: 'owner@example.com', tenantId: 'tenant_1' });
     mockCreateBillingPortalSession.mockResolvedValue({ url: 'https://billing.stripe.com/p/session_1' });
 
     const req = new NextRequest('http://localhost/api/billing/portal', {
@@ -44,7 +44,7 @@ describe('POST /api/billing/portal', () => {
 
   it('returns 401 when not authenticated', async () => {
     const { POST } = await import('../route');
-    mockRequireUser.mockRejectedValue(new AuthenticationError());
+    mockRequireRole.mockRejectedValue(new AuthenticationError());
 
     const req = new NextRequest('http://localhost/api/billing/portal', {
       method: 'POST',

@@ -17,6 +17,20 @@ vi.mock('@/lib/billing', () => ({
   handleSubscriptionCanceled: mockHandleSubscriptionCanceled,
 }));
 
+vi.mock('@/lib/audit', () => ({
+  appendImmutableAuditLog: vi.fn(),
+}));
+
+vi.mock('@/lib/db', () => ({
+  db: {
+    tenant: { findFirst: vi.fn().mockResolvedValue({ id: 'tenant_1' }) },
+  },
+}));
+
+vi.mock('@/lib/logger', () => ({
+  logger: { debug: vi.fn(), info: vi.fn(), warn: vi.fn(), error: vi.fn() },
+}));
+
 describe('POST /api/stripe/webhook', () => {
   beforeEach(() => {
     vi.clearAllMocks();
@@ -58,9 +72,13 @@ describe('POST /api/stripe/webhook', () => {
     const { POST } = await import('../route');
     mockConstructEvent.mockReturnValue({
       type: 'checkout.session.completed',
-      data: { object: { subscription: 'sub_123' } },
+      data: { object: { subscription: 'sub_123', customer: 'cus_123' } },
     });
-    mockRetrieveSubscription.mockResolvedValue({ id: 'sub_123', metadata: { tenantId: 'tenant_1' } });
+    mockRetrieveSubscription.mockResolvedValue({
+      id: 'sub_123',
+      metadata: { tenantId: 'tenant_1' },
+      items: { data: [{ price: { id: 'price_123' } }] },
+    });
 
     const request = new Request('http://localhost/api/stripe/webhook', {
       method: 'POST',
@@ -73,12 +91,16 @@ describe('POST /api/stripe/webhook', () => {
     expect(response.status).toBe(200);
     await expect(response.json()).resolves.toEqual({ received: true });
     expect(mockRetrieveSubscription).toHaveBeenCalledWith('sub_123');
-    expect(mockSyncTenantFromSubscription).toHaveBeenCalledWith({ id: 'sub_123', metadata: { tenantId: 'tenant_1' } });
+    expect(mockSyncTenantFromSubscription).toHaveBeenCalledWith({
+      id: 'sub_123',
+      metadata: { tenantId: 'tenant_1' },
+      items: { data: [{ price: { id: 'price_123' } }] },
+    });
   });
 
   it('handles subscription deletion webhooks', async () => {
     const { POST } = await import('../route');
-    const deletedSubscription = { id: 'sub_456', metadata: { tenantId: 'tenant_2' } };
+    const deletedSubscription = { id: 'sub_456', metadata: { tenantId: 'tenant_2' }, customer: 'cus_456' };
     mockConstructEvent.mockReturnValue({
       type: 'customer.subscription.deleted',
       data: { object: deletedSubscription },

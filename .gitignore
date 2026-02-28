@@ -58,3 +58,4 @@ next-env.d.ts
 
 # n8n
 .n8n/
+.env*.local
