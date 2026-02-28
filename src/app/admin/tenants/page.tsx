@@ -1,6 +1,7 @@
 import Link from 'next/link';
 import { requirePageUser } from '@/lib/page-auth';
 import { db } from '@/lib/db';
+import { SuspendButton } from './suspend-button';
 
 export default async function AdminTenantsPage() {
   await requirePageUser(['PLATFORM_ADMIN']);
@@ -103,12 +104,7 @@ export default async function AdminTenantsPage() {
                     <td className="px-6 py-4">
                       <div className="flex items-center gap-2">
                         {!tenant.isSuspended ? (
-                          <a
-                            href={`/api/admin/super/tenants/${tenant.id}/suspension`}
-                            className="rounded px-2.5 py-1 text-xs font-medium text-red-600 border border-red-200 hover:bg-red-50"
-                          >
-                            Suspend
-                          </a>
+                          <SuspendButton tenantId={tenant.id} />
                         ) : (
                           <span className="rounded px-2.5 py-1 text-xs font-medium text-neutral-400 border border-neutral-200">
                             Suspended
