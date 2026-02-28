@@ -4,6 +4,7 @@ import { getCurrentUser } from '@/lib/auth';
 import { z } from 'zod';
 import fs from 'node:fs/promises';
 import path from 'node:path';
+import crypto from 'node:crypto';
 import { parseCurriculumFile } from '@/lib/curriculum/parser';
 import { generateEmbeddings } from '@/lib/embeddings';
 import { upsertVectors } from '@/lib/pinecone';
@@ -22,6 +23,34 @@ async function defaultFinancialLiteracyFiles() {
     path: path.join('content', '14-financial-literacy', f),
     metadata: { subject: 'FINANCIAL_LITERACY', gradeLevel: [9, 10, 11, 12], gradeBand: 'HS' },
   }));
+}
+
+/**
+ * Compute a stable SHA-256 content hash for an ingest payload.
+ * The hash covers file paths + file content (if provided inline) so that
+ * repeated calls with identical inputs can be skipped without re-embedding.
+ */
+async function computePayloadHash(
+  files: { path: string; content?: string }[],
+): Promise<string> {
+  const parts: string[] = [];
+  for (const f of files) {
+    parts.push(f.path);
+    if (typeof f.content === 'string') {
+      parts.push(f.content);
+    } else {
+      // Read file content for hash computation only (not held in memory beyond this).
+      try {
+        const absPath = path.isAbsolute(f.path) ? f.path : path.join(process.cwd(), f.path);
+        const content = await fs.readFile(absPath, 'utf8');
+        parts.push(content);
+      } catch {
+        // If file is unreadable, include path only so hash is still stable per-call.
+        parts.push(`<unreadable:${f.path}>`);
+      }
+    }
+  }
+  return crypto.createHash('sha256').update(parts.join('\0')).digest('hex');
 }
 
 export async function POST(req: NextRequest) {
@@ -69,10 +98,33 @@ export async function POST(req: NextRequest) {
       );
     }
   }
-  const log = await db.ingestLog.create({ data: { status: 'PROCESSING', source: payload.source, payload: payload as any, processedFiles: 0 } });
+  const files = payload.files?.length ? payload.files : await defaultFinancialLiteracyFiles();
+
+  // Idempotency: compute a SHA-256 hash of the payload file paths + content.
+  // If an identical payload was successfully ingested recently, skip re-ingestion
+  // to prevent duplicate Pinecone vectors and unnecessary OpenAI embedding costs.
+  const contentHash = await computePayloadHash(files);
+  const recentSuccess = await db.ingestLog.findFirst({
+    where: { contentHash, status: 'SUCCESS' },
+    orderBy: { createdAt: 'desc' },
+  });
+  if (recentSuccess) {
+    return NextResponse.json({
+      success: true,
+      skipped: true,
+      reason: 'identical_payload',
+      previousLogId: recentSuccess.id,
+      processedFiles: 0,
+      chunks: 0,
+      vectors: 0,
+    });
+  }
+
+  const log = await db.ingestLog.create({
+    data: { status: 'PROCESSING', source: payload.source, contentHash, payload: payload as any, processedFiles: 0 },
+  });
 
   try {
-    const files = payload.files?.length ? payload.files : await defaultFinancialLiteracyFiles();
     const chunks = (await Promise.all(files.map((f) => parseCurriculumFile(f)))).flat();
     const embeddings = await generateEmbeddings(chunks.map((c) => c.text));
     const vectorIds = await upsertVectors(chunks.map((chunk, i) => ({ id: chunk.id, values: embeddings[i], metadata: chunk.metadata as any })));
