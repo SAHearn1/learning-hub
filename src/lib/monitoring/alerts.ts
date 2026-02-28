@@ -407,14 +407,48 @@ async function sendSlackNotification(alert: AlertRule, message: string) {
 }
 
 /**
- * Send email notification
+ * Send email notification via n8n webhook.
+ * Requires N8N_WEBHOOK_URL and N8N_WEBHOOK_SECRET env vars.
+ * Falls back to logging if the webhook is not configured.
  */
 async function sendEmailNotification(alert: AlertRule, message: string) {
-  // TODO: Implement email sending (use SendGrid, AWS SES, etc.)
-  logger.info('Email notification would be sent', {
-    alertId: alert.id,
-    recipients: notificationConfig.email[alert.severity],
-  });
+  const webhookUrl = process.env.N8N_WEBHOOK_URL;
+  const webhookSecret = process.env.N8N_WEBHOOK_SECRET;
+
+  const recipients = notificationConfig.email[alert.severity];
+
+  if (!webhookUrl) {
+    logger.warn('Email notification skipped — N8N_WEBHOOK_URL not configured', {
+      alertId: alert.id,
+      recipients,
+    });
+    return;
+  }
+
+  try {
+    await fetch(webhookUrl, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        ...(webhookSecret ? { 'x-webhook-secret': webhookSecret } : {}),
+      },
+      body: JSON.stringify({
+        type: 'email_alert',
+        recipients,
+        subject: `[${alert.severity.toUpperCase()}] ${alert.name}`,
+        body: message,
+        metadata: {
+          alertId: alert.id,
+          severity: alert.severity,
+          metric: alert.metric,
+          timestamp: new Date().toISOString(),
+        },
+      }),
+    });
+    logger.info('Email notification sent via n8n', { alertId: alert.id, recipients });
+  } catch (err) {
+    logger.error('Failed to send email notification', err, { alertId: alert.id });
+  }
 }
 
 /**
