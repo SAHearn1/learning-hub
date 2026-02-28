@@ -15,7 +15,7 @@ import { SubscriptionTier } from '@prisma/client';
 import { NextResponse } from 'next/server';
 import { z } from 'zod';
 import { createCheckoutSession } from '@/lib/billing';
-import { requireUser } from '@/lib/auth';
+import { requireRole } from '@/lib/auth';
 import { withApiHandler } from '@/lib/api-handler';
 
 const requestSchema = z.object({
@@ -33,7 +33,7 @@ async function parseTier(request: Request) {
 }
 
 export const POST = withApiHandler(async (request) => {
-  const user = await requireUser();
+  const user = await requireRole(['SCHOOL_ADMIN', 'DISTRICT_ADMIN', 'PLATFORM_ADMIN']);
   const tier = await parseTier(request);
 
   const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? 'http://localhost:3000';
