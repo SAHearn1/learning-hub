@@ -1,6 +1,6 @@
 # RootWork Learning Hub - Phase Completion Tracker
 
-Last updated: 2026-02-26
+Last updated: 2026-02-28
 
 ## Phase 0 - Immediate Blockers
 
@@ -239,6 +239,61 @@ All remaining items require provisioning outside the codebase. See `docs/HUMAN_A
 - Intermittent tinypool worker crash during full `vitest run` (environment/memory issue, not a test failure). All tests pass individually.
 - TypeScript errors in test files (`tests/integration/**/*.test.ts`) for `Expected 2 arguments, but got 1` when calling `withApiHandler`-wrapped routes. These are TS-only (not runtime) — tests pass. Root cause: Next.js requires `routeContext` to be non-optional in route signatures; making it optional breaks Next.js type checks. Resolution: update test call sites to pass `{ params: Promise.resolve({}) }` as second argument (tracked in gap backlog).
 - Clerk dev keys in production: switch `NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY` and `CLERK_SECRET_KEY` to `pk_live_` / `sk_live_` keys in Vercel → Production env vars.
+
+---
+
+## Enterprise Reliability & Security Hardening — 2026-02-28
+
+Branch: `claude/improve-reliability-security-oexl1`
+
+### P0 Security Fixes
+
+| Fix | File | Description |
+|-----|------|-------------|
+| Remove `unsafe-eval` from CSP | `next.config.js` | Eliminated P0 XSS attack surface; `unsafe-eval` removed from `script-src` — was allowing arbitrary `eval()` / `new Function()` execution |
+| Fix HSTS conflict | `src/middleware.ts` | Removed duplicate HSTS from `applySecurityHeaders()` which overwrote `next.config.js`'s 2-year preload with a 1-year value; canonical HSTS is now only in `next.config.js` (63072000 / 2yr) |
+| Tenant rate-limit store pruning | `src/middleware.ts` | Added `pruneTenantRateLimitStore()` to prevent unbounded memory growth in long-lived serverless instances; mirrors existing `pruneRateLimitStore()` pattern |
+
+### P0 RAG Operability
+
+| Fix | File | Description |
+|-----|------|-------------|
+| Curriculum ingest idempotency | `src/app/api/ingest/route.ts` | Added SHA-256 `computePayloadHash()` — repeated calls with identical file payload are skipped, preventing Pinecone vector duplication and unnecessary OpenAI embedding cost |
+| IngestLog contentHash + tenantId | `prisma/schema.prisma` | Added `contentHash String?` (SHA-256 hex, for idempotency lookup) and `tenantId String?` (for multi-tenant audit compliance) with supporting indexes |
+| DB migration | `prisma/migrations/20260228120000_add_ingestlog_tenantid_contenthash/` | Raw SQL migration: `ALTER TABLE "IngestLog" ADD COLUMN "tenantId" TEXT`, `ADD COLUMN "contentHash" TEXT`, plus two indexes |
+
+### Observability Wiring
+
+| Fix | File | Description |
+|-----|------|-------------|
+| Alert evaluation wired | `src/app/api/metrics/route.ts` | `checkAlerts()` is now called (fire-and-forget) on every `/api/metrics` scrape — Vercel-compatible: no persistent timers needed, alerts evaluate within one 60s scrape interval of a threshold breach |
+| Full monitoring snapshot | `src/app/api/metrics/route.ts` | `?format=json` response now includes `monitoring: exportMetrics()` alongside the API counter snapshot — exposes AI cost, consent rates, concurrent users, cache miss rate |
+
+### Integration Test Coverage
+
+| File | Tests | Coverage |
+|------|-------|---------|
+| `tests/integration/api/ingest-idempotency.test.ts` | 9 tests | Auth (3), ingestion disabled (2), idempotency skip (2), contentHash stored (1), failure path (1) |
+
+### Required Output Artifacts Created
+
+| File | Purpose |
+|------|---------|
+| `docs/SPEC_LOCK.md` | Authoritative architecture invariants — tenancy model, CSP guarantees, RAG contract, compliance requirements, SLO targets |
+| `docs/RELEASE_GATES.md` | 5-gate release pipeline with rollback decision tree and environment secrets checklist |
+| `docs/OPS_RUNBOOK.md` | Full operational runbook — health monitoring, deployments, DB ops, curriculum ingestion, secret rotation, incident severity classification |
+| `docs/RAG_OPERATIONS.md` | RAG-specific runbook — curriculum + IEP ingestion procedures, vector store ops, embedding model migration, disaster recovery |
+
+### Remaining P0 Items (Require External Provisioning — No Code Changes Possible)
+
+| Item | Action required |
+|------|----------------|
+| PostgreSQL RLS policies | DB admin must create `CREATE POLICY` rules in production DB (see `docs/RLS_AUDITING_REPORT.md`) |
+| Datadog StatsD | Provision Datadog org → set `DATADOG_STATSD_HOST` in Vercel Production env vars |
+| E2E Playwright CI | Add 11 `E2E_CLERK_USER_*` + `CLERK_TESTING_TOKEN` secrets to GitHub Actions |
+| Production DB migration | Set `PRODUCTION_DATABASE_URL` secret → trigger `Production DB Migration` workflow |
+| Clerk live keys | Switch `pk_test_*` / `sk_test_*` to `pk_live_*` / `sk_live_*` in Vercel → Production env vars |
+| nonce-based CSP | Replace `unsafe-inline` in `script-src` with per-request nonce (requires Stripe Elements v4 upgrade) |
 
 ---
 
