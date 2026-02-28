@@ -1,14 +1,13 @@
 /**
- * In-memory sliding-window rate limiter.
+ * Hybrid rate limiter: Redis-first with in-memory fallback.
  *
- * Keyed by a caller-provided identifier (e.g. IP or userId).
- * Each window tracks timestamps of requests and evicts entries older than
- * `windowMs`.  When the count exceeds `max`, a 429 is signalled.
- *
- * Suitable for single-process / standalone deployments.  For horizontally
- * scaled setups, swap with a Redis-backed implementation behind the same
- * interface.
+ * On Vercel serverless, in-memory state is lost on every cold start,
+ * so the primary check goes through Redis (via `rateLimitCheck`).
+ * When Redis is unavailable (no REDIS_URL or connection error), the
+ * in-memory sliding-window provides a best-effort fallback.
  */
+
+import { rateLimitCheck } from '@/lib/redis/cache';
 
 export interface RateLimitConfig {
   /** Duration of the sliding window in milliseconds. */
@@ -27,10 +26,9 @@ export interface RateLimitResult {
   retryAfterSeconds?: number;
 }
 
-// key → sorted array of timestamps (ms)
+// key → sorted array of timestamps (ms)  — fallback only
 const buckets = new Map<string, number[]>();
 
-// Periodically evict stale buckets to prevent memory leaks.
 const CLEANUP_INTERVAL_MS = 60_000;
 let cleanupTimer: ReturnType<typeof setInterval> | null = null;
 
@@ -48,16 +46,12 @@ function ensureCleanup(windowMs: number) {
       }
     }
   }, CLEANUP_INTERVAL_MS);
-  // Allow Node to exit even if the timer is still alive.
   if (typeof cleanupTimer === 'object' && 'unref' in cleanupTimer) {
     cleanupTimer.unref();
   }
 }
 
-/**
- * Check (and consume) one request against the rate limit for `key`.
- */
-export function checkRateLimit(
+function checkRateLimitInMemory(
   key: string,
   config: RateLimitConfig,
 ): RateLimitResult {
@@ -72,7 +66,6 @@ export function checkRateLimit(
     buckets.set(key, timestamps);
   }
 
-  // Evict entries outside the window.
   while (timestamps.length > 0 && timestamps[0] <= cutoff) {
     timestamps.shift();
   }
@@ -96,6 +89,33 @@ export function checkRateLimit(
     remaining: config.max - timestamps.length,
     resetAt: Math.ceil((now + config.windowMs) / 1000),
   };
+}
+
+/**
+ * Check (and consume) one request against the rate limit for `key`.
+ * Tries Redis first; falls back to in-memory if Redis is unavailable.
+ */
+export async function checkRateLimit(
+  key: string,
+  config: RateLimitConfig,
+): Promise<RateLimitResult> {
+  const windowSeconds = Math.ceil(config.windowMs / 1000);
+  const redisResult = await rateLimitCheck(`rl:api:${key}`, config.max, windowSeconds);
+
+  if (redisResult) {
+    const retryAfterSeconds = redisResult.allowed
+      ? undefined
+      : Math.max(1, Math.ceil((redisResult.resetAtMs - Date.now()) / 1000));
+    return {
+      allowed: redisResult.allowed,
+      remaining: redisResult.remaining,
+      resetAt: Math.ceil(redisResult.resetAtMs / 1000),
+      retryAfterSeconds,
+    };
+  }
+
+  // Redis unavailable — fall back to in-memory
+  return checkRateLimitInMemory(key, config);
 }
 
 /**

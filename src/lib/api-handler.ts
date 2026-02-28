@@ -116,7 +116,7 @@ export function withApiHandler(
     if (options.rateLimit) {
       const ip = resolveClientIp(req);
       const key = `${pathname}:${ip}`;
-      const result = checkRateLimit(key, options.rateLimit);
+      const result = await checkRateLimit(key, options.rateLimit);
       rateLimitResult = result;
 
       if (!result.allowed) {
