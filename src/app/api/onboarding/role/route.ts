@@ -1,15 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { auth, clerkClient } from '@clerk/nextjs/server';
+import { clerkClient } from '@clerk/nextjs/server';
 import { db } from '@/lib/db';
 import { z } from 'zod';
 import { withApiHandler } from '@/lib/api-handler';
-import { AuthenticationError, ValidationError } from '@/lib/api-errors';
-
-const USER_INCLUDE = {
-  student: true,
-  educator: true,
-  parent: true,
-};
+import { requireUser } from '@/lib/auth';
 
 const roleSchema = z.object({
   role: z.enum(['STUDENT', 'EDUCATOR', 'PARENT']),
@@ -17,19 +11,9 @@ const roleSchema = z.object({
 });
 
 export const POST = withApiHandler(async (req: NextRequest) => {
-  const { userId: clerkUserId } = await auth();
-  if (!clerkUserId) throw new AuthenticationError();
+  const user = await requireUser();
 
   const body = roleSchema.parse(await req.json());
-
-  const user = await db.user.findUnique({
-    where: { clerkUserId },
-    include: USER_INCLUDE,
-  });
-
-  if (!user) {
-    throw new ValidationError('User record not found. Please try signing in again.');
-  }
 
   // Update role in DB
   await db.user.update({
@@ -74,7 +58,7 @@ export const POST = withApiHandler(async (req: NextRequest) => {
 
   // Set role in Clerk metadata so we know onboarding is complete
   const clerk = await clerkClient();
-  await clerk.users.updateUserMetadata(clerkUserId, {
+  await clerk.users.updateUserMetadata(user.clerkUserId, {
     publicMetadata: { role: body.role, onboardingComplete: true },
   });
 

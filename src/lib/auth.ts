@@ -1,6 +1,7 @@
 import { auth, currentUser } from '@clerk/nextjs/server';
 import { db } from '@/lib/db';
 import { AuthenticationError, ForbiddenError } from '@/lib/api-errors';
+import { setTenantId } from '@/lib/tenant-context';
 
 const USER_INCLUDE = {
   student: {
@@ -113,6 +114,11 @@ export async function requireUser() {
   if (!user) {
     throw new AuthenticationError();
   }
+
+  // Populate RLS tenant context for all subsequent DB queries in this request.
+  // PLATFORM_ADMIN gets bypass so they can access cross-tenant data.
+  setTenantId(user.tenantId, user.role === 'PLATFORM_ADMIN');
+
   return user;
 }
 

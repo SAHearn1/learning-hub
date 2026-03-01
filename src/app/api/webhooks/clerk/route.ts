@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { Webhook } from 'svix';
 import type { UserRole } from '@prisma/client';
 import { db } from '@/lib/db';
+import { tenantStorage } from '@/lib/tenant-context';
 
 const WEBHOOK_TIMESTAMP_TOLERANCE_MS = 5 * 60 * 1000;
 const WEBHOOK_REPLAY_TTL_MS = 10 * 60 * 1000;
@@ -44,6 +45,12 @@ type ClerkWebhookEvent = {
 };
 
 export async function POST(req: NextRequest) {
+  // Clerk webhooks run outside withApiHandler — create RLS bypass scope
+  // so User CRUD and Tenant queries succeed with FORCE RLS enabled.
+  return tenantStorage.run({ bypass: true }, () => handleClerkWebhook(req));
+}
+
+async function handleClerkWebhook(req: NextRequest) {
   const webhookSecret = process.env.CLERK_WEBHOOK_SECRET;
 
   if (!webhookSecret) {

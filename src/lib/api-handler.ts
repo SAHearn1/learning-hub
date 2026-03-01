@@ -27,6 +27,7 @@ import { checkRateLimit, type RateLimitConfig, type RateLimitResult } from '@/li
 import { logger } from '@/lib/logger';
 import { captureError } from '@/lib/monitoring';
 import { incrementMetric, observeLatency } from '@/lib/api/metrics';
+import { tenantStorage, type TenantStore } from '@/lib/tenant-context';
 
 // ---------------------------------------------------------------------------
 // Types
@@ -153,7 +154,12 @@ export function withApiHandler(
       // params resolution failed – leave empty
     }
 
-    // --- Execute handler --------------------------------------------------
+    // --- Execute handler (inside RLS-aware tenant scope) -----------------
+    // tenantStorage.run() creates the AsyncLocalStorage scope.
+    // The store starts empty; requireUser()/requireRole() populate it
+    // with the tenant ID, enabling RLS for all subsequent DB queries.
+    const store: TenantStore = {};
+    return tenantStorage.run(store, async () => {
     try {
       logger.debug('API request', { requestId, method, pathname });
 
@@ -261,5 +267,6 @@ export function withApiHandler(
         requestId,
       );
     }
+    }); // end tenantStorage.run()
   };
 }

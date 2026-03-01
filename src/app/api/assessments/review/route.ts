@@ -1,13 +1,9 @@
-import { auth } from '@clerk/nextjs/server';
 import { NextResponse } from 'next/server';
 import { z } from 'zod';
 import { db } from '@/lib/db';
 import { withApiHandler } from '@/lib/api-handler';
-import {
-  AuthenticationError,
-  ForbiddenError,
-  NotFoundError,
-} from '@/lib/api-errors';
+import { requireRole } from '@/lib/auth';
+import { NotFoundError } from '@/lib/api-errors';
 
 const reviewSchema = z.object({
   assessmentId: z.string().min(1),
@@ -15,23 +11,10 @@ const reviewSchema = z.object({
   comments: z.string().min(1).max(2000),
 });
 
-const ALLOWED_ROLES = ['EDUCATOR', 'SCHOOL_ADMIN', 'DISTRICT_ADMIN', 'PLATFORM_ADMIN'] as const;
+const REVIEWER_ROLES = ['EDUCATOR', 'SCHOOL_ADMIN', 'DISTRICT_ADMIN', 'PLATFORM_ADMIN'];
 
 async function requireReviewer() {
-  const { userId: clerkId } = await auth();
-  if (!clerkId) {
-    throw new AuthenticationError();
-  }
-
-  const user = await db.user.findUnique({ where: { clerkUserId: clerkId } });
-  if (!user) {
-    throw new NotFoundError('User not found');
-  }
-  if (!ALLOWED_ROLES.includes(user.role as typeof ALLOWED_ROLES[number])) {
-    throw new ForbiddenError();
-  }
-
-  return user;
+  return requireRole(REVIEWER_ROLES);
 }
 
 export const GET = withApiHandler(async () => {

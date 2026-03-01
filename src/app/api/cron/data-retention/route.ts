@@ -2,6 +2,7 @@ import crypto from 'node:crypto';
 import { NextRequest, NextResponse } from 'next/server';
 import { enforceDataRetention } from '@/lib/compliance/data-retention';
 import { logger } from '@/lib/logger';
+import { tenantStorage } from '@/lib/tenant-context';
 
 /**
  * Constant-time string comparison to prevent timing-based secret enumeration.
@@ -36,6 +37,8 @@ export async function GET(req: NextRequest) {
   const start = Date.now();
   logger.info('Data retention cron job started');
 
+  // Cron operates across all tenants — bypass RLS.
+  return tenantStorage.run({ bypass: true }, async () => {
   try {
     const result = await enforceDataRetention();
     const durationMs = Date.now() - start;
@@ -51,4 +54,5 @@ export async function GET(req: NextRequest) {
     logger.error('Data retention cron job failed', { error: message });
     return NextResponse.json({ success: false, error: message }, { status: 500 });
   }
+  }); // end tenantStorage.run()
 }

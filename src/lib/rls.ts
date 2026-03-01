@@ -1,43 +1,22 @@
 /**
- * PostgreSQL Row-Level Security — tenant context helpers.
+ * PostgreSQL Row-Level Security — explicit transaction helpers.
  *
- * Defence-in-depth: even if application-level RBAC is bypassed,
- * PostgreSQL RLS policies prevent cross-tenant data access.
+ * For most API routes, RLS is handled automatically:
+ *   - `withApiHandler` creates the AsyncLocalStorage scope
+ *   - `requireUser()` populates the tenant ID
+ *   - The Prisma `$extends` hook in `db.ts` sets the session variable
  *
- * Usage in API route handlers:
- *
- *   import { withTenantRLS } from '@/lib/rls';
- *
- *   export const GET = withAuth(async (req, user) => {
- *     const data = await withTenantRLS(user.tenantId, async (tx) => {
- *       return tx.school.findMany();  // only returns tenant's schools
- *     });
- *     return NextResponse.json(data);
- *   });
- *
- * For platform admins who need cross-tenant access:
- *
- *   import { withRLSBypass } from '@/lib/rls';
- *
- *   const allSchools = await withRLSBypass(async (tx) => {
- *     return tx.school.findMany();
- *   });
+ * Use these helpers ONLY for code that runs outside `withApiHandler`
+ * (e.g. scripts, cron jobs, manual admin operations).
  */
 
-import { Prisma, PrismaClient } from '@prisma/client';
 import { db } from '@/lib/db';
 
-type TransactionClient = Omit<
-  PrismaClient,
-  '$connect' | '$disconnect' | '$on' | '$transaction' | '$use' | '$extends'
->;
+type TransactionClient = Parameters<Parameters<typeof db.$transaction>[0]>[0];
 
 /**
  * Execute a callback within a Prisma interactive transaction that sets
  * the PostgreSQL session variable `app.current_tenant_id`.
- *
- * All queries inside the callback are scoped to the given tenant by the
- * RLS policies defined in migration 20260228200000.
  */
 export async function withTenantRLS<T>(
   tenantId: string,

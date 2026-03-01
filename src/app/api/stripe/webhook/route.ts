@@ -5,6 +5,7 @@ import { stripe } from '@/lib/stripe';
 import { appendImmutableAuditLog } from '@/lib/audit';
 import { db } from '@/lib/db';
 import { logger } from '@/lib/logger';
+import { tenantStorage } from '@/lib/tenant-context';
 
 async function logBillingEvent(
   eventType: string,
@@ -34,6 +35,12 @@ async function logBillingEvent(
 }
 
 export async function POST(request: Request) {
+  // Stripe webhooks run outside withApiHandler — create RLS bypass scope
+  // so AuditLog writes and Tenant queries succeed with FORCE RLS enabled.
+  return tenantStorage.run({ bypass: true }, () => handleStripeWebhook(request));
+}
+
+async function handleStripeWebhook(request: Request) {
   const signature = request.headers.get('stripe-signature');
   const webhookSecret = process.env.STRIPE_WEBHOOK_SECRET;
 
