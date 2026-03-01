@@ -73,8 +73,8 @@ describe('phaseTransitions', () => {
 });
 
 describe('navigation', () => {
-  it('student nav has 8 items total including grade-gated items', () => {
-    expect(studentNavItems).toHaveLength(8);
+  it('student nav has 11 items total including grade-gated items', () => {
+    expect(studentNavItems).toHaveLength(11);
   });
 
 
@@ -96,8 +96,8 @@ describe('navigation', () => {
     expect(labels).toContain('Calm Corner');
   });
 
-  it('educator nav has 4 items', () => {
-    expect(educatorNavItems).toHaveLength(4);
+  it('educator nav has 8 items', () => {
+    expect(educatorNavItems).toHaveLength(8);
   });
 
   it('educator nav includes Compliance', () => {
@@ -116,8 +116,8 @@ describe('navigation', () => {
     }
   });
 
-  it('admin nav has 2 items', () => {
-    expect(adminNavItems).toHaveLength(2);
+  it('admin nav has 4 items', () => {
+    expect(adminNavItems).toHaveLength(4);
   });
 
   it('all nav items have label, href, and icon', () => {

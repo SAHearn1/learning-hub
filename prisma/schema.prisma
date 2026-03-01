@@ -262,6 +262,7 @@ model User {
   createdTemplates     FiveRTemplate[] @relation("TemplateCreator")
   gradedSubmissions    Grade[]        @relation("GradeGrader")
   educatorReviews      AiSuggestionReview[] @relation("EducatorReviews")
+  notifications        Notification[]
   createdAt            DateTime       @default(now())
   updatedAt            DateTime       @updatedAt
 
@@ -1625,4 +1626,80 @@ model AiSuggestionReview {
   @@index([sessionId])
   @@index([reviewStatus])
   @@index([priority])
+}
+
+// ═══════════════════════════════════════════════════════════════
+// NOTIFICATIONS
+// ═══════════════════════════════════════════════════════════════
+
+enum NotificationType {
+  ASSIGNMENT_DUE
+  ASSIGNMENT_GRADED
+  SUBMISSION_RECEIVED
+  SAFEGUARDS_NOTICE
+  PROGRESS_REPORT
+  CONSENT_REQUEST
+  EVALUATION_UPDATE
+  DISCIPLINE_UPDATE
+  COMPLIANCE_ALERT
+  HITL_REVIEW_PENDING
+  MESSAGE_RECEIVED
+  GENERAL
+}
+
+model Notification {
+  id          String           @id @default(cuid())
+  tenantId    String
+  userId      String
+  type        NotificationType
+  title       String
+  body        String           @db.Text
+  href        String?
+  read        Boolean          @default(false)
+  readAt      DateTime?
+  metadata    Json?
+  createdAt   DateTime         @default(now())
+
+  user        User             @relation(fields: [userId], references: [id])
+
+  @@index([userId, read])
+  @@index([tenantId])
+  @@index([createdAt])
+}
+
+// ═══════════════════════════════════════════════════════════════
+// PARENT-EDUCATOR MESSAGING
+// ═══════════════════════════════════════════════════════════════
+
+model MessageThread {
+  id          String    @id @default(cuid())
+  tenantId    String
+  studentId   String
+  parentId    String
+  educatorId  String
+  subject     String
+  closed      Boolean   @default(false)
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  messages    DirectMessage[]
+
+  @@index([tenantId])
+  @@index([parentId])
+  @@index([educatorId])
+  @@index([studentId])
+}
+
+model DirectMessage {
+  id        String        @id @default(cuid())
+  threadId  String
+  senderId  String
+  body      String        @db.Text
+  readAt    DateTime?
+  createdAt DateTime      @default(now())
+
+  thread    MessageThread @relation(fields: [threadId], references: [id])
+
+  @@index([threadId, createdAt])
+  @@index([senderId])
 }

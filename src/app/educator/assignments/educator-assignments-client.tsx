@@ -70,6 +70,8 @@ export function EducatorAssignmentsClient() {
 
   // Class selector
   const [classId, setClassId] = useState('');
+  const [classes, setClasses] = useState<Array<{ id: string; name: string; subject: string }>>([]);
+  const [classesLoading, setClassesLoading] = useState(true);
 
   // Create dialog
   const [dialogOpen, setDialogOpen] = useState(false);
@@ -83,6 +85,37 @@ export function EducatorAssignmentsClient() {
   const [dueDate, setDueDate] = useState('');
   const [points, setPoints] = useState(100);
   const [published, setPublished] = useState(false);
+
+  // -----------------------------------------------------------------------
+  // Fetch classes
+  // -----------------------------------------------------------------------
+
+  useEffect(() => {
+    let cancelled = false;
+    const loadClasses = async () => {
+      setClassesLoading(true);
+      try {
+        const res = await fetch('/api/educator/classes');
+        if (res.ok) {
+          const json = await res.json();
+          const list = (json.data ?? []) as Array<{ id: string; name: string; subject: string }>;
+          if (!cancelled) {
+            setClasses(list);
+            if (!classId.trim() && list.length > 0) {
+              setClassId(list[0].id);
+            }
+          }
+        }
+      } catch {
+        // Fall back to manual input
+      } finally {
+        if (!cancelled) setClassesLoading(false);
+      }
+    };
+    void loadClasses();
+    return () => { cancelled = true; };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   // -----------------------------------------------------------------------
   // Fetch assignments
@@ -347,19 +380,39 @@ export function EducatorAssignmentsClient() {
         </Dialog>
       </div>
 
-      {/* Class ID input */}
+      {/* Class selector */}
       <Card>
         <CardContent className="pt-6">
           <label htmlFor="classId" className="mb-1 block text-sm font-medium text-neutral-700">
-            Class ID
+            Class
           </label>
-          <input
-            id="classId"
-            value={classId}
-            onChange={(e) => setClassId(e.target.value)}
-            placeholder="Enter class ID to view assignments"
-            className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-          />
+          {classesLoading ? (
+            <div className="flex items-center gap-2 text-sm text-neutral-600">
+              <Loader2 className="h-4 w-4 animate-spin" />
+              Loading your classes...
+            </div>
+          ) : classes.length > 0 ? (
+            <select
+              id="classId"
+              value={classId}
+              onChange={(e) => setClassId(e.target.value)}
+              className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+            >
+              {classes.map((c) => (
+                <option key={c.id} value={c.id}>
+                  {c.name} ({c.subject})
+                </option>
+              ))}
+            </select>
+          ) : (
+            <input
+              id="classId"
+              value={classId}
+              onChange={(e) => setClassId(e.target.value)}
+              placeholder="Enter class ID to view assignments"
+              className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+            />
+          )}
         </CardContent>
       </Card>
 
