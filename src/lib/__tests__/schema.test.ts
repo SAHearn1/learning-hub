@@ -45,11 +45,31 @@ describe('Prisma schema — models', () => {
     'Grade',
     'FiveRTemplate',
     'AiSuggestionReview',
+    // IDEA Compliance Kernel models
+    'IepGoal',
+    'GoalProgressEntry',
+    'ProgressReport',
+    'EvaluationCase',
+    'EvalStateTransition',
+    'EvaluationPlan',
+    'EvaluationAssignment',
+    'EvalAssessmentRecord',
+    'EvalConsentRecord',
+    'EligibilityMeeting',
+    'EligibilityDecision',
+    'DisciplineCase',
+    'ManifestDetermination',
+    'ProceduralEvent',
+    'SafeguardsNotice',
+    // Notifications & Messaging
+    'Notification',
+    'MessageThread',
+    'DirectMessage',
   ];
 
-  it('generates all 36 expected models', () => {
+  it('generates all 54 expected models', () => {
     const modelNames = Object.values(Prisma.ModelName);
-    expect(modelNames).toHaveLength(36);
+    expect(modelNames).toHaveLength(54);
   });
 
   it.each(expectedModels)('includes model %s', (model) => {

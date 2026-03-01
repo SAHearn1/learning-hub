@@ -122,9 +122,42 @@ export function ParentGradesClient() {
   const [error, setError] = useState<string | null>(null);
   const [studentId, setStudentId] = useState('');
   const [expandedId, setExpandedId] = useState<string | null>(null);
+  const [children, setChildren] = useState<Array<{ id: string; name: string }>>([]);
+  const [childrenLoading, setChildrenLoading] = useState(true);
 
   // -----------------------------------------------------------------------
-  // Fetch
+  // Fetch children
+  // -----------------------------------------------------------------------
+
+  useEffect(() => {
+    let cancelled = false;
+    const loadChildren = async () => {
+      setChildrenLoading(true);
+      try {
+        const res = await fetch('/api/parent/children');
+        if (res.ok) {
+          const json = await res.json();
+          const list = (json.data ?? []) as Array<{ id: string; name: string }>;
+          if (!cancelled) {
+            setChildren(list);
+            if (!studentId.trim() && list.length > 0) {
+              setStudentId(list[0].id);
+            }
+          }
+        }
+      } catch {
+        // Fall back to manual input
+      } finally {
+        if (!cancelled) setChildrenLoading(false);
+      }
+    };
+    void loadChildren();
+    return () => { cancelled = true; };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // -----------------------------------------------------------------------
+  // Fetch grades
   // -----------------------------------------------------------------------
 
   const fetchGrades = useCallback(async () => {
@@ -183,20 +216,40 @@ export function ParentGradesClient() {
         </p>
       </div>
 
-      {/* Student ID input */}
+      {/* Student selector */}
       <Card>
         <CardContent className="pt-6">
           <label htmlFor="studentId" className="mb-1 block text-sm font-medium text-neutral-700">
             <User className="mr-1 inline h-4 w-4" />
-            Student ID
+            Student
           </label>
-          <input
-            id="studentId"
-            value={studentId}
-            onChange={(e) => setStudentId(e.target.value)}
-            placeholder="Enter your child's student ID"
-            className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-          />
+          {childrenLoading ? (
+            <div className="flex items-center gap-2 text-sm text-neutral-600">
+              <Loader2 className="mr-1 inline h-4 w-4 animate-spin" />
+              Loading your children...
+            </div>
+          ) : children.length > 0 ? (
+            <select
+              id="studentId"
+              value={studentId}
+              onChange={(e) => setStudentId(e.target.value)}
+              className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+            >
+              {children.map((c) => (
+                <option key={c.id} value={c.id}>
+                  {c.name}
+                </option>
+              ))}
+            </select>
+          ) : (
+            <input
+              id="studentId"
+              value={studentId}
+              onChange={(e) => setStudentId(e.target.value)}
+              placeholder="Enter your child's student ID"
+              className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+            />
+          )}
         </CardContent>
       </Card>
 

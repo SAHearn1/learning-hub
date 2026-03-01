@@ -19,6 +19,7 @@ export const studentNavItems: readonly NavItem[] = [
   { label: 'My Progress', href: '/progress', icon: 'bar-chart' },
   { label: 'My Classes', href: '/student/classes', icon: 'school' },
   { label: 'Review', href: '/student/review', icon: 'refresh-cw' },
+  { label: 'Accommodations', href: '/student/accommodations', icon: 'accessibility' },
   { label: 'Community', href: '/community', icon: 'users' },
   { label: 'Settings', href: '/settings', icon: 'settings' },
 ] as const;
@@ -41,12 +42,16 @@ export const educatorNavItems = [
   { label: 'Reports', href: '/educator/reports', icon: 'file-text' },
   { label: 'Compliance', href: '/educator/compliance', icon: 'shield-check' },
   { label: 'Grades', href: '/educator/grades', icon: 'check-square' },
+  { label: 'Templates', href: '/educator/templates', icon: 'file-plus' },
+  { label: 'Bulk Operations', href: '/educator/bulk', icon: 'layers' },
+  { label: 'Calendar', href: '/educator/calendar', icon: 'calendar' },
 ] as const;
 
 export const parentNavItems = [
   { label: 'Activity', href: '/parent/activity', icon: 'activity' },
   { label: 'Grades', href: '/parent/grades', icon: 'progress' },
   { label: 'Consent', href: '/parent/consent', icon: 'shield-check' },
+  { label: 'Discipline', href: '/parent/discipline', icon: 'alert-triangle' },
   { label: 'Settings', href: '/parent/settings', icon: 'settings' },
 ] as const;
 
@@ -56,6 +61,8 @@ export const schoolAdminNavItems = [
   { label: 'Educators', href: '/school-admin/educators', icon: 'users' },
   { label: 'Students', href: '/school-admin/students', icon: 'graduation-cap' },
   { label: 'Compliance', href: '/school-admin/compliance', icon: 'shield-check' },
+  { label: 'Analytics', href: '/school-admin/analytics', icon: 'bar-chart' },
+  { label: 'Audit Log', href: '/school-admin/audit-log', icon: 'file-search' },
   { label: 'Billing', href: '/school-admin/billing', icon: 'credit-card' },
 ] as const;
 
@@ -69,4 +76,6 @@ export const districtAdminNavItems = [
 export const adminNavItems = [
   { label: 'Super Admin Dashboard', href: '/admin/dashboard', icon: 'shield-check' },
   { label: 'Ingestion Control', href: '/admin/ingest', icon: 'shield-check' },
+  { label: 'School Comparison', href: '/admin/school-comparison', icon: 'git-compare' },
+  { label: 'State Reporting', href: '/admin/state-reporting', icon: 'file-bar-chart' },
 ] as const;
