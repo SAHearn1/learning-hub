@@ -1,74 +1,40 @@
 # Human Actions Required
 
-These actions require a human with GitHub/Vercel/Datadog/Clerk access. They are the remaining blockers for open operations issues.
+These actions require a human with GitHub/Vercel/Clerk access. They are the remaining blockers for open operations issues.
 
-## P0 — Set `PRODUCTION_DATABASE_URL` and run production migration
+## ~~P0 — Set `PRODUCTION_DATABASE_URL` and run production migration~~ DONE
 
-1. GitHub → **Settings** → **Environments** → `production` → **Secrets and variables**.
-2. Add secret: `PRODUCTION_DATABASE_URL=postgresql://...`.
-3. GitHub → **Actions** → **Production DB Migrate** (`.github/workflows/production-db-migrate.yml`) → **Run workflow** on `main`.
-4. Confirm workflow succeeds and includes `npx prisma migrate deploy` completion.
+Completed 2026-02-27. Secrets `PRODUCTION_DATABASE_URL` and `PRODUCTION_DIRECT_URL` configured in GitHub production environment. Migration workflow ran successfully (46s, green).
 
-Completion criteria:
+## ~~P0 — Configure Clerk live keys in Vercel production~~ DONE
 
-- [ ] `PRODUCTION_DATABASE_URL` exists in production environment secrets.
-- [ ] Latest **Production DB Migrate** workflow run is green.
+Completed 2026-02-28. `pk_live_*` and `sk_live_*` keys set in Vercel production environment variables.
 
-## P0 — Configure Clerk live keys in Vercel production
+## ~~P0 — Provision Datadog and wire Vercel runtime metrics~~ REPLACED
 
-1. Vercel → Project → **Settings** → **Environment Variables** → **Production**.
-2. Set `NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY=pk_live_...`.
-3. Set `CLERK_SECRET_KEY=sk_live_...`.
-4. Redeploy production to ensure runtime picks up updated auth keys.
+Replaced by Vercel Analytics + Speed Insights (zero-config, free tier). Components added to root layout. Datadog StatsD code remains as an optional backend — set `DATADOG_STATSD_HOST` in Vercel env vars if/when a Datadog account is provisioned.
 
-Completion criteria:
+## ~~P0 — Add 11 Clerk secrets to GitHub Actions for E2E CI~~ DONE
 
-- [ ] `NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY` is set to a `pk_live_...` value in Vercel production environment.
-- [ ] `CLERK_SECRET_KEY` is set to a `sk_live_...` value in Vercel production environment.
-- [ ] Production redeploy completed after key updates.
+Completed 2026-02-27. All 11 secrets configured in GitHub Actions repository secrets.
 
-## P0 — Provision Datadog and wire Vercel runtime metrics
+## P0 — Deploy RLS tenant isolation migration
 
-1. Provision/confirm Datadog Agent endpoint for StatsD ingress.
-2. Vercel → Project → **Settings** → **Environment Variables**.
-3. Add required variable:
-   - `DATADOG_STATSD_HOST=<agent-or-datadog-host>`
-4. Add optional tuning variables if needed:
-   - `DATADOG_STATSD_PORT=8125`
-   - `DATADOG_METRIC_PREFIX=learning_hub`
-5. Redeploy production so runtime picks up new env vars.
+After merging `feat/rls-tenant-isolation`, trigger the production migration:
+
+1. GitHub → **Actions** → **Production DB Migrate** → **Run workflow** on `main`.
+2. Reason: "Enable PostgreSQL RLS tenant isolation policies".
+3. Confirm workflow succeeds.
+
+RLS is currently in **passive mode** (policies defined but not forced on the table owner role). To fully activate defence-in-depth:
+
+1. Integrate `withTenantRLS()` from `src/lib/rls.ts` into API route handlers.
+2. Run companion migration to add `FORCE ROW LEVEL SECURITY` on all 16 tables.
 
 Completion criteria:
 
-- [ ] `DATADOG_STATSD_HOST` is present in Vercel production environment.
-- [ ] Metrics are visible in Datadog for the deployed app.
-
-## P0 — Add 11 Clerk secrets to GitHub Actions for E2E CI
-
-GitHub → Repo **Settings** → **Secrets and variables** → **Actions** → **New repository secret**.
-
-Required secrets:
-
-| Secret                             |
-| ---------------------------------- |
-| `CLERK_TESTING_TOKEN`              |
-| `E2E_CLERK_USER_STUDENT_EMAIL`     |
-| `E2E_CLERK_USER_STUDENT_PASSWORD`  |
-| `E2E_CLERK_USER_EDUCATOR_EMAIL`    |
-| `E2E_CLERK_USER_EDUCATOR_PASSWORD` |
-| `E2E_CLERK_USER_PARENT_EMAIL`      |
-| `E2E_CLERK_USER_PARENT_PASSWORD`   |
-| `E2E_CLERK_USER_ADMIN_EMAIL`       |
-| `E2E_CLERK_USER_ADMIN_PASSWORD`    |
-| `CLERK_PUBLISHABLE_KEY_TEST`       |
-| `CLERK_SECRET_KEY_TEST`            |
-
-Then trigger `.github/workflows/e2e-tests.yml` and verify Phase 0 is green.
-
-Completion criteria:
-
-- [ ] All 11 required Clerk secrets are configured in GitHub Actions.
-- [ ] Latest E2E CI run passes without missing-secret failures.
+- [ ] Production DB Migrate workflow green with RLS migration applied.
+- [ ] (Future) API routes using `withTenantRLS()` + `FORCE ROW LEVEL SECURITY` enabled.
 
 ## P1 — Trigger staging load-test baseline and publish SLO markdown
 
@@ -95,9 +61,10 @@ Completion criteria:
 
 ## Roll-up Checklist
 
-- [ ] P0: Production database secret + migration workflow completed
-- [ ] P0: Clerk live keys configured in Vercel production + redeploy completed
-- [ ] P0: Datadog provisioned + Vercel StatsD env configured
-- [ ] P0: 11 Clerk GitHub Action secrets configured + E2E green
+- [x] P0: Production database secret + migration workflow completed
+- [x] P0: Clerk live keys configured in Vercel production (`pk_live_*` / `sk_live_*`)
+- [x] P0: Metrics — Vercel Analytics + Speed Insights installed (Datadog optional)
+- [x] P0: 11 Clerk GitHub Action secrets configured
+- [ ] P0: RLS migration deployed to production
 - [ ] P1: Staging load-test baseline run completed + SLO markdown published
 - [ ] P2: Brand PNG assets sourced and aligned with manifest
