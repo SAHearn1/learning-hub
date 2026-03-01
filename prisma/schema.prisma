@@ -31,6 +31,13 @@ model Tenant {
   users                User[]
   aiUsageLedger        AIUsageLedger[]
   aiSuggestionReviews  AiSuggestionReview[]
+  proceduralEvents     ProceduralEvent[]
+  safeguardsNotices    SafeguardsNotice[]
+  iepGoals             IepGoal[]
+  goalProgressEntries  GoalProgressEntry[]
+  progressReports      ProgressReport[]
+  evaluationCases      EvaluationCase[]
+  disciplineCases      DisciplineCase[]
   createdAt            DateTime           @default(now())
   updatedAt            DateTime           @updatedAt
 }
@@ -290,6 +297,13 @@ model Student {
   learningPreferences Json
   regulationProfile   Json
   iepAccommodations   IepAccommodation[]
+  iepGoals            IepGoal[]
+  goalProgressEntries GoalProgressEntry[]
+  progressReports     ProgressReport[]
+  evaluationCases     EvaluationCase[]
+  disciplineCases     DisciplineCase[]
+  proceduralEvents    ProceduralEvent[]
+  safeguardsNotices   SafeguardsNotice[]
   sessions            Session[]
   progress            Progress[]
   enrollments         ClassEnrollment[]
@@ -352,6 +366,533 @@ enum AccommodationType {
   VISUAL_SUPPORTS
   AUDIO_SUPPORTS
   ALTERNATIVE_ASSESSMENT
+}
+
+// ═══════════════════════════════════════════════════════════════
+// IDEA PROCEDURAL SAFEGUARDS (34 CFR §300.504)
+// ═══════════════════════════════════════════════════════════════
+
+enum SafeguardsTrigger {
+  ANNUAL_NOTICE
+  INITIAL_REFERRAL_OR_PARENT_EVAL_REQUEST
+  FIRST_STATE_COMPLAINT_IN_SCHOOL_YEAR
+  FIRST_DUE_PROCESS_COMPLAINT_IN_SCHOOL_YEAR
+  DISCIPLINARY_CHANGE_OF_PLACEMENT
+  PARENT_REQUEST
+}
+
+enum ProceduralEventType {
+  REFERRAL_RECEIVED
+  PARENT_EVAL_REQUEST
+  STATE_COMPLAINT_FILED
+  DUE_PROCESS_COMPLAINT_FILED
+  DISCIPLINARY_PLACEMENT_CHANGE
+  PARENT_SAFEGUARDS_REQUEST
+  ANNUAL_NOTICE_DUE
+}
+
+enum DeliveryMethod {
+  PORTAL
+  EMAIL
+  MAIL
+  HAND_DELIVERED
+}
+
+enum DeliveryStatus {
+  PENDING
+  GENERATED
+  DELIVERED
+  ACKNOWLEDGED
+  FAILED
+}
+
+model ProceduralEvent {
+  id              String              @id @default(cuid())
+  tenantId        String
+  studentId       String
+  caseId          String?
+  eventType       ProceduralEventType
+  trigger         SafeguardsTrigger
+  schoolYear      String
+  correlationId   String
+  isFirstOfType   Boolean             @default(false)
+  metadata        Json?
+  createdBy       String
+  createdAt       DateTime            @default(now())
+
+  notices         SafeguardsNotice[]
+  student         Student             @relation(fields: [studentId], references: [id])
+  tenant          Tenant              @relation(fields: [tenantId], references: [id])
+
+  @@unique([tenantId, correlationId])
+  @@unique([tenantId, studentId, schoolYear, eventType, isFirstOfType])
+  @@index([tenantId, studentId, schoolYear])
+  @@index([caseId])
+}
+
+model SafeguardsNotice {
+  id                 String            @id @default(cuid())
+  tenantId           String
+  studentId          String
+  caseId             String?
+  proceduralEventId  String
+  trigger            SafeguardsTrigger
+  deliveryMethod     DeliveryMethod    @default(PORTAL)
+  deliveryStatus     DeliveryStatus    @default(PENDING)
+  deliveredAt        DateTime?
+  acknowledgedAt     DateTime?
+  acknowledgedBy     String?
+  noticeDocHash      String
+  artifactRef        String
+  schoolYear         String
+  createdAt          DateTime          @default(now())
+
+  proceduralEvent    ProceduralEvent   @relation(fields: [proceduralEventId], references: [id])
+  student            Student           @relation(fields: [studentId], references: [id])
+  tenant             Tenant            @relation(fields: [tenantId], references: [id])
+
+  @@index([tenantId, studentId, schoolYear])
+  @@index([caseId])
+  @@index([proceduralEventId])
+  @@index([deliveryStatus])
+}
+
+// ═══════════════════════════════════════════════════════════════
+// IDEA PROGRESS MONITORING (34 CFR §300.320(a)(3))
+// ═══════════════════════════════════════════════════════════════
+
+enum IepGoalStatus {
+  DRAFT
+  ACTIVE
+  COMPLETED
+  DISCONTINUED
+}
+
+enum MeasurementMethod {
+  CURRICULUM_BASED
+  OBSERVATION
+  RUBRIC
+  STANDARDIZED_ASSESSMENT
+  WORK_SAMPLE
+  DATA_COLLECTION
+}
+
+enum ReportingFrequency {
+  WEEKLY
+  BIWEEKLY
+  MONTHLY
+  QUARTERLY
+  TRIMESTER
+  SEMESTER
+}
+
+enum ProgressReportDelivery {
+  PENDING
+  GENERATED
+  DELIVERED
+  ACKNOWLEDGED
+  FAILED
+}
+
+model IepGoal {
+  id                    String              @id @default(cuid())
+  tenantId              String
+  studentId             String
+  goalCode              String
+  description           String              @db.Text
+  baselineValue         Float
+  baselineDate          DateTime
+  targetValue           Float
+  targetDate            DateTime
+  measurementMethod     MeasurementMethod?
+  measurementUnit       String?
+  reportingFrequency    ReportingFrequency?
+  monitoringIntervalDays Int                @default(30)
+  status                IepGoalStatus       @default(DRAFT)
+  activatedAt           DateTime?
+  completedAt           DateTime?
+  createdBy             String
+  createdAt             DateTime            @default(now())
+  updatedAt             DateTime            @updatedAt
+
+  entries               GoalProgressEntry[]
+  reports               ProgressReport[]
+  student               Student             @relation(fields: [studentId], references: [id])
+  tenant                Tenant              @relation(fields: [tenantId], references: [id])
+
+  @@unique([tenantId, goalCode])
+  @@index([tenantId, studentId])
+}
+
+model GoalProgressEntry {
+  id                String   @id @default(cuid())
+  tenantId          String
+  goalId            String
+  studentId         String
+  recordedValue     Float
+  measurementMethod MeasurementMethod
+  observationDate   DateTime
+  notes             String?  @db.Text
+  entryHash         String
+  recordedBy        String
+  createdAt         DateTime @default(now())
+
+  goal              IepGoal  @relation(fields: [goalId], references: [id])
+  student           Student  @relation(fields: [studentId], references: [id])
+  tenant            Tenant   @relation(fields: [tenantId], references: [id])
+
+  @@index([goalId, observationDate])
+  @@index([tenantId])
+}
+
+model ProgressReport {
+  id                   String                  @id @default(cuid())
+  tenantId             String
+  goalId               String
+  studentId            String
+  reportingPeriodStart DateTime
+  reportingPeriodEnd   DateTime
+  entryCount           Int
+  currentValue         Float
+  baselineValue        Float
+  targetValue          Float
+  trendDirection       String
+  trendSlope           Float?
+  reportContent        String                  @db.Text
+  reportHash           String
+  artifactRef          String
+  deliveryStatus       ProgressReportDelivery  @default(PENDING)
+  deliveredAt          DateTime?
+  acknowledgedAt       DateTime?
+  acknowledgedBy       String?
+  generatedBy          String
+  createdAt            DateTime                @default(now())
+
+  goal                 IepGoal                 @relation(fields: [goalId], references: [id])
+  student              Student                 @relation(fields: [studentId], references: [id])
+  tenant               Tenant                  @relation(fields: [tenantId], references: [id])
+
+  @@index([goalId, createdAt])
+  @@index([deliveryStatus])
+  @@index([tenantId])
+}
+
+// ═══════════════════════════════════════════════════════════════
+// IDEA EVALUATION GOVERNANCE (34 CFR §300.300–§300.311)
+// ═══════════════════════════════════════════════════════════════
+
+enum EvalCaseState {
+  EVAL_TRIGGERED
+  SAFEGUARDS_ISSUED
+  SAFEGUARDS_REQUIRED
+  CONSENT_REQUESTED
+  CONSENT_RECEIVED
+  CONSENT_REFUSED
+  EVALUATION_PLANNED
+  ASSESSMENTS_IN_PROGRESS
+  ASSESSMENTS_COMPLETE
+  ELIGIBILITY_MEETING
+  ELIGIBILITY_DECISION
+  CLOSED
+}
+
+enum EvalCaseType {
+  INITIAL
+  REEVALUATION
+  DISMISSAL
+}
+
+enum ConsentType {
+  INITIAL_EVALUATION
+  REEVALUATION
+  SERVICES
+  RELEASE_OF_RECORDS
+}
+
+enum ConsentDecision {
+  GRANTED
+  REFUSED
+  REVOKED
+}
+
+enum EligibilityOutcome {
+  ELIGIBLE
+  NOT_ELIGIBLE
+  DISMISSED
+}
+
+enum AssessmentDomain {
+  ACADEMIC_ACHIEVEMENT
+  COGNITIVE
+  COMMUNICATION
+  SOCIAL_EMOTIONAL
+  ADAPTIVE_BEHAVIOR
+  MOTOR
+  HEALTH
+  VISION
+  HEARING
+  ASSISTIVE_TECHNOLOGY
+  TRANSITION
+  FUNCTIONAL_BEHAVIOR
+  VOCATIONAL
+  OTHER
+}
+
+enum TimelineUnit {
+  CALENDAR_DAYS
+  SCHOOL_DAYS
+}
+
+model EvaluationCase {
+  id                   String               @id @default(cuid())
+  tenantId             String
+  studentId            String
+  caseType             EvalCaseType
+  currentState         EvalCaseState        @default(EVAL_TRIGGERED)
+  stateCode            String               @default("US")
+  referralSource       String?
+  referralReason       String?              @db.Text
+  referralDate         DateTime?
+  consentRequestedDate DateTime?
+  consentReceivedDate  DateTime?
+  evaluationDueDate    DateTime?
+  eligibilityDate      DateTime?
+  closedDate           DateTime?
+  closedReason         String?
+  correlationId        String               @unique
+  metadata             Json?
+  createdBy            String
+  createdAt            DateTime             @default(now())
+  updatedAt            DateTime             @updatedAt
+
+  transitions          EvalStateTransition[]
+  plan                 EvaluationPlan?
+  assignments          EvaluationAssignment[]
+  assessments          EvalAssessmentRecord[]
+  consents             EvalConsentRecord[]
+  eligibilityMeeting   EligibilityMeeting?
+  eligibilityDecision  EligibilityDecision?
+  student              Student              @relation(fields: [studentId], references: [id])
+  tenant               Tenant               @relation(fields: [tenantId], references: [id])
+
+  @@index([tenantId, currentState])
+  @@index([evaluationDueDate])
+  @@index([tenantId, studentId])
+}
+
+model EvalStateTransition {
+  id             String   @id @default(cuid())
+  tenantId       String
+  caseId         String
+  fromState      String
+  toState        String
+  transitionBy   String
+  reason         String?  @db.Text
+  ruleResults    Json?
+  transitionHash String
+  createdAt      DateTime @default(now())
+
+  evaluationCase EvaluationCase @relation(fields: [caseId], references: [id])
+
+  @@index([caseId, createdAt])
+  @@index([tenantId])
+}
+
+model EvaluationPlan {
+  id                String   @id @default(cuid())
+  tenantId          String
+  caseId            String   @unique
+  assessmentDomains Json
+  planContent       String   @db.Text
+  planHash          String
+  artifactRef       String
+  createdBy         String
+  createdAt         DateTime @default(now())
+
+  evaluationCase    EvaluationCase @relation(fields: [caseId], references: [id])
+
+  @@index([tenantId])
+}
+
+model EvaluationAssignment {
+  id             String    @id @default(cuid())
+  tenantId       String
+  caseId         String
+  assessorId     String
+  domain         AssessmentDomain
+  dueDate        DateTime?
+  completedAt    DateTime?
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+
+  evaluationCase EvaluationCase @relation(fields: [caseId], references: [id])
+
+  @@index([caseId])
+  @@index([tenantId])
+}
+
+model EvalAssessmentRecord {
+  id               String   @id @default(cuid())
+  tenantId         String
+  caseId           String
+  assignmentId     String?
+  domain           AssessmentDomain
+  instrumentName   String
+  administeredBy   String
+  administeredDate DateTime
+  results          Json
+  narrative        String?  @db.Text
+  reportHash       String
+  artifactRef      String
+  createdAt        DateTime @default(now())
+
+  evaluationCase   EvaluationCase @relation(fields: [caseId], references: [id])
+
+  @@index([caseId])
+  @@index([tenantId])
+}
+
+model EvalConsentRecord {
+  id             String          @id @default(cuid())
+  tenantId       String
+  caseId         String
+  consentType    ConsentType
+  decision       ConsentDecision
+  respondentId   String
+  respondentName String
+  consentDate    DateTime
+  documentHash   String
+  artifactRef    String
+  notes          String?         @db.Text
+  createdAt      DateTime        @default(now())
+
+  evaluationCase EvaluationCase  @relation(fields: [caseId], references: [id])
+
+  @@index([caseId])
+  @@index([tenantId])
+}
+
+model EligibilityMeeting {
+  id             String         @id @default(cuid())
+  tenantId       String
+  caseId         String         @unique
+  scheduledDate  DateTime
+  actualDate     DateTime?
+  attendees      Json
+  requiredRoles  String[]
+  meetingNotes   String?        @db.Text
+  meetingHash    String?
+  createdAt      DateTime       @default(now())
+  updatedAt      DateTime       @updatedAt
+
+  evaluationCase EvaluationCase @relation(fields: [caseId], references: [id])
+
+  @@index([tenantId])
+}
+
+model EligibilityDecision {
+  id                 String            @id @default(cuid())
+  tenantId           String
+  caseId             String            @unique
+  outcome            EligibilityOutcome
+  disabilityCategory String?
+  rationale          String            @db.Text
+  decisionDate       DateTime
+  decisionHash       String
+  artifactRef        String
+  decidedBy          String
+  createdAt          DateTime          @default(now())
+
+  evaluationCase     EvaluationCase    @relation(fields: [caseId], references: [id])
+
+  @@index([tenantId])
+}
+
+// ═══════════════════════════════════════════════════════════════
+// DISCIPLINE PROTECTIONS (34 CFR §300.530–§300.536)
+// ═══════════════════════════════════════════════════════════════
+
+enum DisciplineCaseState {
+  REMOVAL_RECORDED
+  THRESHOLD_REVIEW
+  MDR_PENDING
+  MDR_COMPLETE
+  PLACEMENT_DETERMINED
+  SERVICES_IN_PROGRESS
+  CLOSED
+}
+
+enum RemovalType {
+  IN_SCHOOL_SUSPENSION
+  OUT_OF_SCHOOL_SUSPENSION
+  EXPULSION
+  BUS_SUSPENSION
+  OTHER
+}
+
+enum ManifestOutcome {
+  IS_MANIFESTATION
+  NOT_MANIFESTATION
+}
+
+enum PlacementType {
+  RETURN_TO_PLACEMENT
+  IAES
+  ALTERNATIVE_SETTING
+  HOME_INSTRUCTION
+}
+
+model DisciplineCase {
+  id                      String               @id @default(cuid())
+  tenantId                String
+  studentId               String
+  currentState            DisciplineCaseState   @default(REMOVAL_RECORDED)
+  removalType             RemovalType
+  removalStartDate        DateTime
+  removalEndDate          DateTime?
+  removalDays             Int
+  cumulativeRemovalDays   Int                   @default(0)
+  isChangeOfPlacement     Boolean               @default(false)
+  currentPlacement        PlacementType?
+  iaesEndDate             DateTime?
+  servicesDescription     String?               @db.Text
+  servicesContinued       Boolean               @default(false)
+  incidentDescription     String                @db.Text
+  closedDate              DateTime?
+  closedReason            String?
+  metadata                Json?
+  createdBy               String
+  createdAt               DateTime              @default(now())
+  updatedAt               DateTime              @updatedAt
+
+  manifestDetermination   ManifestDetermination?
+  student                 Student               @relation(fields: [studentId], references: [id])
+  tenant                  Tenant                @relation(fields: [tenantId], references: [id])
+
+  @@index([tenantId, currentState])
+  @@index([tenantId, studentId])
+  @@index([removalStartDate])
+}
+
+model ManifestDetermination {
+  id                  String           @id @default(cuid())
+  tenantId            String
+  caseId              String           @unique
+  meetingDate         DateTime
+  attendees           Json
+  outcome             ManifestOutcome
+  rationale           String           @db.Text
+  conductRelated      Boolean
+  disabilityRelated   Boolean
+  iepImplemented      Boolean
+  documentHash        String
+  artifactRef         String
+  decidedBy           String
+  createdAt           DateTime         @default(now())
+
+  disciplineCase      DisciplineCase   @relation(fields: [caseId], references: [id])
+
+  @@index([tenantId])
 }
 
 // ═══════════════════════════════════════════════════════════════

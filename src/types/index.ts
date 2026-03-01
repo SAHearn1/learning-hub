@@ -5,3 +5,7 @@ export * from './assessment';
 export * from './five-rs';
 export * from './ai';
 export * from './api';
+export * from './safeguards';
+export * from './progress-monitoring';
+export * from './evaluation';
+export * from './discipline';
