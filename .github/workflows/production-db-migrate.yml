@@ -43,6 +43,13 @@ jobs:
       - name: Generate Prisma client
         run: npx prisma generate
 
+      - name: Resolve any previously failed migrations
+        run: |
+          # Mark known failed migrations as rolled-back so deploy can proceed.
+          # These are safe to resolve because their partial DDL is idempotent
+          # and the replacement migration (20260301100000) handles all cases.
+          npx prisma migrate resolve --rolled-back 20260228200000_rls_tenant_isolation 2>/dev/null || true
+
       - name: Apply production migrations
         run: npx prisma migrate deploy
 
