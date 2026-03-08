@@ -1,0 +1,9 @@
+# CODEOWNERS — learning-hub
+
+AGENTS.md @SAHearn1
+CLAUDE.md @SAHearn1
+GOVERNANCE.md @SAHearn1
+repo.intelligence.yml @SAHearn1
+CODEOWNERS @SAHearn1
+/docs/ @SAHearn1
+/.github/ @SAHearn1
