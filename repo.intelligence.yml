@@ -1,0 +1,70 @@
+repository_name: learning-hub
+purpose: "rootwork-tutor — Production tutoring LMS with AI, RAG, payments, and multi-role support"
+user_facing_surfaces:
+  - "Student dashboard"
+  - "Educator dashboard"
+  - "Parent dashboard"
+  - "Admin dashboard"
+entrypoints:
+  - "app/ (Next.js App Router)"
+  - "prisma/schema.prisma (data model)"
+ui_layer: "React 18 + Next.js 15 App Router + Tailwind CSS + Radix UI"
+api_layer: "Next.js API routes (app/api/)"
+auth_layer: "Clerk (@clerk/nextjs v5)"
+service_layer: "TODO — requires Phase C deep read of app/ and lib/"
+data_layer: "PostgreSQL + Prisma ORM + Redis cache (ioredis)"
+infrastructure_layer: "Vercel (deployment) + TODO for backend services"
+external_integrations:
+  - "Clerk (authentication + webhooks)"
+  - "PostgreSQL (primary data store)"
+  - "Redis (caching via ioredis)"
+  - "Anthropic Claude (@anthropic-ai/sdk)"
+  - "OpenAI"
+  - "Pinecone (RAG / vector search)"
+  - "Stripe (payments + subscriptions)"
+  - "Sentry (@sentry/nextjs)"
+  - "Datadog (dd-trace APM)"
+  - "Vercel Analytics + Speed Insights"
+environment_variables_referenced:
+  - "DATABASE_URL"
+  - "CLERK_SECRET_KEY"
+  - "NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY"
+  - "ANTHROPIC_API_KEY"
+  - "OPENAI_API_KEY"
+  - "PINECONE_API_KEY"
+  - "STRIPE_SECRET_KEY"
+  - "STRIPE_WEBHOOK_SECRET"
+  - "REDIS_URL"
+  - "NEXT_PUBLIC_SENTRY_DSN"
+key_routes:
+  - "TODO — requires Phase C deep read of app/"
+key_services:
+  - "TODO — requires Phase C deep read of lib/ and app/api/"
+key_jobs_or_workers:
+  - "TODO — requires Phase C deep read"
+critical_dependencies:
+  - "next ^15.1.0"
+  - "@clerk/nextjs ^5.0.0"
+  - "@prisma/client ^5.20.0"
+  - "@anthropic-ai/sdk ^0.30.0"
+  - "@pinecone-database/pinecone ^7.0.0"
+  - "stripe ^16.0.0"
+  - "ioredis ^5.9.2"
+  - "@sentry/nextjs ^10.38.0"
+likely_failure_hotspots:
+  - "DATABASE_URL missing or Prisma client not regenerated after schema change"
+  - "CLERK_SECRET_KEY mismatch between environments"
+  - "Stripe webhook secret mismatch"
+  - "Redis connection failure degrading performance"
+  - "Pinecone index name or dimension mismatch"
+  - "Anthropic/OpenAI rate limits (429)"
+local_dev_commands:
+  - "npm run dev"
+build_commands:
+  - "npm run build"
+  - "npm run typecheck"
+  - "npm run lint"
+test_commands:
+  - "npm run test:ci"
+  - "npm run test:e2e"
+  - "npm run test:e2e:smoke:roles"

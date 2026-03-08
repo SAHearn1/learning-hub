@@ -1,0 +1,28 @@
+name: Agent Governance
+on:
+  pull_request:
+    branches: ['**']
+jobs:
+  validate-governance:
+    name: Governance Compliance
+    runs-on: ubuntu-latest
+    if: contains(github.head_ref, 'agent-operating-system-install') || contains(github.head_ref, 'governance')
+    steps:
+      - uses: actions/checkout@v4
+      - name: Check required governance files
+        run: |
+          MISSING=0
+          for f in AGENTS.md .github/PULL_REQUEST_TEMPLATE.md .github/ISSUE_TEMPLATE/bug_report.md repo.intelligence.yml; do
+            if [ ! -f "$f" ]; then echo "MISSING: $f"; MISSING=$((MISSING+1)); else echo "OK: $f"; fi
+          done
+          [ $MISSING -eq 0 ] || exit 1
+      - name: Check PR template sections
+        run: |
+          MISSING=0
+          for s in "Root Cause" "Verification Evidence" "Files Changed" "Regression"; do
+            grep -q "$s" .github/PULL_REQUEST_TEMPLATE.md && echo "OK: $s" || { echo "MISSING: $s"; MISSING=$((MISSING+1)); }
+          done
+          [ $MISSING -eq 0 ] || exit 1
+      - name: Check repo.intelligence.yml
+        run: |
+          [ -f repo.intelligence.yml ] && grep -E '^[a-z_]+: ""$' repo.intelligence.yml && { echo "Blank fields found"; exit 1; } || echo "OK"
