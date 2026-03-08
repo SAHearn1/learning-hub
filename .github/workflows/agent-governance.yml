@@ -1,28 +1,35 @@
-name: Agent Governance
+name: Agent Governance Validation
+
 on:
   pull_request:
-    branches: ['**']
+    branches: [main, master]
+
 jobs:
   validate-governance:
-    name: Governance Compliance
+    name: Validate Governance Files
     runs-on: ubuntu-latest
-    if: contains(github.head_ref, 'agent-operating-system-install') || contains(github.head_ref, 'governance')
+
     steps:
-      - uses: actions/checkout@v4
-      - name: Check required governance files
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Verify AGENTS.md
         run: |
-          MISSING=0
-          for f in AGENTS.md .github/PULL_REQUEST_TEMPLATE.md .github/ISSUE_TEMPLATE/bug_report.md repo.intelligence.yml; do
-            if [ ! -f "$f" ]; then echo "MISSING: $f"; MISSING=$((MISSING+1)); else echo "OK: $f"; fi
-          done
-          [ $MISSING -eq 0 ] || exit 1
-      - name: Check PR template sections
+          [ -f AGENTS.md ] && echo "AGENTS.md present" || (echo "ERROR: AGENTS.md missing" && exit 1)
+
+      - name: Verify CLAUDE.md
         run: |
-          MISSING=0
-          for s in "Root Cause" "Verification Evidence" "Files Changed" "Regression"; do
-            grep -q "$s" .github/PULL_REQUEST_TEMPLATE.md && echo "OK: $s" || { echo "MISSING: $s"; MISSING=$((MISSING+1)); }
-          done
-          [ $MISSING -eq 0 ] || exit 1
-      - name: Check repo.intelligence.yml
+          [ -f CLAUDE.md ] && echo "CLAUDE.md present" || (echo "ERROR: CLAUDE.md missing" && exit 1)
+
+      - name: Verify repo.intelligence.yml
         run: |
-          [ -f repo.intelligence.yml ] && grep -E '^[a-z_]+: ""$' repo.intelligence.yml && { echo "Blank fields found"; exit 1; } || echo "OK"
+          [ -f repo.intelligence.yml ] && echo "repo.intelligence.yml present" || (echo "ERROR: repo.intelligence.yml missing" && exit 1)
+
+      - name: Verify CODEOWNERS
+        run: |
+          [ -f CODEOWNERS ] && echo "CODEOWNERS present" || (echo "ERROR: CODEOWNERS missing" && exit 1)
+
+      - name: Governance gate passed
+        run: |
+          echo "=== GOVERNANCE GATE: PASSED ==="
+          echo "Repo: learning-hub | Tier: 1 | Hub: SAHearn1/rwfw-agent-governance"
