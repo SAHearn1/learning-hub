@@ -1,13 +1,13 @@
-# CLAUDE.md â€” learning-hub
+# CLAUDE.md — learning-hub
 
 > Agent briefing document. Read this before touching any code.
 > Governance hub: `SAHearn1/rwfw-agent-governance`
 
 ## Repo Identity
 
-- **Purpose:** Learning hub platform â€” AI-powered tutoring with payments and RAG
+- **Purpose:** Learning hub platform — AI-powered tutoring with payments and RAG
 - **Tier:** 1 (production-critical)
-- **Criticality:** HIGH â€” handles payments and user learning data
+- **Criticality:** HIGH — handles payments and user learning data
 
 ## Stack
 
@@ -23,9 +23,9 @@
 
 ## Before You Write Any Code
 
-1. Read `repo.intelligence.yml` â€” authoritative stack profile
+1. Read `repo.intelligence.yml` — authoritative stack profile
 2. Read `docs/ARCHITECTURE_MAP.md`
-3. Read `docs/RUNTIME_MAP.md` â€” especially Stripe webhook setup
+3. Read `docs/RUNTIME_MAP.md` — especially Stripe webhook setup
 4. Check `docs/INCIDENTS.md`
 
 ## Critical Rules for This Repo
@@ -35,7 +35,7 @@
 - **Pinecone index names are environment-specific.** Dev and prod must use separate indexes. Never cross-contaminate.
 - **Anthropic API costs money per token.** Never stream responses to a dead client. Always handle abort signals.
 - **Clerk auth gates all API routes.** Use `auth()` from `@clerk/nextjs/server` in every route handler that touches user data.
-- **No `git add .`** â€” stage specific files only.
+- **No `git add .`** — stage specific files only.
 
 ## Dev Workflow
 
@@ -71,3 +71,9 @@ See `docs/DEBUG_PLAYBOOK.md` for Clerk/Prisma/Stripe/Pinecone failure tables.
 ## Governance
 
 All agents operating here must follow `AGENTS.md` (8 rules).
+
+## Operating Rules
+
+**If you resolve a bug during this session, you MUST append an entry to `docs/INCIDENTS.md` before the session ends. This is non-negotiable. Session is not complete until the entry is committed.**
+
+See Rule 7 in `AGENTS.md` (governance hub: `SAHearn1/rwfw-agent-governance`) for the full incident logging protocol.
