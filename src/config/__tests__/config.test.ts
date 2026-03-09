@@ -116,8 +116,8 @@ describe('navigation', () => {
     }
   });
 
-  it('admin nav has 4 items', () => {
-    expect(adminNavItems).toHaveLength(4);
+  it('admin nav has 5 items', () => {
+    expect(adminNavItems).toHaveLength(5);
   });
 
   it('all nav items have label, href, and icon', () => {

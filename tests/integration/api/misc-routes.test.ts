@@ -58,6 +58,15 @@ vi.mock('@/lib/monitoring', () => ({
   trackEvent: vi.fn(),
 }));
 
+// Bypass per-route rate limiting so test suite doesn't hit 429 after 5 calls
+vi.mock('@/lib/api-handler', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/lib/api-handler')>();
+  return {
+    ...actual,
+    withApiHandler: (handler: any, _opts?: any) => actual.withApiHandler(handler),
+  };
+});
+
 const routeContext = { params: Promise.resolve({}) };
 
 const schoolAdminUser = {
