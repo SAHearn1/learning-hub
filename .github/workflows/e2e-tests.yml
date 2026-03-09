@@ -35,7 +35,8 @@ jobs:
       DIRECT_URL: postgresql://rootwork:rootwork_e2e@localhost:5432/rootwork_test?schema=public
       NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY: ${{ secrets.CLERK_PUBLISHABLE_KEY_TEST }}
       CLERK_SECRET_KEY: ${{ secrets.CLERK_SECRET_KEY_TEST }}
-      CLERK_TESTING_TOKEN: ${{ secrets.CLERK_TESTING_TOKEN }}
+      # CLERK_TESTING_TOKEN is generated dynamically in the "Generate Clerk testing token" step
+      # because it is short-lived (~1 hour). Do not store as a static secret.
       ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY || 'sk-ant-placeholder' }}
       STRIPE_SECRET_KEY: ${{ secrets.STRIPE_SECRET_KEY_TEST || 'sk_test_placeholder' }}
       NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY: ${{ secrets.STRIPE_PUBLISHABLE_KEY_TEST || 'pk_test_placeholder' }}
@@ -64,19 +65,29 @@ jobs:
       
       - name: Install dependencies
         run: npm ci
-      
+
+      - name: Generate Clerk testing token
+        id: clerk_token
+        env:
+          CLERK_SECRET_KEY: ${{ secrets.CLERK_SECRET_KEY_TEST }}
+        run: |
+          TOKEN=$(curl -s -X POST "https://api.clerk.com/v1/testing_tokens" \
+            -H "Authorization: Bearer $CLERK_SECRET_KEY" \
+            | python3 -c "import json,sys; print(json.load(sys.stdin)['token'])")
+          echo "CLERK_TESTING_TOKEN=$TOKEN" >> $GITHUB_ENV
+
       - name: Generate Prisma client
         run: npx prisma generate
-      
+
       - name: Run database migrations
         run: npx prisma migrate deploy
-      
+
       - name: Seed database with test data
         run: npm run db:seed
-      
+
       - name: Install Playwright Browsers
         run: npx playwright install --with-deps
-      
+
       - name: Run E2E tests
         run: |
           npm run build
