@@ -6,6 +6,7 @@ import { SpeedInsights } from '@vercel/speed-insights/next';
 import { siteConfig } from '@/config/site';
 import { GlobalHeader } from '@/components/navigation/global-header';
 import { Footer } from '@/components/navigation/footer';
+import { DatadogRum } from '@/components/monitoring/datadog-rum';
 import './globals.css';
 
 function AuthProvider({ children }: { children: ReactNode }) {
@@ -44,6 +45,7 @@ export default function RootLayout({
           <Footer />
           <Analytics />
           <SpeedInsights />
+          <DatadogRum />
         </body>
       </html>
     </AuthProvider>
