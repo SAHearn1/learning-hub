@@ -174,6 +174,8 @@ describe('POST /api/chat', () => {
     mockRequireUser.mockResolvedValue({
       id: 'user_123',
       tenantId: 'tenant_123',
+      role: 'STUDENT',
+      isMinor: false,
       student: null,
     });
     const { POST } = await import('@/app/api/chat/route');
@@ -193,6 +195,8 @@ describe('POST /api/chat', () => {
     mockRequireUser.mockResolvedValue({
       id: 'user_123',
       tenantId: 'tenant_123',
+      role: 'STUDENT',
+      isMinor: false,
       student: { id: 'student_123', gradeLevel: 5, learningPreferences: {}, iepAccommodations: [] },
     });
     mockGetCachedSession.mockResolvedValue(null);
@@ -241,6 +245,8 @@ describe('POST /api/chat', () => {
     mockRequireUser.mockResolvedValue({
       id: 'user_123',
       tenantId: 'tenant_123',
+      role: 'STUDENT',
+      isMinor: false,
       student: { id: 'student_123', gradeLevel: 5, learningPreferences: {}, iepAccommodations: [] },
     });
     mockGetCachedSession.mockResolvedValue({
@@ -271,6 +277,8 @@ describe('POST /api/chat', () => {
     mockRequireUser.mockResolvedValue({
       id: 'user_123',
       tenantId: 'tenant_123',
+      role: 'STUDENT',
+      isMinor: false,
       student: { id: 'student_123', gradeLevel: 5, learningPreferences: {}, iepAccommodations: [] },
     });
     mockGetCachedSession.mockResolvedValue({
@@ -304,6 +312,8 @@ describe('POST /api/chat', () => {
     mockRequireUser.mockResolvedValue({
       id: 'user_123',
       tenantId: 'tenant_123',
+      role: 'STUDENT',
+      isMinor: false,
       student: {
         id: 'student_123',
         gradeLevel: 5,
@@ -374,6 +384,8 @@ describe('POST /api/chat', () => {
     mockRequireUser.mockResolvedValue({
       id: 'user_123',
       tenantId: 'tenant_123',
+      role: 'STUDENT',
+      isMinor: false,
       student: {
         id: 'student_123',
         gradeLevel: 5,
@@ -440,6 +452,7 @@ describe('POST /api/chat', () => {
     mockRequireUser.mockResolvedValue({
       id: 'user_123',
       tenantId: 'tenant_123',
+      role: 'STUDENT',
       isMinor: true,
       consentStatus: 'PENDING',
       student: { id: 'student_123', gradeLevel: 5, learningPreferences: {}, iepAccommodations: [] },

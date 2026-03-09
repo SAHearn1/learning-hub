@@ -1,15 +1,15 @@
 import { NextResponse } from 'next/server';
 import { z } from 'zod';
+import { withApiHandler } from '@/lib/api-handler';
 import { requireRole } from '@/lib/auth';
-import { db } from '@/lib/db';
 
 const bulkSchema = z.object({
   studentIds: z.array(z.string().min(1)).min(1),
   trigger: z.string().min(1),
 });
 
-export async function POST(req: Request) {
-  const user = await requireRole(['EDUCATOR', 'SCHOOL_ADMIN', 'DISTRICT_ADMIN', 'PLATFORM_ADMIN']);
+export const POST = withApiHandler(async (req) => {
+  await requireRole(['EDUCATOR', 'SCHOOL_ADMIN', 'DISTRICT_ADMIN', 'PLATFORM_ADMIN']);
   const { studentIds, trigger } = bulkSchema.parse(await req.json());
 
   const results = await Promise.allSettled(
@@ -29,4 +29,4 @@ export async function POST(req: Request) {
       success: r.status === 'fulfilled',
     })),
   });
-}
+});

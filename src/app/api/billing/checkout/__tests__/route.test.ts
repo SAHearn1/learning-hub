@@ -4,7 +4,7 @@ import { NextRequest } from 'next/server';
 const mockRequireUser = vi.fn();
 const mockCreateCheckoutSession = vi.fn();
 
-vi.mock('@/lib/auth', () => ({ requireUser: mockRequireUser }));
+vi.mock('@/lib/auth', () => ({ requireUser: mockRequireUser, requireRole: mockRequireUser }));
 vi.mock('@/lib/billing', () => ({ createCheckoutSession: mockCreateCheckoutSession }));
 vi.mock('@/lib/logger', () => ({
   logger: { debug: vi.fn(), info: vi.fn(), warn: vi.fn(), error: vi.fn() },

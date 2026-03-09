@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { z } from 'zod';
+import { withApiHandler } from '@/lib/api-handler';
 import { requireUser } from '@/lib/auth';
 import { createThread, getThreadsForUser } from '@/lib/messaging/messaging.service';
 
@@ -9,13 +10,13 @@ const createSchema = z.object({
   subject: z.string().min(1),
 });
 
-export async function GET() {
+export const GET = withApiHandler(async () => {
   const user = await requireUser();
   const threads = await getThreadsForUser(user.id);
   return NextResponse.json({ data: threads });
-}
+});
 
-export async function POST(req: Request) {
+export const POST = withApiHandler(async (req) => {
   const user = await requireUser();
   const body = createSchema.parse(await req.json());
   const thread = await createThread({
@@ -26,4 +27,4 @@ export async function POST(req: Request) {
     subject: body.subject,
   });
   return NextResponse.json({ data: thread }, { status: 201 });
-}
+});

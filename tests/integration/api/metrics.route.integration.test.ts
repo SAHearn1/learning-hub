@@ -1,10 +1,19 @@
-import { describe, expect, it, beforeEach } from 'vitest';
+import { describe, expect, it, beforeEach, vi } from 'vitest';
 import { incrementMetric, resetMetrics } from '@/lib/api/metrics';
 import { NextRequest } from 'next/server';
+
+const mockRequireRole = vi.fn();
+vi.mock('@/lib/auth', () => ({ requireRole: mockRequireRole }));
+vi.mock('@/lib/logger', () => ({ logger: { debug: vi.fn(), info: vi.fn(), warn: vi.fn(), error: vi.fn() } }));
+vi.mock('@/lib/api/metrics', async (importOriginal) => {
+  const real = await importOriginal<typeof import('@/lib/api/metrics')>();
+  return { ...real };
+});
 
 describe('GET /api/metrics', () => {
   beforeEach(() => {
     resetMetrics();
+    mockRequireRole.mockResolvedValue({ id: 'admin_1', role: 'PLATFORM_ADMIN', tenantId: 'tenant_1' });
   });
 
   it('returns metrics as json when format=json', async () => {

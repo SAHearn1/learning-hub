@@ -147,7 +147,7 @@ describe('Multi-tenant isolation audit (RLS-style negative paths)', () => {
     const response = await POST(req, routeContext);
     expect(response.status).toBe(403);
     const body = await response.json();
-    expect(body.error).toBe('Access to this session is forbidden');
+    expect(body.error).toBe('Only students can access chat sessions');
   }, 15000);
 });
 

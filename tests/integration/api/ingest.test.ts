@@ -14,6 +14,7 @@ vi.mock('@/lib/db', () => ({
     ingestLog: {
       create: mockIngestLogCreate,
       update: mockIngestLogUpdate,
+      findFirst: vi.fn().mockResolvedValue(null),
     },
   },
 }));

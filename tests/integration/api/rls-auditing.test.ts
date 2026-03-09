@@ -344,7 +344,7 @@ describe('RLS Auditing - Multi-Tenant Data Isolation', () => {
   });
 
   describe('Session Listing Access Control', () => {
-    it('verifies educator session queries are scoped to their tenant', async () => {
+    it('blocks educators from listing sessions (student-only endpoint)', async () => {
       const { auth } = await import('@clerk/nextjs/server');
       const { db } = await import('@/lib/db');
 
@@ -357,22 +357,14 @@ describe('RLS Auditing - Multi-Tenant Data Isolation', () => {
         role: 'EDUCATOR',
       } as any);
 
-      vi.mocked(db.session.findMany).mockResolvedValueOnce([] as any);
-      vi.mocked(db.session.count).mockResolvedValueOnce(0);
-
       const { GET } = await import('@/app/api/sessions/route');
       const req = new NextRequest('http://localhost:3000/api/sessions');
 
-      await GET(req);
+      const res = await GET(req);
 
-      // Verify query was scoped to educator's tenant
-      expect(db.session.findMany).toHaveBeenCalledWith(
-        expect.objectContaining({
-          where: expect.objectContaining({
-            tenantId: 'tenant_school_a', // Should only query their own tenant
-          }),
-        })
-      );
+      // strictRoleEnforcement blocks educators from this student-only endpoint
+      expect(res.status).toBe(403);
+      expect(db.session.findMany).not.toHaveBeenCalled();
     });
 
     it('scopes student session listing to their own sessions only', async () => {

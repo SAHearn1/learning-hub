@@ -1,8 +1,9 @@
 import { NextResponse } from 'next/server';
+import { withApiHandler } from '@/lib/api-handler';
 import { requireRole } from '@/lib/auth';
 import { db } from '@/lib/db';
 
-export async function GET(req: Request) {
+export const GET = withApiHandler(async (req) => {
   const user = await requireRole(['SCHOOL_ADMIN', 'DISTRICT_ADMIN', 'PLATFORM_ADMIN']);
   const url = new URL(req.url);
   const action = url.searchParams.get('action');
@@ -19,4 +20,4 @@ export async function GET(req: Request) {
   });
 
   return NextResponse.json({ data: logs });
-}
+});

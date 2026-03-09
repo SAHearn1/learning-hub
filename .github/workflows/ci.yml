@@ -269,7 +269,7 @@ jobs:
       - run: npm ci
 
       - name: Audit for critical vulnerabilities
-        run: npm audit --audit-level=critical || true
+        run: npm audit --audit-level=critical
 
       - name: Check for outdated dependencies
         run: npm outdated --long || true

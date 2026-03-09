@@ -17,6 +17,7 @@ import { captureException, recordMetric, trackEvent } from '@/lib/monitoring';
 import { computePhaseTransition, buildFiveRStateSnapshot } from '@/lib/five-rs/state-machine';
 import { withApiHandler } from '@/lib/api-handler';
 import { requireUser } from '@/lib/auth';
+import { logger } from '@/lib/logger';
 import { NotFoundError, ForbiddenError, BadRequestError, PaymentRequiredError } from '@/lib/api-errors';
 import { hasRequiredMinorConsent } from '@/lib/compliance';
 import { featureFlags } from '@/lib/feature-flags';
@@ -220,7 +221,7 @@ export const POST = withApiHandler(async (req) => {
   );
 
   // Log sentiment classification for monitoring
-  console.log(`Sentiment classification for session ${session.id}:`, {
+  logger.debug(`Sentiment classification for session ${session.id}`, {
     stressLevel: sentimentClassification.stressLevel,
     shouldIntervene: sentimentClassification.shouldIntervene,
     patterns: sentimentClassification.detectedPatterns,
@@ -271,7 +272,7 @@ export const POST = withApiHandler(async (req) => {
         },
       });
     } catch (error) {
-      console.error('Error creating intervention response:', error);
+      logger.error('Error creating intervention response', { error });
       captureException(error as Error);
       // Continue with normal flow if intervention fails (graceful degradation)
     }
@@ -337,11 +338,11 @@ export const POST = withApiHandler(async (req) => {
 
         curriculumContext = formatCurriculumContext(results);
         await cacheSet(ragCacheKey, curriculumContext, CACHE_TTL.CURRICULUM);
-        console.log(`RAG: Retrieved ${results.length} curriculum contexts in ${ragMetrics.durationMs}ms for session ${session.id}`);
+        logger.debug(`RAG: Retrieved ${results.length} curriculum contexts in ${ragMetrics.durationMs}ms for session ${session.id}`);
       }
     }
   } catch (error) {
-    console.error(`RAG retrieval error for session ${session.id}:`, error);
+    logger.error(`RAG retrieval error for session ${session.id}`, { error });
     curriculumContext = '';
     citations = [];
   }
@@ -390,7 +391,7 @@ export const POST = withApiHandler(async (req) => {
         preselectedTopicContext = parts.join('\n');
       }
     } catch (error) {
-      console.error('Error fetching pre-selected topic:', error);
+      logger.error('Error fetching pre-selected topic', { error });
     }
   }
 

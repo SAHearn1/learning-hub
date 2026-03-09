@@ -1073,6 +1073,7 @@ model Session {
   @@index([tenantId])
   @@index([studentId])
   @@index([deletedAt])
+  @@index([startedAt])
 }
 
 model Message {
@@ -1156,6 +1157,7 @@ model Assessment {
   createdAt       DateTime         @default(now())
 
   @@index([isAnonymized])
+  @@index([sessionId])
 }
 
 enum AssessmentType {
@@ -1218,6 +1220,8 @@ model ThinkingAssessment {
   rawResponse             String                 @db.Text
   aiAnalysis              String?                @db.Text
   createdAt               DateTime               @default(now())
+
+  @@index([sessionId])
 }
 
 enum ThinkingAssessmentType {
