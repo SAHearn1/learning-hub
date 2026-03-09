@@ -1,23 +1,11 @@
-import { auth } from '@clerk/nextjs/server';
-import { redirect } from 'next/navigation';
-import { getCurrentUser } from '@/lib/auth';
 import { db } from '@/lib/db';
+import { requirePageUser } from '@/lib/page-auth';
 import { ClassesClient } from './classes-client';
 
 export const dynamic = 'force-dynamic';
 
-const EDUCATOR_ROLES = ['EDUCATOR', 'SCHOOL_ADMIN', 'DISTRICT_ADMIN', 'PLATFORM_ADMIN'];
-
 export default async function EducatorClassesPage() {
-  const { userId } = await auth();
-  if (!userId) redirect('/sign-in');
-
-  const user = await getCurrentUser();
-  if (!user) redirect('/sign-in');
-
-  if (!EDUCATOR_ROLES.includes(user.role)) {
-    redirect('/dashboard');
-  }
+  const user = await requirePageUser(['EDUCATOR', 'SCHOOL_ADMIN', 'DISTRICT_ADMIN', 'PLATFORM_ADMIN']);
 
   const where =
     user.role === 'EDUCATOR' ? { educatorId: user.id } : { tenantId: user.tenantId };

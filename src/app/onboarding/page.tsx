@@ -1,10 +1,8 @@
-import { auth } from '@clerk/nextjs/server';
-import { redirect } from 'next/navigation';
+import { requirePageUser } from '@/lib/page-auth';
 import { OnboardingClient } from './onboarding-client';
 
 export default async function OnboardingPage() {
-  const { userId } = await auth();
-  if (!userId) redirect('/sign-in');
+  await requirePageUser();
 
   return (
     <main className="flex min-h-screen items-center justify-center bg-gradient-to-br from-primary-50 via-white to-secondary-50 px-4">

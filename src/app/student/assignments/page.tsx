@@ -1,6 +1,4 @@
-import { auth } from '@clerk/nextjs/server';
-import { redirect } from 'next/navigation';
-import { getCurrentUser } from '@/lib/auth';
+import { requirePageUser } from '@/lib/page-auth';
 import { StudentAssignmentsClient } from './student-assignments-client';
 
 export const dynamic = 'force-dynamic';
@@ -18,21 +16,7 @@ export default async function StudentAssignmentsPage() {
     );
   }
 
-  const { userId } = await auth();
-  if (!userId) redirect('/sign-in');
-
-  let user;
-  try {
-    user = await getCurrentUser();
-  } catch (err) {
-    console.error('StudentAssignments: failed to get user, falling back to /learn', err);
-    redirect('/learn');
-  }
-  if (!user) redirect('/sign-in');
-
-  if (user.role !== 'STUDENT') {
-    redirect('/');
-  }
+  await requirePageUser(['STUDENT']);
 
   return <StudentAssignmentsClient />;
 }

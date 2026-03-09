@@ -1,13 +1,13 @@
-import { auth } from '@clerk/nextjs/server';
 import { redirect } from 'next/navigation';
 import { db } from '@/lib/db';
-import { getCurrentUser } from '@/lib/auth';
+import { requirePageUser } from '@/lib/page-auth';
 import { StudentDashboardClient, type StudentDashboardData } from './student-dashboard-client';
 
 export const dynamic = 'force-dynamic';
 
-async function getStudentId(user: Awaited<ReturnType<typeof getCurrentUser>>) {
-  if (!user) return null;
+type PageUser = Awaited<ReturnType<typeof requirePageUser>>;
+
+async function getStudentId(user: PageUser) {
   if (user.role !== 'STUDENT') return null;
   if (user.student) return user.student.id;
 
@@ -49,18 +49,7 @@ export default async function StudentDashboardPage() {
     );
   }
 
-  const { userId } = await auth();
-  if (!userId) redirect('/sign-in');
-
-  let user;
-  try {
-    user = await getCurrentUser();
-  } catch (err) {
-    console.error('StudentDashboard: failed to get user, falling back to /learn', err);
-    redirect('/learn');
-  }
-  if (!user) redirect('/sign-in');
-  if (user.role !== 'STUDENT') redirect('/dashboard');
+  const user = await requirePageUser(['STUDENT']);
 
   const studentId = await getStudentId(user);
   if (!studentId) redirect('/dashboard');
