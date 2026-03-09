@@ -85,12 +85,14 @@ Status: **Complete** (2026-03-09, PR #262 + PR sprint-phase5-coverage)
 
 ### Phase 7 -- Analytics, District-Wide Deployment, and Mobile
 
-Status: **In Progress**
+Status: **In Progress** (PR #264 merged 2026-03-09)
 
-- [ ] Analytics API routes for district and school-level dashboards.
-- [ ] Bulk user import from SIS feeds.
+- [x] Analytics API routes for district and school-level dashboards (`/api/analytics/school`, `/api/analytics/district`).
+- [x] Bulk user import from SIS feeds (`/api/admin/sis-import`, up to 500 students, dry-run support).
+- [x] Parent children page (`/parent/children`) with consent status badges.
+- [x] Page-level role gating standardized to `requirePageUser` across 11 pages.
 - [ ] SSO federation with district identity providers (SAML, OIDC).
-- [ ] Data export and portability tooling.
+- [ ] Data export and portability tooling (beyond current CSV export).
 - [ ] Mobile-responsive redesign for tablet and phone.
 - [ ] E2E CI green with Clerk test credentials (#192).
 - [ ] Load test baseline documented (#261).
