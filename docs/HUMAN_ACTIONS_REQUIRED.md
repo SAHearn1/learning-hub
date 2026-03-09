@@ -10,16 +10,14 @@ Completed 2026-02-27. Secrets `PRODUCTION_DATABASE_URL` and `PRODUCTION_DIRECT_U
 
 Completed 2026-02-28. `pk_live_*` and `sk_live_*` keys set in Vercel production environment variables.
 
-## ~~P0 — Wire Datadog HTTP API metrics~~ PARTIALLY DONE (2026-03-09)
+## ~~P0 — Wire Datadog HTTP API metrics~~ DONE (2026-03-09)
 
-`metrics.ts` updated to push via Datadog HTTP API (`DATADOG_API_KEY`) instead of UDP StatsD — works reliably in Vercel serverless. `DATADOG_SITE=datadoghq.com` and `DATADOG_METRIC_PREFIX=rootwork` set in Vercel.
-
-**One step remaining:** Add `DATADOG_API_KEY` to Vercel → Environment Variables (production + preview):
-1. Go to https://app.datadoghq.com/organization-settings/api-keys
-2. Create or copy an API key
-3. Set `DATADOG_API_KEY=<key>` in Vercel for production and preview
-
-Once set, all `metricsStore.record()` calls push to Datadog automatically.
+All three Datadog integrations fully wired:
+- `DATADOG_API_KEY` set in Vercel (production + preview, encrypted) — server-side metrics push active
+- `DATADOG_SITE`, `DATADOG_METRIC_PREFIX` set in Vercel
+- Datadog RUM (`@datadog/browser-rum`) installed, `DatadogRum` component mounted in root layout
+- `NEXT_PUBLIC_DATADOG_APPLICATION_ID`, `NEXT_PUBLIC_DATADOG_CLIENT_TOKEN`, `NEXT_PUBLIC_DATADOG_SITE` set in Vercel (all environments)
+- Datadog MCP server configured in `~/.claude.json` (HTTP transport: `https://mcp.datadoghq.com`)
 
 ## ~~P0 — Add Clerk secrets + test users for E2E CI~~ DONE (2026-03-09)
 
@@ -75,7 +73,7 @@ Completion criteria:
 
 - [x] P0: Production database secret + migration workflow completed
 - [x] P0: Clerk live keys configured in Vercel production (`pk_live_*` / `sk_live_*`)
-- [x] P0: Metrics — Vercel Analytics + Speed Insights installed (Datadog optional)
+- [x] P0: Metrics — Vercel Analytics + Speed Insights + Datadog RUM + server-side metrics all active
 - [x] P0: 11 Clerk GitHub Action secrets configured
 - [ ] P0: RLS migration deployed to production
 - [ ] P1: Staging load-test baseline run completed + SLO markdown published
