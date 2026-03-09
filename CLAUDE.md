@@ -263,7 +263,37 @@ Status: **EXECUTED** (branch: `claude/gap-analysis-2-6f67e3`, PR #262)
 - `npx tsc --noEmit` — clean
 - `npx vitest run` — **127/127 test files, 1565/1565 tests pass**
 
-### Issues Created (#249–#261)
+### Issues Created and Closed (#249–#260)
+Issues #249–#258, #260 resolved and closed. #259 (E2E spec), #261 (load tests) remain open pending external/human action.
+
+## Phase 5/6 Sprint — 2026-03-09
+
+Status: **COMPLETE** (branch: `claude/sprint-phase5-coverage`)
+
+### Completed Fixes
+
+| Area | Change | Details |
+|------|--------|---------|
+| Test coverage | 3 new test files | progress-monitoring (41), lms-classes (16), student-routes (21) |
+| Test coverage | 4 extended test files | evaluation-cases (+29), discipline-cases (+8), srs (+10), irt (+4) |
+| Test coverage | 6 more new files | admin-data-retention (10), assessments-misc (13), admin-audit-log (7), admin-tenants (13), billing-portal (7), parent-students (7) |
+| ROADMAP | Phase update | Phases 5+6 marked complete; Phase 7 defined |
+
+### Validation (2026-03-09)
+- `npm run lint` — clean
+- `npx vitest run` — **136/136 test files, 1758/1758 tests pass**
+
+### Remaining Open Items (all external/human)
+| Issue | Action Required |
+|-------|----------------|
+| #192 | Add 11 E2E_CLERK_USER_* secrets to GitHub Actions |
+| #261 | Trigger load test workflow against staging env |
+| #189 | Provision Datadog, set DATADOG_STATSD_HOST |
+| #259 | Write Playwright E2E specs for school-admin/evaluation/messaging roles |
+
+---
+
+### Issues Created (#249–#261, archived)
 13 GitHub issues created for remaining gaps (E2E CI credentials, load test baseline, misc-routes spec coverage, phase5-8-orchestration.yml clarification — all require external/human action).
 
 ---
