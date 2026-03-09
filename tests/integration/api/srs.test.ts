@@ -7,6 +7,9 @@ const mockSubmitReview = vi.fn();
 const mockGetReviewStats = vi.fn();
 const mockGenerateDailyWarmup = vi.fn();
 
+// --- Auth mock (named so individual tests can reject it) ---
+const mockRequireUser = vi.fn();
+
 vi.mock('@/lib/srs', () => ({
   getDueItems: mockGetDueItems,
   submitReview: mockSubmitReview,
@@ -15,8 +18,7 @@ vi.mock('@/lib/srs', () => ({
   ReviewRating: { AGAIN: 1, HARD: 2, GOOD: 3, EASY: 4 },
 }));
 
-// --- Shared infrastructure mocks ---
-vi.mock('@/lib/auth', () => ({ requireUser: vi.fn() }));
+vi.mock('@/lib/auth', () => ({ requireUser: mockRequireUser, requireRole: vi.fn() }));
 vi.mock('@/lib/db', () => ({ db: {} }));
 vi.mock('@/lib/logger', () => ({
   logger: { info: vi.fn(), warn: vi.fn(), error: vi.fn(), debug: vi.fn() },
@@ -30,12 +32,31 @@ vi.mock('@/lib/monitoring', () => ({
 }));
 
 const routeContext = { params: Promise.resolve({}) };
+const authenticatedUser = {
+  id: 'user_1',
+  tenantId: 'tenant_1',
+  role: 'STUDENT',
+  isMinor: false,
+  consentStatus: 'GRANTED',
+};
 
 // ---------------------------------------------------------------------------
 // GET /api/srs/due-items
 // ---------------------------------------------------------------------------
 describe('GET /api/srs/due-items', () => {
-  beforeEach(() => { vi.clearAllMocks(); });
+  beforeEach(() => {
+    vi.clearAllMocks();
+    mockRequireUser.mockResolvedValue(authenticatedUser);
+  });
+
+  it('returns 401 when not authenticated', async () => {
+    const { AuthenticationError } = await import('@/lib/api-errors');
+    mockRequireUser.mockRejectedValue(new AuthenticationError());
+    const { GET } = await import('@/app/api/srs/due-items/route');
+    const req = new NextRequest('http://localhost/api/srs/due-items?studentId=stu_1');
+    const res = await GET(req, routeContext);
+    expect(res.status).toBe(401);
+  });
 
   it('returns 400 when studentId is missing', async () => {
     const { GET } = await import('@/app/api/srs/due-items/route');
@@ -53,7 +74,7 @@ describe('GET /api/srs/due-items', () => {
     expect(res.status).toBe(400);
   });
 
-  it('returns due items for valid request', async () => {
+  it('returns due items with count and items array', async () => {
     const items = [
       { id: 'item_1', subject: 'MATH', nextReviewAt: new Date().toISOString() },
       { id: 'item_2', subject: 'MATH', nextReviewAt: new Date().toISOString() },
@@ -82,6 +103,15 @@ describe('GET /api/srs/due-items', () => {
     expect(body.items).toHaveLength(0);
   });
 
+  it('accepts subject filter query param and passes it to getDueItems', async () => {
+    mockGetDueItems.mockResolvedValue([]);
+
+    const { GET } = await import('@/app/api/srs/due-items/route');
+    const req = new NextRequest('http://localhost/api/srs/due-items?studentId=stu_1&subject=SCIENCE');
+    await GET(req, routeContext);
+    expect(mockGetDueItems).toHaveBeenCalledWith('stu_1', 'SCIENCE', undefined);
+  });
+
   it('passes undefined limit when not specified', async () => {
     mockGetDueItems.mockResolvedValue([]);
 
@@ -96,7 +126,22 @@ describe('GET /api/srs/due-items', () => {
 // POST /api/srs/review
 // ---------------------------------------------------------------------------
 describe('POST /api/srs/review', () => {
-  beforeEach(() => { vi.clearAllMocks(); });
+  beforeEach(() => {
+    vi.clearAllMocks();
+    mockRequireUser.mockResolvedValue(authenticatedUser);
+  });
+
+  it('returns 401 when not authenticated', async () => {
+    const { AuthenticationError } = await import('@/lib/api-errors');
+    mockRequireUser.mockRejectedValue(new AuthenticationError());
+    const { POST } = await import('@/app/api/srs/review/route');
+    const req = new NextRequest('http://localhost/api/srs/review', {
+      method: 'POST',
+      body: JSON.stringify({ scheduleId: 'sched_1', rating: 3 }),
+    });
+    const res = await POST(req, routeContext);
+    expect(res.status).toBe(401);
+  });
 
   it('returns 400 when scheduleId is missing', async () => {
     const { POST } = await import('@/app/api/srs/review/route');
@@ -144,7 +189,7 @@ describe('POST /api/srs/review', () => {
     expect(res.status).toBe(404);
   });
 
-  it('returns 200 on successful GOOD review', async () => {
+  it('submits review and returns success message', async () => {
     mockSubmitReview.mockResolvedValue(undefined);
 
     const { POST } = await import('@/app/api/srs/review/route');
@@ -170,13 +215,39 @@ describe('POST /api/srs/review', () => {
     await POST(req, routeContext);
     expect(mockSubmitReview).toHaveBeenCalledWith('sched_1', 4, 1500);
   });
+
+  it('accepts all valid rating values (1-4)', async () => {
+    mockSubmitReview.mockResolvedValue(undefined);
+    const { POST } = await import('@/app/api/srs/review/route');
+
+    for (const rating of [1, 2, 3, 4]) {
+      const req = new NextRequest('http://localhost/api/srs/review', {
+        method: 'POST',
+        body: JSON.stringify({ scheduleId: 'sched_1', rating }),
+      });
+      const res = await POST(req, routeContext);
+      expect(res.status).toBe(200);
+    }
+  });
 });
 
 // ---------------------------------------------------------------------------
 // GET /api/srs/stats
 // ---------------------------------------------------------------------------
 describe('GET /api/srs/stats', () => {
-  beforeEach(() => { vi.clearAllMocks(); });
+  beforeEach(() => {
+    vi.clearAllMocks();
+    mockRequireUser.mockResolvedValue(authenticatedUser);
+  });
+
+  it('returns 401 when not authenticated', async () => {
+    const { AuthenticationError } = await import('@/lib/api-errors');
+    mockRequireUser.mockRejectedValue(new AuthenticationError());
+    const { GET } = await import('@/app/api/srs/stats/route');
+    const req = new NextRequest('http://localhost/api/srs/stats?studentId=stu_1');
+    const res = await GET(req, routeContext);
+    expect(res.status).toBe(401);
+  });
 
   it('returns 400 when studentId is missing', async () => {
     const { GET } = await import('@/app/api/srs/stats/route');
@@ -194,10 +265,14 @@ describe('GET /api/srs/stats', () => {
     expect(res.status).toBe(400);
   });
 
-  it('returns stats for valid request', async () => {
+  it('returns stats object with expected shape', async () => {
     const stats = {
-      totalCards: 50,
+      totalScheduled: 50,
       dueToday: 10,
+      dueThisWeek: 25,
+      newCards: 5,
+      learningCards: 8,
+      reviewCards: 37,
       masteredCards: 30,
       averageRetention: 0.85,
     };
@@ -208,13 +283,15 @@ describe('GET /api/srs/stats', () => {
     const res = await GET(req, routeContext);
     expect(res.status).toBe(200);
     const body = await res.json();
-    expect(body.totalCards).toBe(50);
+    expect(body.totalScheduled).toBe(50);
+    expect(body.dueToday).toBe(10);
+    expect(body.masteredCards).toBe(30);
     expect(body.averageRetention).toBe(0.85);
     expect(mockGetReviewStats).toHaveBeenCalledWith('stu_1', undefined);
   });
 
   it('filters stats by subject when provided', async () => {
-    mockGetReviewStats.mockResolvedValue({ totalCards: 20, dueToday: 5 });
+    mockGetReviewStats.mockResolvedValue({ totalScheduled: 20, dueToday: 5 });
 
     const { GET } = await import('@/app/api/srs/stats/route');
     const req = new NextRequest('http://localhost/api/srs/stats?studentId=stu_1&subject=SCIENCE');
@@ -227,7 +304,19 @@ describe('GET /api/srs/stats', () => {
 // GET /api/srs/warmup
 // ---------------------------------------------------------------------------
 describe('GET /api/srs/warmup', () => {
-  beforeEach(() => { vi.clearAllMocks(); });
+  beforeEach(() => {
+    vi.clearAllMocks();
+    mockRequireUser.mockResolvedValue(authenticatedUser);
+  });
+
+  it('returns 401 when not authenticated', async () => {
+    const { AuthenticationError } = await import('@/lib/api-errors');
+    mockRequireUser.mockRejectedValue(new AuthenticationError());
+    const { GET } = await import('@/app/api/srs/warmup/route');
+    const req = new NextRequest('http://localhost/api/srs/warmup?studentId=stu_1');
+    const res = await GET(req, routeContext);
+    expect(res.status).toBe(401);
+  });
 
   it('returns 400 when studentId is missing', async () => {
     const { GET } = await import('@/app/api/srs/warmup/route');
@@ -243,10 +332,13 @@ describe('GET /api/srs/warmup', () => {
     expect(res.status).toBe(400);
   });
 
-  it('returns warmup set with default maxItems=20', async () => {
+  it('returns warmup items array', async () => {
     const warmup = {
-      items: Array.from({ length: 5 }, (_, i) => ({ id: `item_${i}`, subject: 'MATH' })),
-      estimatedDuration: 300,
+      newItems: [{ id: 'item_1', subject: 'MATH' }],
+      learningItems: [{ id: 'item_2', subject: 'MATH' }],
+      reviewItems: Array.from({ length: 3 }, (_, i) => ({ id: `rev_${i}`, subject: 'MATH' })),
+      totalDue: 5,
+      estimatedMinutes: 8,
     };
     mockGenerateDailyWarmup.mockResolvedValue(warmup);
 
@@ -255,7 +347,17 @@ describe('GET /api/srs/warmup', () => {
     const res = await GET(req, routeContext);
     expect(res.status).toBe(200);
     const body = await res.json();
-    expect(body.items).toHaveLength(5);
+    expect(body.totalDue).toBe(5);
+    expect(body.estimatedMinutes).toBe(8);
+    expect(mockGenerateDailyWarmup).toHaveBeenCalledWith('stu_1', undefined, 20);
+  });
+
+  it('uses default maxItems=20 when not specified', async () => {
+    mockGenerateDailyWarmup.mockResolvedValue({ items: [], estimatedDuration: 0 });
+
+    const { GET } = await import('@/app/api/srs/warmup/route');
+    const req = new NextRequest('http://localhost/api/srs/warmup?studentId=stu_1');
+    await GET(req, routeContext);
     expect(mockGenerateDailyWarmup).toHaveBeenCalledWith('stu_1', undefined, 20);
   });
 
@@ -269,13 +371,19 @@ describe('GET /api/srs/warmup', () => {
   });
 
   it('returns empty warmup when student has no cards', async () => {
-    mockGenerateDailyWarmup.mockResolvedValue({ items: [], estimatedDuration: 0 });
+    mockGenerateDailyWarmup.mockResolvedValue({
+      newItems: [],
+      learningItems: [],
+      reviewItems: [],
+      totalDue: 0,
+      estimatedMinutes: 0,
+    });
 
     const { GET } = await import('@/app/api/srs/warmup/route');
     const req = new NextRequest('http://localhost/api/srs/warmup?studentId=stu_1&subject=MATH');
     const res = await GET(req, routeContext);
     expect(res.status).toBe(200);
     const body = await res.json();
-    expect(body.items).toHaveLength(0);
+    expect(body.totalDue).toBe(0);
   });
 });
