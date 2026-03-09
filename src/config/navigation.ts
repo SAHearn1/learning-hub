@@ -48,6 +48,7 @@ export const educatorNavItems = [
 ] as const;
 
 export const parentNavItems = [
+  { label: 'Children', href: '/parent/children', icon: 'users' },
   { label: 'Activity', href: '/parent/activity', icon: 'activity' },
   { label: 'Grades', href: '/parent/grades', icon: 'progress' },
   { label: 'Consent', href: '/parent/consent', icon: 'shield-check' },
@@ -78,4 +79,5 @@ export const adminNavItems = [
   { label: 'Ingestion Control', href: '/admin/ingest', icon: 'shield-check' },
   { label: 'School Comparison', href: '/admin/school-comparison', icon: 'git-compare' },
   { label: 'State Reporting', href: '/admin/state-reporting', icon: 'file-bar-chart' },
+  { label: 'SIS Import', href: '/admin/sis-import', icon: 'upload' },
 ] as const;

@@ -1,23 +1,11 @@
-import { auth } from '@clerk/nextjs/server';
-import { redirect } from 'next/navigation';
-import { getCurrentUser } from '@/lib/auth';
 import { db } from '@/lib/db';
+import { requirePageUser } from '@/lib/page-auth';
 import { StudentsClient } from './students-client';
 
 export const dynamic = 'force-dynamic';
 
-const EDUCATOR_ROLES = ['EDUCATOR', 'SCHOOL_ADMIN', 'DISTRICT_ADMIN', 'PLATFORM_ADMIN'];
-
 export default async function EducatorStudentsPage() {
-  const { userId } = await auth();
-  if (!userId) redirect('/sign-in');
-
-  const user = await getCurrentUser();
-  if (!user) redirect('/sign-in');
-
-  if (!EDUCATOR_ROLES.includes(user.role)) {
-    redirect('/dashboard');
-  }
+  const user = await requirePageUser(['EDUCATOR', 'SCHOOL_ADMIN', 'DISTRICT_ADMIN', 'PLATFORM_ADMIN']);
 
   const students = await db.student.findMany({
     where: { user: { tenantId: user.tenantId } },

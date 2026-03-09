@@ -1,9 +1,6 @@
-import { auth } from '@clerk/nextjs/server';
-import { redirect } from 'next/navigation';
 import { db } from '@/lib/db';
-import { getCurrentUser } from '@/lib/auth';
+import { requirePageUser } from '@/lib/page-auth';
 import { LearnPageClient } from './learn-page-client';
-import { SignInPrompt } from './sign-in-prompt';
 import type { Subject } from '@prisma/client';
 
 export interface PreselectedTopic {
@@ -18,22 +15,8 @@ interface PageProps {
 }
 
 export default async function LearnPage({ searchParams }: PageProps) {
-  const { userId } = await auth();
-
-  // If not signed in, show sign-in prompt
-  if (!userId) {
-    return <SignInPrompt />;
-  }
-
-  const user = await getCurrentUser();
-  if (!user) {
-    return <SignInPrompt />;
-  }
-
   // Learn sessions are student-only.
-  if (user.role !== 'STUDENT') {
-    redirect('/dashboard');
-  }
+  await requirePageUser(['STUDENT']);
 
   const { topic: topicId, subject } = await searchParams;
 
