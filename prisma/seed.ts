@@ -61,10 +61,10 @@ async function main() {
 
   // Create Educator
   const educatorUser = await prisma.user.upsert({
-    where: { clerkUserId: 'clerk_educator_demo_001' },
+    where: { clerkUserId: 'user_3Ai5XDH3K8rnNEYFiiT9M9c4jvt' },
     update: {},
     create: {
-      clerkUserId: 'clerk_educator_demo_001',
+      clerkUserId: 'user_3Ai5XDH3K8rnNEYFiiT9M9c4jvt',
       tenantId: tenant.id,
       schoolId: school.id,
       email: 'ms.johnson@demo.rootwork.edu',
@@ -91,7 +91,7 @@ async function main() {
   // Create Students
   const studentData = [
     {
-      clerkUserId: 'clerk_student_demo_001',
+      clerkUserId: 'user_3Ai5YXMpcwlOrFED37kx6C4vZUO',
       email: 'alex.martinez@demo.rootwork.edu',
       firstName: 'Alex',
       lastName: 'Martinez',
@@ -108,7 +108,7 @@ async function main() {
       },
     },
     {
-      clerkUserId: 'clerk_student_demo_002',
+      clerkUserId: 'user_3Ai5Yj6GJ4SKxkczueNHFfJ9U96',
       email: 'jordan.lee@demo.rootwork.edu',
       firstName: 'Jordan',
       lastName: 'Lee',
@@ -125,7 +125,7 @@ async function main() {
       },
     },
     {
-      clerkUserId: 'clerk_student_demo_003',
+      clerkUserId: 'user_3Ai5Yu0X5oA1lL4W6JsHadz8iVn',
       email: 'taylor.smith@demo.rootwork.edu',
       firstName: 'Taylor',
       lastName: 'Smith',
@@ -231,10 +231,10 @@ async function main() {
 
   // Create Parent User (linked to Alex Martinez)
   const parentUser = await prisma.user.upsert({
-    where: { clerkUserId: 'clerk_parent_demo_001' },
+    where: { clerkUserId: 'user_3Ai5YvEjVi0F9LABoOTX0LCOeRr' },
     update: {},
     create: {
-      clerkUserId: 'clerk_parent_demo_001',
+      clerkUserId: 'user_3Ai5YvEjVi0F9LABoOTX0LCOeRr',
       tenantId: tenant.id,
       schoolId: school.id,
       email: 'parent@demo.rootwork.edu',
@@ -264,10 +264,10 @@ async function main() {
 
   // Create Admin User
   const adminUser = await prisma.user.upsert({
-    where: { clerkUserId: 'clerk_admin_demo_001' },
+    where: { clerkUserId: 'user_3Ai5Z2zol0AJa4RJy16IE9pGbfY' },
     update: {},
     create: {
-      clerkUserId: 'clerk_admin_demo_001',
+      clerkUserId: 'user_3Ai5Z2zol0AJa4RJy16IE9pGbfY',
       tenantId: tenant.id,
       schoolId: school.id,
       email: 'admin@demo.rootwork.edu',

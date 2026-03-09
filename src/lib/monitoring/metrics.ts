@@ -18,10 +18,40 @@ import { alertRules, checkAlertCondition, sendAlert } from './alerts';
 // ---------------------------------------------------------------------------
 
 /**
- * Push a gauge or counter to Datadog via UDP StatsD.
- * Only active when DATADOG_STATSD_HOST is set.
+ * Push a metric to Datadog via HTTP API (v2/series).
+ * Works in Vercel serverless where UDP StatsD is unreliable.
+ * Requires DATADOG_API_KEY env var. DATADOG_SITE defaults to datadoghq.com.
  * Fire-and-forget: errors are swallowed so metric failures never affect
  * request latency or availability.
+ */
+function pushToDatadog(metric: string, value: number): void {
+  const apiKey = process.env.DATADOG_API_KEY;
+  if (!apiKey) return;
+
+  const site = process.env.DATADOG_SITE ?? 'datadoghq.com';
+  const prefix = process.env.DATADOG_METRIC_PREFIX ?? 'rootwork';
+  const env = process.env.NODE_ENV ?? 'development';
+  const now = Math.floor(Date.now() / 1000);
+
+  const body = JSON.stringify({
+    series: [{
+      metric: `${prefix}.${metric}`,
+      type: 0, // UNSPECIFIED (gauge)
+      points: [{ timestamp: now, value }],
+      tags: [`env:${env}`],
+    }],
+  });
+
+  fetch(`https://api.${site}/api/v2/series`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', 'DD-API-KEY': apiKey },
+    body,
+  }).catch(() => {/* swallow — never affect request path */});
+}
+
+/**
+ * @deprecated UDP StatsD is unreliable in serverless. Use DATADOG_API_KEY instead.
+ * Kept for backwards-compat with any self-hosted agent deployments.
  */
 function pushToStatsd(metric: string, value: number, type: 'g' | 'c' = 'g'): void {
   const host = process.env.DATADOG_STATSD_HOST;
@@ -54,7 +84,9 @@ class MetricsStore {
   private readonly MAX_SAMPLES = 1000;
 
   record(metric: string, value: number, timestamp: number = Date.now()) {
-    // Push to external aggregator (no-op when DATADOG_STATSD_HOST not set)
+    // Push to Datadog via HTTP API (preferred for serverless, no-op when DATADOG_API_KEY not set)
+    pushToDatadog(metric, value);
+    // Legacy UDP StatsD (no-op when DATADOG_STATSD_HOST not set)
     pushToStatsd(metric, value);
 
     if (!this.metrics.has(metric)) {
