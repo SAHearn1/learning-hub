@@ -1,0 +1,35 @@
+name: Agent Governance Validation
+
+on:
+  pull_request:
+    branches: [main, master]
+
+jobs:
+  validate-governance:
+    name: Validate Governance Files
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Verify AGENTS.md
+        run: |
+          [ -f AGENTS.md ] && echo "AGENTS.md present" || (echo "ERROR: AGENTS.md missing" && exit 1)
+
+      - name: Verify CLAUDE.md
+        run: |
+          [ -f CLAUDE.md ] && echo "CLAUDE.md present" || (echo "ERROR: CLAUDE.md missing" && exit 1)
+
+      - name: Verify repo.intelligence.yml
+        run: |
+          [ -f repo.intelligence.yml ] && echo "repo.intelligence.yml present" || (echo "ERROR: repo.intelligence.yml missing" && exit 1)
+
+      - name: Verify CODEOWNERS
+        run: |
+          [ -f CODEOWNERS ] && echo "CODEOWNERS present" || (echo "ERROR: CODEOWNERS missing" && exit 1)
+
+      - name: Governance gate passed
+        run: |
+          echo "=== GOVERNANCE GATE: PASSED ==="
+          echo "Repo: learning-hub | Tier: 1 | Hub: SAHearn1/rwfw-agent-governance"

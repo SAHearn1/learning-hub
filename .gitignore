@@ -59,3 +59,14 @@ next-env.d.ts
 # n8n
 .n8n/
 .env*.local
+# ── Security: credential and key files ──────────────────────────────────────
+*.pem
+*.key
+*.p12
+*.pfx
+*.cert
+*.crt
+secrets/
+serviceAccount*.json
+*-firebase-adminsdk-*.json
+firebase-adminsdk*.json
