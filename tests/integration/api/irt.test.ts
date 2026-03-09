@@ -96,6 +96,16 @@ describe('GET /api/irt/ability', () => {
     expect(res.status).toBe(400);
   });
 
+  it('returns 400 for invalid subject value', async () => {
+    mockRequireUser.mockResolvedValue(studentUser);
+    const { GET } = await import('@/app/api/irt/ability/route');
+    const req = new NextRequest('http://localhost/api/irt/ability?studentId=stu_1&subject=HISTORY');
+    const res = await GET(req, routeContext);
+    expect(res.status).toBe(400);
+    const body = await res.json();
+    expect(body.error).toMatch(/invalid subject/i);
+  });
+
   it('returns 404 when student is not found', async () => {
     mockRequireUser.mockResolvedValue(studentUser);
     mockStudentFindUnique.mockResolvedValue(null);
@@ -222,6 +232,18 @@ describe('POST /api/irt/next-item', () => {
     expect(body.id).toBe('assess_1');
   });
 
+  it('returns 403 when non-student accesses another tenant student', async () => {
+    mockRequireUser.mockResolvedValue({ ...studentUser, role: 'EDUCATOR', id: 'user_edu', tenantId: 'tenant_other' });
+    mockStudentFindUnique.mockResolvedValue(studentRecord); // student is in tenant_1
+    const { POST } = await import('@/app/api/irt/next-item/route');
+    const req = new NextRequest('http://localhost/api/irt/next-item', {
+      method: 'POST',
+      body: JSON.stringify({ studentId: 'stu_1', subject: 'MATH' }),
+    });
+    const res = await POST(req, routeContext);
+    expect(res.status).toBe(403);
+  });
+
   it('uses provided currentTheta when specified', async () => {
     mockRequireUser.mockResolvedValue(studentUser);
     mockStudentFindUnique.mockResolvedValue(studentRecord);
@@ -248,6 +270,30 @@ describe('POST /api/irt/calibrate', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     mockRequireRole.mockResolvedValue({ id: 'educator_1', role: 'EDUCATOR', tenantId: 'tenant_1' });
+  });
+
+  it('returns 401 when not authenticated', async () => {
+    const { AuthenticationError } = await import('@/lib/api-errors');
+    mockRequireRole.mockRejectedValue(new AuthenticationError());
+    const { POST } = await import('@/app/api/irt/calibrate/route');
+    const req = new NextRequest('http://localhost/api/irt/calibrate', {
+      method: 'POST',
+      body: JSON.stringify({ subject: 'MATH' }),
+    });
+    const res = await POST(req, routeContext);
+    expect(res.status).toBe(401);
+  });
+
+  it('returns 403 for STUDENT role (requires EDUCATOR or higher)', async () => {
+    const { ForbiddenError } = await import('@/lib/api-errors');
+    mockRequireRole.mockRejectedValue(new ForbiddenError('Insufficient role'));
+    const { POST } = await import('@/app/api/irt/calibrate/route');
+    const req = new NextRequest('http://localhost/api/irt/calibrate', {
+      method: 'POST',
+      body: JSON.stringify({ subject: 'MATH' }),
+    });
+    const res = await POST(req, routeContext);
+    expect(res.status).toBe(403);
   });
 
   it('returns 400 when subject is missing', async () => {

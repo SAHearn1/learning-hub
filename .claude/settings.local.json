@@ -1,0 +1,9 @@
+{
+  "permissions": {
+    "allow": [
+      "mcp__vercel__vercel_list_projects",
+      "mcp__vercel__vercel_get_project",
+      "Bash(python3:*)"
+    ]
+  }
+}

@@ -55,17 +55,45 @@ Status: **Complete**
 - Universal consent gating on all student learning routes (sessions, pretests, assessments, IRT).
 - Webhook replay-protection (timestamp skew + duplicate event ID).
 
-## Current Phase
-
 ### Phase 5 -- Operations and Scale Readiness
 
-Status: **In Progress**
+Status: **Complete** (load test execution requires staging env — tracked in #261)
 
 - [x] Incident response playbook.
 - [x] Load test scaffolding (steady-state, ramp, spike, soak profiles).
 - [x] Monitoring and alerting modules.
-- [ ] Execute and publish baseline load test results.
-- [ ] Define and document SLO targets with measured baselines.
+- [x] Security hardening: HSTS, CI audit gate, structured logging.
+- [x] DB performance indexes (Session, Assessment, ThinkingAssessment).
+- [x] All API routes migrated to `withApiHandler`.
+- [x] Comprehensive integration test coverage: 136 test files, 1758 tests.
+- [ ] Execute and publish baseline load test results (requires staging env — #261).
+- [ ] Provision Datadog and set `DATADOG_STATSD_HOST` (#189).
+
+### Phase 6 -- Full API Test Coverage
+
+Status: **Complete** (2026-03-09, PR #262 + PR sprint-phase5-coverage)
+
+- [x] Integration tests for all IDEA compliance routes (evaluation, discipline, safeguards).
+- [x] Integration tests for all LMS routes (courses, assignments, submissions, grades, classes).
+- [x] Integration tests for progress monitoring (goals, entries, reports, compliance).
+- [x] Integration tests for SRS and IRT (adaptive learning core).
+- [x] Integration tests for admin routes (audit log, data retention, NVC, tenant management).
+- [x] Integration tests for billing, parent, student, explore, IEP, onboarding routes.
+- [x] Test suite: 136 files / 1758 tests, all passing.
+
+## Current Phase
+
+### Phase 7 -- Analytics, District-Wide Deployment, and Mobile
+
+Status: **In Progress**
+
+- [ ] Analytics API routes for district and school-level dashboards.
+- [ ] Bulk user import from SIS feeds.
+- [ ] SSO federation with district identity providers (SAML, OIDC).
+- [ ] Data export and portability tooling.
+- [ ] Mobile-responsive redesign for tablet and phone.
+- [ ] E2E CI green with Clerk test credentials (#192).
+- [ ] Load test baseline documented (#261).
 
 ## Future Work
 

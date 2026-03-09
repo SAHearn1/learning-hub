@@ -11,6 +11,8 @@ const mockCloseDisciplineCase = vi.fn();
 const mockRecordManifestDetermination = vi.fn();
 const mockCheckDisciplineCompliance = vi.fn();
 const mockGetDisciplineMetrics = vi.fn();
+const mockSetPlacement = vi.fn();
+const mockDocumentServicesContinuation = vi.fn();
 
 vi.mock('@/lib/auth', () => ({
   requireUser: vi.fn(),
@@ -25,6 +27,8 @@ vi.mock('@/lib/discipline/discipline.service', () => ({
   recordManifestDetermination: mockRecordManifestDetermination,
   checkDisciplineCompliance: mockCheckDisciplineCompliance,
   getDisciplineMetrics: mockGetDisciplineMetrics,
+  setPlacement: mockSetPlacement,
+  documentServicesContinuation: mockDocumentServicesContinuation,
 }));
 
 vi.mock('@/lib/db', () => ({
@@ -493,6 +497,244 @@ describe('POST /api/discipline/cases/[caseId]/manifest', () => {
         outcome: 'IS_MANIFESTATION',
         decidedBy: 'user_admin',
       }),
+    );
+  });
+});
+
+// ─── POST /api/discipline/cases/[caseId]/placement ───────────────────────────
+
+describe('POST /api/discipline/cases/[caseId]/placement', () => {
+  const validBody = {
+    placement: 'IAES',
+    iaesEndDate: '2026-02-15',
+  };
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  it('returns 401 when not authenticated', async () => {
+    const { AuthenticationError } = await import('@/lib/api-errors');
+    mockRequireRole.mockRejectedValue(new AuthenticationError());
+    const { POST } = await import('@/app/api/discipline/cases/[caseId]/placement/route');
+
+    const req = new NextRequest('http://localhost/api/discipline/cases/case_1/placement', {
+      method: 'POST',
+      body: JSON.stringify(validBody),
+    });
+    const res = await POST(req, routeContext);
+    expect(res.status).toBe(401);
+  });
+
+  it('returns 403 for EDUCATOR role (only admin can set placement)', async () => {
+    const { ForbiddenError } = await import('@/lib/api-errors');
+    mockRequireRole.mockRejectedValue(new ForbiddenError());
+    const { POST } = await import('@/app/api/discipline/cases/[caseId]/placement/route');
+
+    const req = new NextRequest('http://localhost/api/discipline/cases/case_1/placement', {
+      method: 'POST',
+      body: JSON.stringify(validBody),
+    });
+    const res = await POST(req, routeContext);
+    expect(res.status).toBe(403);
+  });
+
+  it('returns 400 when placement value is invalid', async () => {
+    mockRequireRole.mockResolvedValue(schoolAdminUser);
+    const { POST } = await import('@/app/api/discipline/cases/[caseId]/placement/route');
+
+    const req = new NextRequest('http://localhost/api/discipline/cases/case_1/placement', {
+      method: 'POST',
+      body: JSON.stringify({ placement: 'INVALID_PLACEMENT' }),
+    });
+    const res = await POST(req, routeContext);
+    expect(res.status).toBe(400);
+  });
+
+  it('returns 400 when placement field is missing', async () => {
+    mockRequireRole.mockResolvedValue(schoolAdminUser);
+    const { POST } = await import('@/app/api/discipline/cases/[caseId]/placement/route');
+
+    const req = new NextRequest('http://localhost/api/discipline/cases/case_1/placement', {
+      method: 'POST',
+      body: JSON.stringify({ iaesEndDate: '2026-02-15' }),
+    });
+    const res = await POST(req, routeContext);
+    expect(res.status).toBe(400);
+  });
+
+  it('returns 200 with updated case for SCHOOL_ADMIN when setting IAES placement', async () => {
+    mockRequireRole.mockResolvedValue(schoolAdminUser);
+    const updatedCase = {
+      ...mockDisciplineCase,
+      placement: 'IAES',
+      iaesEndDate: '2026-02-15',
+      updatedBy: 'user_admin',
+    };
+    mockSetPlacement.mockResolvedValue(updatedCase);
+    const { POST } = await import('@/app/api/discipline/cases/[caseId]/placement/route');
+
+    const req = new NextRequest('http://localhost/api/discipline/cases/case_1/placement', {
+      method: 'POST',
+      body: JSON.stringify(validBody),
+    });
+    const res = await POST(req, routeContext);
+    expect(res.status).toBe(200);
+    const body = await res.json();
+    expect(body.data.placement).toBe('IAES');
+    expect(body.data.iaesEndDate).toBe('2026-02-15');
+    expect(mockSetPlacement).toHaveBeenCalledWith(
+      'case_1',
+      'IAES',
+      '2026-02-15',
+      'user_admin',
+    );
+  });
+
+  it('accepts RETURN_TO_PLACEMENT with null iaesEndDate', async () => {
+    mockRequireRole.mockResolvedValue(schoolAdminUser);
+    const updatedCase = { ...mockDisciplineCase, placement: 'RETURN_TO_PLACEMENT', iaesEndDate: null };
+    mockSetPlacement.mockResolvedValue(updatedCase);
+    const { POST } = await import('@/app/api/discipline/cases/[caseId]/placement/route');
+
+    const req = new NextRequest('http://localhost/api/discipline/cases/case_1/placement', {
+      method: 'POST',
+      body: JSON.stringify({ placement: 'RETURN_TO_PLACEMENT' }),
+    });
+    const res = await POST(req, routeContext);
+    expect(res.status).toBe(200);
+    expect(mockSetPlacement).toHaveBeenCalledWith(
+      'case_1',
+      'RETURN_TO_PLACEMENT',
+      null,
+      'user_admin',
+    );
+  });
+
+  it('accepts HOME_INSTRUCTION placement for DISTRICT_ADMIN', async () => {
+    const districtAdmin = { id: 'user_district', tenantId: 'tenant_1', role: 'DISTRICT_ADMIN' };
+    mockRequireRole.mockResolvedValue(districtAdmin);
+    const updatedCase = { ...mockDisciplineCase, placement: 'HOME_INSTRUCTION', iaesEndDate: null };
+    mockSetPlacement.mockResolvedValue(updatedCase);
+    const { POST } = await import('@/app/api/discipline/cases/[caseId]/placement/route');
+
+    const req = new NextRequest('http://localhost/api/discipline/cases/case_1/placement', {
+      method: 'POST',
+      body: JSON.stringify({ placement: 'HOME_INSTRUCTION' }),
+    });
+    const res = await POST(req, routeContext);
+    expect(res.status).toBe(200);
+    const body = await res.json();
+    expect(body.data.placement).toBe('HOME_INSTRUCTION');
+  });
+});
+
+// ─── POST /api/discipline/cases/[caseId]/services ────────────────────────────
+
+describe('POST /api/discipline/cases/[caseId]/services', () => {
+  const validBody = {
+    servicesDescription: 'Student will receive 2 hours of reading support and 1 hour of math tutoring per week during the removal period.',
+  };
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  it('returns 401 when not authenticated', async () => {
+    const { AuthenticationError } = await import('@/lib/api-errors');
+    mockRequireRole.mockRejectedValue(new AuthenticationError());
+    const { POST } = await import('@/app/api/discipline/cases/[caseId]/services/route');
+
+    const req = new NextRequest('http://localhost/api/discipline/cases/case_1/services', {
+      method: 'POST',
+      body: JSON.stringify(validBody),
+    });
+    const res = await POST(req, routeContext);
+    expect(res.status).toBe(401);
+  });
+
+  it('returns 403 for STUDENT role', async () => {
+    const { ForbiddenError } = await import('@/lib/api-errors');
+    mockRequireRole.mockRejectedValue(new ForbiddenError());
+    const { POST } = await import('@/app/api/discipline/cases/[caseId]/services/route');
+
+    const req = new NextRequest('http://localhost/api/discipline/cases/case_1/services', {
+      method: 'POST',
+      body: JSON.stringify(validBody),
+    });
+    const res = await POST(req, routeContext);
+    expect(res.status).toBe(403);
+  });
+
+  it('returns 400 when servicesDescription is empty', async () => {
+    mockRequireRole.mockResolvedValue(educatorUser);
+    const { POST } = await import('@/app/api/discipline/cases/[caseId]/services/route');
+
+    const req = new NextRequest('http://localhost/api/discipline/cases/case_1/services', {
+      method: 'POST',
+      body: JSON.stringify({ servicesDescription: '' }),
+    });
+    const res = await POST(req, routeContext);
+    expect(res.status).toBe(400);
+  });
+
+  it('returns 400 when servicesDescription is missing', async () => {
+    mockRequireRole.mockResolvedValue(educatorUser);
+    const { POST } = await import('@/app/api/discipline/cases/[caseId]/services/route');
+
+    const req = new NextRequest('http://localhost/api/discipline/cases/case_1/services', {
+      method: 'POST',
+      body: JSON.stringify({}),
+    });
+    const res = await POST(req, routeContext);
+    expect(res.status).toBe(400);
+  });
+
+  it('returns 200 with updated case for EDUCATOR', async () => {
+    mockRequireRole.mockResolvedValue(educatorUser);
+    const updatedCase = {
+      ...mockDisciplineCase,
+      servicesDescription: validBody.servicesDescription,
+      servicesDocumentedBy: 'user_edu',
+    };
+    mockDocumentServicesContinuation.mockResolvedValue(updatedCase);
+    const { POST } = await import('@/app/api/discipline/cases/[caseId]/services/route');
+
+    const req = new NextRequest('http://localhost/api/discipline/cases/case_1/services', {
+      method: 'POST',
+      body: JSON.stringify(validBody),
+    });
+    const res = await POST(req, routeContext);
+    expect(res.status).toBe(200);
+    const body = await res.json();
+    expect(body.data.servicesDescription).toBe(validBody.servicesDescription);
+    expect(mockDocumentServicesContinuation).toHaveBeenCalledWith(
+      'case_1',
+      validBody.servicesDescription,
+      'user_edu',
+    );
+  });
+
+  it('returns 200 with updated case for SCHOOL_ADMIN', async () => {
+    mockRequireRole.mockResolvedValue(schoolAdminUser);
+    const updatedCase = {
+      ...mockDisciplineCase,
+      servicesDescription: validBody.servicesDescription,
+      servicesDocumentedBy: 'user_admin',
+    };
+    mockDocumentServicesContinuation.mockResolvedValue(updatedCase);
+    const { POST } = await import('@/app/api/discipline/cases/[caseId]/services/route');
+
+    const req = new NextRequest('http://localhost/api/discipline/cases/case_1/services', {
+      method: 'POST',
+      body: JSON.stringify(validBody),
+    });
+    const res = await POST(req, routeContext);
+    expect(res.status).toBe(200);
+    expect(mockDocumentServicesContinuation).toHaveBeenCalledWith(
+      'case_1',
+      validBody.servicesDescription,
+      'user_admin',
     );
   });
 });
