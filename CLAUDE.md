@@ -1,6 +1,6 @@
 # RootWork Learning Hub - Phase Completion Tracker
 
-Last updated: 2026-02-26
+Last updated: 2026-03-09
 
 ## Phase 0 - Immediate Blockers
 
@@ -239,6 +239,32 @@ All remaining items require provisioning outside the codebase. See `docs/HUMAN_A
 - Intermittent tinypool worker crash during full `vitest run` (environment/memory issue, not a test failure). All tests pass individually.
 - TypeScript errors in test files (`tests/integration/**/*.test.ts`) for `Expected 2 arguments, but got 1` when calling `withApiHandler`-wrapped routes. These are TS-only (not runtime) — tests pass. Root cause: Next.js requires `routeContext` to be non-optional in route signatures; making it optional breaks Next.js type checks. Resolution: update test call sites to pass `{ params: Promise.resolve({}) }` as second argument (tracked in gap backlog).
 - Clerk dev keys in production: switch `NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY` and `CLERK_SECRET_KEY` to `pk_live_` / `sk_live_` keys in Vercel → Production env vars.
+
+## Gap Analysis Execution 2 — 2026-03-09
+
+Status: **EXECUTED** (branch: `claude/gap-analysis-2-6f67e3`, PR #262)
+
+### Completed Fixes
+
+| Area | Change | Details |
+|------|--------|---------|
+| Security | HSTS header | Added `Strict-Transport-Security: max-age=63072000` to `vercel.json` |
+| Security | CI audit gate | Removed `\|\| true` from `npm audit --audit-level=critical` — critical CVEs now fail CI |
+| Observability | Structured logging | Replaced `console.log/error` with `logger.debug/error` in `src/app/api/chat/route.ts` |
+| Env docs | `.env.example` | Documented `DATA_ENCRYPTION_KEY`, `CRON_SECRET`, `STRICT_ROLE_ENFORCEMENT`, rate limits, monitoring (Datadog, Slack, PagerDuty), hybrid search (Supabase, HuggingFace) |
+| DB performance | Prisma indexes | `@@index([startedAt])` on Session, `@@index([sessionId])` on Assessment + ThinkingAssessment |
+| API consistency | 8 routes → withApiHandler | audit-log, bulk/grades, bulk/notices, export, export/state-report, messages/threads, notifications, notifications/count |
+| Dead code | Deleted 2 files | `src/app/educator/mock-data.ts` + `src/app/educator/portal-store.ts` (orphaned, nothing imported them) |
+| Test coverage | 9 new test files, 172 tests | evaluation-cases, discipline-cases, safeguards, school-admin, notifications, messages, export, bulk-ops, misc-routes |
+| Test fixes | 6 stale test files | chat (role fields), ingest (findFirst mock), irt (requireRole mock), metrics (auth mock), multi-tenant-rls-audit (error message), rls-auditing (educator now blocked at role check) |
+
+### Validation (2026-03-09)
+- `npm run lint` — clean
+- `npx tsc --noEmit` — clean
+- `npx vitest run` — **127/127 test files, 1565/1565 tests pass**
+
+### Issues Created (#249–#261)
+13 GitHub issues created for remaining gaps (E2E CI credentials, load test baseline, misc-routes spec coverage, phase5-8-orchestration.yml clarification — all require external/human action).
 
 ---
 
