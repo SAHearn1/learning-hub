@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { z } from 'zod';
+import { withApiHandler } from '@/lib/api-handler';
 import { requireRole } from '@/lib/auth';
 import { db } from '@/lib/db';
 
@@ -12,7 +13,7 @@ const bulkGradeSchema = z.object({
   })).min(1),
 });
 
-export async function POST(req: Request) {
+export const POST = withApiHandler(async (req) => {
   const user = await requireRole(['EDUCATOR', 'SCHOOL_ADMIN', 'DISTRICT_ADMIN', 'PLATFORM_ADMIN']);
   const { grades } = bulkGradeSchema.parse(await req.json());
 
@@ -38,4 +39,4 @@ export async function POST(req: Request) {
   );
 
   return NextResponse.json({ data: results });
-}
+});

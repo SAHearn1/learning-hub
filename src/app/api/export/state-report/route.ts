@@ -1,9 +1,10 @@
 import { NextResponse } from 'next/server';
+import { withApiHandler } from '@/lib/api-handler';
 import { requireRole } from '@/lib/auth';
 import { db } from '@/lib/db';
 import { getCurrentSchoolYear } from '@/lib/safeguards/school-year';
 
-export async function GET() {
+export const GET = withApiHandler(async () => {
   const user = await requireRole(['DISTRICT_ADMIN', 'PLATFORM_ADMIN']);
   const tenantId = user.tenantId;
   const schoolYear = getCurrentSchoolYear();
@@ -59,4 +60,4 @@ export async function GET() {
       'Content-Disposition': `attachment; filename="spp-apr-report-${schoolYear}.csv"`,
     },
   });
-}
+});

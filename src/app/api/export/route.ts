@@ -1,8 +1,10 @@
 import { NextResponse } from 'next/server';
+import { withApiHandler } from '@/lib/api-handler';
 import { requireRole } from '@/lib/auth';
+import { ValidationError } from '@/lib/api-errors';
 import { db } from '@/lib/db';
 
-export async function GET(req: Request) {
+export const GET = withApiHandler(async (req) => {
   const user = await requireRole([
     'EDUCATOR', 'SCHOOL_ADMIN', 'DISTRICT_ADMIN', 'PLATFORM_ADMIN',
   ]);
@@ -12,7 +14,7 @@ export async function GET(req: Request) {
   const tenantId = user.tenantId;
 
   if (format !== 'csv') {
-    return NextResponse.json({ error: 'Only CSV export is currently supported' }, { status: 400 });
+    throw new ValidationError('Only CSV export is currently supported');
   }
 
   let csv = '';
@@ -70,7 +72,7 @@ export async function GET(req: Request) {
     }
 
     default:
-      return NextResponse.json({ error: 'Invalid export type. Use: grades, audit-log, compliance' }, { status: 400 });
+      throw new ValidationError('Invalid export type. Use: grades, audit-log, compliance');
   }
 
   return new NextResponse(csv, {
@@ -79,4 +81,4 @@ export async function GET(req: Request) {
       'Content-Disposition': `attachment; filename="${filename}"`,
     },
   });
-}
+});

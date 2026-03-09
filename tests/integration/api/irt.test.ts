@@ -12,11 +12,12 @@ const mockStudentFindUnique = vi.fn();
 
 // --- Auth mock ---
 const mockRequireUser = vi.fn();
+const mockRequireRole = vi.fn();
 
 // --- Compliance mock (module-level reference so we can flip it in tests) ---
 const mockHasRequiredMinorConsent = vi.fn().mockReturnValue(true);
 
-vi.mock('@/lib/auth', () => ({ requireUser: mockRequireUser }));
+vi.mock('@/lib/auth', () => ({ requireUser: mockRequireUser, requireRole: mockRequireRole }));
 vi.mock('@/lib/db', () => ({
   db: {
     student: { findUnique: mockStudentFindUnique },
@@ -244,7 +245,10 @@ describe('POST /api/irt/next-item', () => {
 // POST /api/irt/calibrate
 // ---------------------------------------------------------------------------
 describe('POST /api/irt/calibrate', () => {
-  beforeEach(() => { vi.clearAllMocks(); });
+  beforeEach(() => {
+    vi.clearAllMocks();
+    mockRequireRole.mockResolvedValue({ id: 'educator_1', role: 'EDUCATOR', tenantId: 'tenant_1' });
+  });
 
   it('returns 400 when subject is missing', async () => {
     const { POST } = await import('@/app/api/irt/calibrate/route');
