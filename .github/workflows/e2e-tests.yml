@@ -146,32 +146,50 @@ jobs:
       N8N_WEBHOOK_SECRET: test_webhook_secret
       NEXT_PUBLIC_APP_URL: http://localhost:3000
       BASE_URL: http://localhost:3000
-    
+      E2E_CLERK_USER_STUDENT_EMAIL: ${{ secrets.E2E_CLERK_USER_STUDENT_EMAIL }}
+      E2E_CLERK_USER_STUDENT_PASSWORD: ${{ secrets.E2E_CLERK_USER_STUDENT_PASSWORD }}
+      E2E_CLERK_USER_EDUCATOR_EMAIL: ${{ secrets.E2E_CLERK_USER_EDUCATOR_EMAIL }}
+      E2E_CLERK_USER_EDUCATOR_PASSWORD: ${{ secrets.E2E_CLERK_USER_EDUCATOR_PASSWORD }}
+      E2E_CLERK_USER_PARENT_EMAIL: ${{ secrets.E2E_CLERK_USER_PARENT_EMAIL }}
+      E2E_CLERK_USER_PARENT_PASSWORD: ${{ secrets.E2E_CLERK_USER_PARENT_PASSWORD }}
+      E2E_CLERK_USER_ADMIN_EMAIL: ${{ secrets.E2E_CLERK_USER_ADMIN_EMAIL }}
+      E2E_CLERK_USER_ADMIN_PASSWORD: ${{ secrets.E2E_CLERK_USER_ADMIN_PASSWORD }}
+
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
-      
+
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
           node-version: ${{ env.NODE_VERSION }}
           cache: npm
-      
+
       - name: Install dependencies
         run: npm ci
-      
+
+      - name: Generate Clerk testing token
+        id: clerk_token
+        env:
+          CLERK_SECRET_KEY: ${{ secrets.CLERK_SECRET_KEY_TEST }}
+        run: |
+          TOKEN=$(curl -s -X POST "https://api.clerk.com/v1/testing_tokens" \
+            -H "Authorization: Bearer $CLERK_SECRET_KEY" \
+            | python3 -c "import json,sys; print(json.load(sys.stdin)['token'])")
+          echo "CLERK_TESTING_TOKEN=$TOKEN" >> $GITHUB_ENV
+
       - name: Generate Prisma client
         run: npx prisma generate
-      
+
       - name: Run database migrations
         run: npx prisma migrate deploy
-      
+
       - name: Seed database with test data
         run: npm run db:seed
-      
+
       - name: Install Playwright Browsers
         run: npx playwright install --with-deps chromium
-      
+
       - name: Run accessibility tests
         run: npm run test:a11y
       
