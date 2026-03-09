@@ -10,13 +10,25 @@ Completed 2026-02-27. Secrets `PRODUCTION_DATABASE_URL` and `PRODUCTION_DIRECT_U
 
 Completed 2026-02-28. `pk_live_*` and `sk_live_*` keys set in Vercel production environment variables.
 
-## ~~P0 — Provision Datadog and wire Vercel runtime metrics~~ REPLACED
+## ~~P0 — Wire Datadog HTTP API metrics~~ PARTIALLY DONE (2026-03-09)
 
-Replaced by Vercel Analytics + Speed Insights (zero-config, free tier). Components added to root layout. Datadog StatsD code remains as an optional backend — set `DATADOG_STATSD_HOST` in Vercel env vars if/when a Datadog account is provisioned.
+`metrics.ts` updated to push via Datadog HTTP API (`DATADOG_API_KEY`) instead of UDP StatsD — works reliably in Vercel serverless. `DATADOG_SITE=datadoghq.com` and `DATADOG_METRIC_PREFIX=rootwork` set in Vercel.
 
-## ~~P0 — Add 11 Clerk secrets to GitHub Actions for E2E CI~~ DONE
+**One step remaining:** Add `DATADOG_API_KEY` to Vercel → Environment Variables (production + preview):
+1. Go to https://app.datadoghq.com/organization-settings/api-keys
+2. Create or copy an API key
+3. Set `DATADOG_API_KEY=<key>` in Vercel for production and preview
 
-Completed 2026-02-27. All 11 secrets configured in GitHub Actions repository secrets.
+Once set, all `metricsStore.record()` calls push to Datadog automatically.
+
+## ~~P0 — Add Clerk secrets + test users for E2E CI~~ DONE (2026-03-09)
+
+Completed 2026-03-09 (PR #266):
+- 6 Clerk test users created in dev instance: educator, 3 students, parent, admin
+- `prisma/seed.ts` updated with real Clerk user IDs
+- All 10 GitHub secrets updated with real credentials
+- `CLERK_TESTING_TOKEN` now generated dynamically in E2E workflow (short-lived, cannot be stored statically)
+- E2E CI running on main — results pending
 
 ## P0 — Deploy RLS tenant isolation migration
 
