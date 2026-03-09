@@ -1,23 +1,11 @@
-import { auth } from '@clerk/nextjs/server';
-import { redirect } from 'next/navigation';
-import { getCurrentUser } from '@/lib/auth';
 import { db } from '@/lib/db';
+import { requirePageUser } from '@/lib/page-auth';
 import { GradesClient } from './grades-client';
 
 export const dynamic = 'force-dynamic';
 
-const EDUCATOR_ROLES = ['EDUCATOR', 'SCHOOL_ADMIN', 'DISTRICT_ADMIN', 'PLATFORM_ADMIN'];
-
 export default async function EducatorGradesPage() {
-  const { userId } = await auth();
-  if (!userId) redirect('/sign-in');
-
-  const user = await getCurrentUser();
-  if (!user) redirect('/sign-in');
-
-  if (!EDUCATOR_ROLES.includes(user.role)) {
-    redirect('/dashboard');
-  }
+  const user = await requirePageUser(['EDUCATOR', 'SCHOOL_ADMIN', 'DISTRICT_ADMIN', 'PLATFORM_ADMIN']);
 
   // Scope the query: EDUCATOR sees only their own classes; admins see the whole tenant
   const classWhere =
