@@ -5,6 +5,6 @@ export const anthropic = new Anthropic({
 });
 
 export const AI_MODELS = {
-  primary: process.env.ANTHROPIC_MODEL_PRIMARY || 'claude-3-5-sonnet-20241022',
-  lightweight: process.env.ANTHROPIC_MODEL_LIGHTWEIGHT || 'claude-3-haiku-20240307',
+  primary: process.env.ANTHROPIC_MODEL_PRIMARY || 'claude-sonnet-5',
+  lightweight: process.env.ANTHROPIC_MODEL_LIGHTWEIGHT || 'claude-haiku-4-5',
 } as const;
