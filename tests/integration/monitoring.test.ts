@@ -52,14 +52,14 @@ describe('Monitoring & Alerting', () => {
 
   describe('AI Usage Tracking', () => {
     it('should track AI API calls', () => {
-      trackAIUsage('anthropic', 'claude-3-5-sonnet', 1500, 2000, 0.012, 1850, true);
+      trackAIUsage('anthropic', 'claude-sonnet-5', 1500, 2000, 0.012, 1850, true);
 
       const metrics = exportMetrics();
       expect(metrics.aiRequestCount).toBeGreaterThan(0);
     });
 
     it('should track AI costs', () => {
-      trackAIUsage('anthropic', 'claude-3-5-sonnet', 1500, 2000, 10.5, 1850, true);
+      trackAIUsage('anthropic', 'claude-sonnet-5', 1500, 2000, 10.5, 1850, true);
 
       const metrics = exportMetrics();
       expect(metrics.aiCostPerHour).toBeGreaterThan(0);
@@ -68,11 +68,11 @@ describe('Monitoring & Alerting', () => {
     it('should track AI error rate', () => {
       // 3 successful calls
       for (let i = 0; i < 3; i++) {
-        trackAIUsage('anthropic', 'claude-3-5-sonnet', 1000, 1000, 0.01, 1000, true);
+        trackAIUsage('anthropic', 'claude-sonnet-5', 1000, 1000, 0.01, 1000, true);
       }
 
       // 1 failed call
-      trackAIUsage('anthropic', 'claude-3-5-sonnet', 1000, 1000, 0.01, 1000, false);
+      trackAIUsage('anthropic', 'claude-sonnet-5', 1000, 1000, 0.01, 1000, false);
 
       const metrics = exportMetrics();
       expect(metrics.aiErrorRate).toBeCloseTo(0.25, 2); // 25% error rate
@@ -194,7 +194,7 @@ describe('Monitoring & Alerting', () => {
     it('should export all metrics', () => {
       // Track various metrics
       trackHttpRequest('/api/test', 'GET', 200, 100);
-      trackAIUsage('anthropic', 'claude-3-5-sonnet', 1000, 1000, 0.01, 1000, true);
+      trackAIUsage('anthropic', 'claude-sonnet-5', 1000, 1000, 0.01, 1000, true);
       trackDatabaseQuery('select', 'User', 20, true);
       trackCacheOperation('get', true, 5);
       trackConcurrentUsers(50);

@@ -44,7 +44,7 @@ vi.mock('@/lib/ai/client', () => ({
     },
   },
   AI_MODELS: {
-    primary: 'claude-3-5-sonnet-20241022',
+    primary: 'claude-sonnet-5',
     fallback: 'gpt-4o',
     embeddings: 'text-embedding-3-small',
   },

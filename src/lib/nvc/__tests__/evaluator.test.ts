@@ -10,8 +10,8 @@ vi.mock('@/lib/ai/client', () => ({
     },
   },
   AI_MODELS: {
-    primary: 'claude-3-5-sonnet-20241022',
-    lightweight: 'claude-3-haiku-20240307',
+    primary: 'claude-sonnet-5',
+    lightweight: 'claude-haiku-4-5',
   },
 }));
 
